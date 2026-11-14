@@ -903,3 +903,9 @@ id = "PM-02"
 level = "build"
 suite = "front-end-trace"
 statement = "Every IPC call a Foundry screen makes reaches a back-end feature the screen requires, every register ID and registry feature is owned by exactly one back-end feature, and every back-end feature, screen and stakeholder is reached by a journey"
+
+[[id]]
+id = "FA-88"
+level = "build"
+suite = "prism-id"
+statement = "A session from Foundry's frame verifies by stitch's Prism id only for the app, the active device and the time it was signed for, and a removed device or another id signs none"
