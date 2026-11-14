@@ -1373,6 +1373,13 @@ definition{
 }
 
 definition{
+  name: testFA88,
+  parameters: [],
+  result: String,
+  body: "crates/conformance/tests/prism_id.rs::prism_id_fa_88"
+}
+
+definition{
   name: testFA61,
   parameters: [],
   result: String,
@@ -1667,6 +1674,13 @@ definition{
 }
 
 definition{
+  name: featurePrismId,
+  parameters: [],
+  result: Foundation.Arch::Feature,
+  body: (record Foundation.Arch::Feature {statement := "Prism id (FA-88): The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay.", calls := (cons "FoundrySpecification::prismIdBoundary" (nil String)), acceptance := (cons "Features::testFA88" (nil String))})
+}
+
+definition{
   name: featureLibrariesAndSettings,
   parameters: [],
   result: Foundation.Arch::Feature,
@@ -1691,7 +1705,7 @@ definition{
   name: screenStudioShell,
   parameters: [],
   result: Foundation.Arch::Feature,
-  body: (record Foundation.Arch::Feature {statement := "Studio shell screen, for the app builder: Foundry opens at once in the tab: the sidebar, the title bar and the Prism frame, with no sign-in and the shell served from its verified closure.", calls := (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (nil String))))))))))), acceptance := (cons "Features::acceptStudioShellBudget" (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (nil String))))))))))))})
+  body: (record Foundation.Arch::Feature {statement := "Studio shell screen, for the app builder: Foundry opens at once in the tab: the sidebar, the title bar and the Prism frame, with no sign-in and the shell served from its verified closure.", calls := (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))), acceptance := (cons "Features::acceptStudioShellBudget" (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))))})
 }
 
 definition{

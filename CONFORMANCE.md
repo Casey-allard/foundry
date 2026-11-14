@@ -423,6 +423,12 @@ model does not sanction.
 | --- | --- | --- |
 | `FA-39` | `build` | Networked previews require explicit source-bound permission with persistent revocation controls |
 
+## prism-id
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `FA-88` | `build` | A session from Foundry's frame verifies by stitch's Prism id only for the app, the active device and the time it was signed for, and a removed device or another id signs none |
+
 ## prism-r4-route
 
 | ID | Level | Statement |

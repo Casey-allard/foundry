@@ -121,6 +121,12 @@
       "text": "The bar every Prism app opens in, which keeps the visitor's Prism id, stitch's, in this browser."
     },
     {
+      "key": "relay",
+      "name": "Stitch relay",
+      "kind": "externalSystem",
+      "text": "stitch's relay (ntfy.sh with stitch's relay framing), which carries a Prism id's sealed sync, link rendezvous and public log between its devices and the apps that hear removals."
+    },
+    {
       "key": "worker",
       "name": "Origin kernel worker",
       "kind": "service",
@@ -297,6 +303,14 @@
     [
       "sdk",
       "worker"
+    ],
+    [
+      "frame",
+      "relay"
+    ],
+    [
+      "relay",
+      "frame"
     ]
   ],
   "features": [
@@ -912,6 +926,22 @@
       "acceptance": []
     },
     {
+      "name": "Prism id",
+      "text": "The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay.",
+      "ids": [
+        "FA-88"
+      ],
+      "calls": [
+        "FoundrySpecification::prismIdBoundary"
+      ],
+      "registry": [],
+      "components": [
+        "frame",
+        "relay"
+      ],
+      "acceptance": []
+    },
+    {
       "name": "Libraries and settings",
       "text": "Prompts, themes and settings persist atomically, and a new project takes the selected theme.",
       "ids": [
@@ -1508,7 +1538,8 @@
         "Libraries and settings",
         "Own language and reasoning",
         "Release integration",
-        "Effect gate"
+        "Effect gate",
+        "Prism id"
       ],
       "renderer": [
         "routes/root.tsx"
