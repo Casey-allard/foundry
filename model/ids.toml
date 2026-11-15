@@ -94,12 +94,6 @@ suite = "host-response-boundary"
 statement = "The browser host refuses unsupported channels and invalid contracted responses with typed errors"
 
 [[id]]
-id = "FA-04"
-level = "build"
-suite = "publication-cancellation"
-statement = "Cancelling publication prevents subsequent browser requests and bounded requests return typed failures"
-
-[[id]]
 id = "FA-05"
 level = "build"
 suite = "publication-identity"
@@ -609,12 +603,6 @@ id = "FA-44"
 level = "build"
 suite = "portable-build-permission"
 statement = "Portable builds require revocable source-bound consent before package retrieval or generated-code execution"
-
-[[id]]
-id = "FA-45"
-level = "build"
-suite = "github-publication-permission"
-statement = "Public GitHub writes require explicit repository and source-bound approval rechecked before each mutation"
 
 [[id]]
 id = "FA-46"

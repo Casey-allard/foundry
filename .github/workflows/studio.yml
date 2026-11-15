@@ -146,7 +146,6 @@ jobs:
           run node tools/stateful_application_journeys_browser.mjs
           run node tools/command_ownership_registry_browser.mjs
           run node tools/portable_build_permission_browser.mjs
-          run node tools/github_publication_permission_browser.mjs
           run node tools/durable_build_work_browser.mjs
           run node tools/semantic_routing_runtime.mjs
           run node tools/semantic_routing_browser.mjs

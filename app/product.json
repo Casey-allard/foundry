@@ -163,12 +163,6 @@
       "text": "The Lean checker that proves an app's theorems and returns an attestation."
     },
     {
-      "key": "github",
-      "name": "GitHub",
-      "kind": "externalSystem",
-      "text": "The repository a builder publishes an app's source to, after approving each write."
-    },
-    {
       "key": "host",
       "name": "Pages host",
       "kind": "externalSystem",
@@ -263,14 +257,6 @@
     [
       "checker",
       "studio"
-    ],
-    [
-      "studio",
-      "github"
-    ],
-    [
-      "github",
-      "host"
     ],
     [
       "browser",
@@ -861,19 +847,15 @@
     },
     {
       "name": "Publication",
-      "text": "A proved app is published as a holo under its exact archive identity, with a cover from its preview and GitHub writes only on approval.",
+      "text": "A proved app is published on the device as a holo under its exact archive identity, answered by the kernel's rule judge, with a cover from its preview and no account or server.",
       "ids": [
-        "FA-04",
         "FA-05",
-        "FA-45",
         "FA-70",
         "FA-90",
         "AC-01"
       ],
       "calls": [
-        "RuleJudge::dispatchRule",
-        "FoundrySpecification::publicationEffectsBoundary",
-        "FoundrySpecification::githubPublicationPermissionBoundary"
+        "RuleJudge::dispatchRule"
       ],
       "registry": [
         "publication"
@@ -881,7 +863,6 @@
       "components": [
         "host",
         "kernel",
-        "github",
         "viewer"
       ],
       "acceptance": [
@@ -1799,8 +1780,8 @@
       },
       {
         "name": "Publish",
-        "owner": "github",
-        "text": "The proved app is written as a holo and pushed for Pages to serve under its address."
+        "owner": "studio",
+        "text": "The proved app is composed as a holo on this device and kept under its κ, answered by the kernel guest."
       }
     ],
     "effect": "store"

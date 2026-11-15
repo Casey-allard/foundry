@@ -302,12 +302,6 @@ model does not sanction.
 | --- | --- | --- |
 | `PM-02` | `build` | Every IPC call a Foundry screen makes reaches a back-end feature the screen requires, every register ID and registry feature is owned by exactly one back-end feature, and every back-end feature, screen and stakeholder is reached by a journey |
 
-## github-publication-permission
-
-| ID | Level | Statement |
-| --- | --- | --- |
-| `FA-45` | `build` | Public GitHub writes require explicit repository and source-bound approval rechecked before each mutation |
-
 ## host-input-boundary
 
 | ID | Level | Statement |
@@ -440,12 +434,6 @@ model does not sanction.
 | ID | Level | Statement |
 | --- | --- | --- |
 | `FA-18` | `build` | Router proposals resolve exact registered feature versions and cannot bypass ambiguity, registry revision or composition admission |
-
-## publication-cancellation
-
-| ID | Level | Statement |
-| --- | --- | --- |
-| `FA-04` | `build` | Cancelling publication prevents subsequent browser requests and bounded requests return typed failures |
 
 ## publication-identity
 
