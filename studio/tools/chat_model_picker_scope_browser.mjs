@@ -47,15 +47,15 @@ try {
   };
   const choose=async label=>{const item=page.getByRole('menuitem',{name:new RegExp(label)});if(!await item.isVisible())await page.getByTestId('model-picker').click();await item.click();};
   const waitModel=async(chatId,provider)=>{const deadline=Date.now()+10000;while(Date.now()<deadline){const row=await get(page,'chats',chatId);if(row.modelSelection?.provider===provider)return row;await new Promise(r=>setTimeout(r,20));}throw Error('chat model did not commit');};
-  await openChat();await page.getByTestId('model-picker').click();assert.deepEqual((await page.getByRole('menuitem').allTextContents()).filter(t=>/Bonsai|GLM|Kimi|OpenRouter|Featherless/.test(t)).map(t=>/Bonsai 1.7B/.test(t)),[true],'the picker offers the device model alone');
+  await openChat();await page.getByTestId('model-picker').click();assert.deepEqual((await page.getByRole('menuitem').allTextContents()).filter(t=>/Qwen|Bonsai|GLM|Kimi|OpenRouter|Featherless/.test(t)).map(t=>/Qwen2.5 1.5B/.test(t)),[true],'the picker offers the device model alone');
   await page.evaluate(()=>{const put=IDBObjectStore.prototype.put;window.__pickerAbort=0;IDBObjectStore.prototype.put=function(value,key){const request=put.call(this,value,key);if(this.name==='chats'){request.addEventListener('success',()=>{IDBObjectStore.prototype.put=put;window.__pickerAbort++;this.transaction.abort();},{once:true});}return request;};});
-  await choose('Bonsai 1.7B');await page.getByRole('alert').filter({hasText:'The model selection could not be saved. Try again.'}).waitFor();
+  await choose('Qwen2.5 1.5B');await page.getByRole('alert').filter({hasText:'The model selection could not be saved. Try again.'}).waitFor();
   assert.equal(await page.evaluate(()=>window.__pickerAbort),1);assert.deepEqual((await get(page,'chats',made.chatId)).modelSelection,cloud);assert.deepEqual((await get(page,'settings','user')).selectedModel,globalModel);
-  await choose('Bonsai 1.7B');const changed=await waitModel(made.chatId,'local');assert.equal(changed.messages.length,0,'empty chat must persist selection');assert.deepEqual((await get(page,'settings','user')).selectedModel,globalModel);assert.deepEqual((await get(page,'chats',other.chatId)).modelSelection,cloud);
-  await page.goto(base);await page.getByTestId('model-picker').waitFor();await choose('Bonsai 1.7B');
+  await choose('Qwen2.5 1.5B');const changed=await waitModel(made.chatId,'local');assert.equal(changed.messages.length,0,'empty chat must persist selection');assert.deepEqual((await get(page,'settings','user')).selectedModel,globalModel);assert.deepEqual((await get(page,'chats',other.chatId)).modelSelection,cloud);
+  await page.goto(base);await page.getByTestId('model-picker').waitFor();await choose('Qwen2.5 1.5B');
   const deadline=Date.now()+10000;while((await get(page,'settings','user')).selectedModel.provider!=='local'){assert.ok(Date.now()<deadline);await new Promise(r=>setTimeout(r,20));}
   assert.deepEqual((await get(page,'chats',other.chatId)).modelSelection,cloud,'Home changes the default only');
-  await openChat();assert.ok((await page.getByTestId('model-picker').textContent()).includes('Bonsai 1.7B'));assert.equal((await get(page,'chats',made.chatId)).modelSelection.provider,'local');
-  await page.reload();await page.getByTestId('model-picker').waitFor();await page.waitForFunction(()=>!document.querySelector('[data-testid="model-picker"]')?.disabled);assert.ok((await page.getByTestId('model-picker').textContent()).includes('Bonsai 1.7B'));
+  await openChat();assert.ok((await page.getByTestId('model-picker').textContent()).includes('Qwen2.5 1.5B'));assert.equal((await get(page,'chats',made.chatId)).modelSelection.provider,'local');
+  await page.reload();await page.getByTestId('model-picker').waitFor();await page.waitForFunction(()=>!document.querySelector('[data-testid="model-picker"]')?.disabled);assert.ok((await page.getByTestId('model-picker').textContent()).includes('Qwen2.5 1.5B'));
   assert.equal(sent.length,0);assert.deepEqual(errors,[]);console.log(JSON.stringify({profile:'foundry/chat-model-picker-scope/1',mountedChatLabel:true,emptyChatPersistence:true,lateAbortVisible:true,homeDefaultIndependent:true,otherChatUnchanged:true,reload:true,pageErrors:errors}));
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

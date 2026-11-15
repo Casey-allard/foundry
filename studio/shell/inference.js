@@ -87,7 +87,7 @@ async function byPrompt(promptKappa) {
 export function settingsGet() { return readUserSettings(db()); }
 export function settingsPut(s) { return replaceUserSettings(db(),s); }
 // Who answers: the device model, always.
-export const MODEL_ID = "webgpu:Bonsai";
+export const MODEL_ID = "webgpu:Qwen";
 export async function readWho() { return { provider: "local", model: "" }; }
 
 // ---- memo: the core owns the preimages and the route, the wasm owns the address, the store owns the rest
@@ -119,7 +119,7 @@ export async function seal(body, rec, key, modelId) {
 }
 // ---- the engine: Hologram Q on WebGPU, resident across turns, warm KV as q-brain-fast does it.
 //
-// The ladder. A device that has never seen this page holds no weights, and the large model is 424 MB.
+// The ladder. A device that has never seen this page holds no weights, and the large model is 0.97 GB.
 // So the small one loads first and answers, the large one loads behind it, and the swap happens only
 // when the model's own `promote` rule says so: resident, and measured fast enough to be worth it. The
 // rule is verified (Object.promote, four theorems); nothing here decides it. A request that names the
@@ -176,7 +176,7 @@ function loadLarge(word) {
   engine.largeLoading = (async () => {
     const { L } = await mods();
     const V = await viewReady();
-    const entry = L.MODELS.find((m) => m.fam === "TernaryBonsai");   // Ternary Bonsai 1.7B, the device's model
+    const entry = L.MODELS.find((m) => m.fam === "Qwen2.5");   // Qwen2.5-1.5B-Instruct, the device's model
     // Behind the seed it is the larger model arriving; without a seed it is the only model there is.
     const held = await residentModel(entry, word || V.largerLoadingLabel);
     engine.large = held;
@@ -210,10 +210,11 @@ async function measure(held) {
     return tokps;
   } catch { return 0; }
 }
-// The model that writes an app's rules on the device: the device's one model, Ternary Bonsai 1.7B, the same
-// resident engine that answers chat, so a rules turn downloads and holds nothing more. Measured 2026-11-13 with
-// DEVICE_RULES on five requests: 1 of 5 passed checkSpec, at 85 to 114 tokens a second. The checker and the
-// approval card still stand between its rules and a proof.
+// The model that writes an app's rules on the device: the device's one model, Qwen2.5-1.5B-Instruct, the same
+// resident engine that answers chat, so a rules turn downloads and holds nothing more. Its rules turn is held to
+// the spec grammar (host.js, spec-grammar.mjs). Measured 2026-11-14 with DEVICE_RULES on ten requests: 8 of 10
+// passed checkSpec, at 15 to 60 s a spec (Ternary Bonsai 1.7B: 1 of 10; 1-bit Bonsai 8B: 7 of 10 at 34 to 75 s).
+// The checker and the approval card still stand between its rules and a proof.
 export async function rulesModel() {
   if (!engine.rules) engine.rules = await heldFor(MODEL_ID);
   return engine.rules;

@@ -187,9 +187,9 @@ handlers.set("get-system-debug-info", async () => {
 // The device is a provider the renderer counts as set up (a custom provider whose "environment variable" is
 // the GPU), so a machine with WebGPU needs no key before its first prompt.
 const LOCAL = { id: "local", name: "On your device", type: "custom", hasFreeTier: true, envVarName: "HOLOGRAM_DEVICE" };
-// The window is the engine's own (q/core/loader.js: Ternary Bonsai 1.7B, ctx 3000), not a round number: a build
+// The window is the engine's own (q/core/loader.js: Qwen2.5-1.5B-Instruct, ctx 3000), not a round number: a build
 // turn carries the project's files, so the renderer must know what actually fits.
-const LOCAL_MODELS = [{ apiName: MODEL_ID, displayName: "Bonsai 1.7B", description: "Runs on this browser's GPU; every answer is sealed on the device", contextWindow: 3000 }];
+const LOCAL_MODELS = [{ apiName: MODEL_ID, displayName: "Qwen2.5 1.5B", description: "Runs on this browser's GPU; every answer is sealed on the device", contextWindow: 3000 }];
 // One model is offered: the model in Prism on this device. Prism R4 refuses every route to a model outside
 // Foundry, so no cloud provider is listed, set up or asked for a key.
 handlers.set("get-language-model-providers", () => [LOCAL]);
@@ -1843,14 +1843,22 @@ async function chatTurn(chatId, intent) {
       // No repetition penalty: rules are JSON, which repeats its keys by nature, and a penalty pushes a
       // small model off valid syntax. The receipt records the penalty used, so the answer stays re-derivable.
       const maxNew = Math.min(held.model.cap, room);
-      const res = await withEngine(() => inst.generate(ids, { maxNew, repPenalty: 1, signal: abort.signal, onToken: ({ text }) => { if (!abort.signal.aborted) onTextSoon(text); } }));
+      // A rules turn is held to the spec grammar (prism.js specGrammarCheck): every token keeps the answer a well-formed
+      // prism/spec/1 spec whose conditions name its own fields and whose answers are its own outcomes. Measured
+      // 2026-11-14, Qwen2.5-1.5B on ten requests: 8 of 10 passed checkSpec held to it, 0 of 10 without. The
+      // grammar fixes form, never meaning; the checker and the approval card still judge the rules.
+      const guided = execution.sourceEffects && inst.guidedAvailable;
+      const onToken = ({ text }) => { if (!abort.signal.aborted) onTextSoon(text); };
+      const res = await withEngine(() => guided
+        ? inst.generateGuided(ids, { maxNew, check: prism.specGrammarCheck, onToken, signal: abort.signal })
+        : inst.generate(ids, { maxNew, repPenalty: 1, signal: abort.signal, onToken }));
       await settleText();
       const text = prism.withoutThinking(res.text);
       window.__prism.lastDevice = res.text || "";
       messages[messages.length - 1].model = idOf(held); // the model that wrote the rules
       rememberSession(deviceMessages, res, text, held.model);
       await enqueueText(!execution.sourceEffects || /<dyad-spec>/.test(text) ? text : text + "\n\nThe on-device model did not write rules for this app. Ask again with the inputs and the answers.");
-      const rec = await inst.buildReceipt({ promptText: intent.prompt, ctxIds: [], turnIds: ids, outIds: res.outIds, paramsPatch: { repetitionPenalty: 1, maxTokens: maxNew } });
+      const rec = await inst.buildReceipt({ promptText: intent.prompt, ctxIds: [], turnIds: ids, outIds: res.outIds, paramsPatch: { repetitionPenalty: 1, maxTokens: maxNew, ...(guided ? { decode: "guided-greedy:" + prism.SPEC_GRAMMAR_ID } : {}) } });
       // R4 again, with what the answer is made of: it is shown, sealed and applied only when the
       // weights were read back by their address and the engine's bytes have theirs.
       const made = r4Request({ provider, weightsVerified: held.weightsVerified === true, engineAddress: (rec.body["prov:used"] || {})["holo:engine"] });

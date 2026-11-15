@@ -29,7 +29,7 @@ export function deviceFixtureBytes(relative) {
   return project().get(String(relative).replace(/^\/+/, "")) ?? null;
 }
 /** The selection a suite stores: the device model, the one model Foundry offers. */
-export const DEVICE_MODEL = { provider: "local", name: "webgpu:Bonsai" };
+export const DEVICE_MODEL = { provider: "local", name: "webgpu:Qwen" };
 /** Hold the device model's next answers until `deviceRelease`. */
 export const deviceHold = (page) => page.evaluate(() => { const f = (globalThis.__deviceFixture ??= { asked: [] }); f.hold = new Promise((r) => (f.release = r)); });
 export const deviceRelease = (page) => page.evaluate(() => { const f = globalThis.__deviceFixture; const r = f?.release; if (f) { f.hold = null; f.release = null; } r?.(); });
