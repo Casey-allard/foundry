@@ -94,12 +94,6 @@ suite = "host-response-boundary"
 statement = "The browser host refuses unsupported channels and invalid contracted responses with typed errors"
 
 [[id]]
-id = "FA-04"
-level = "build"
-suite = "publication-cancellation"
-statement = "Cancelling publication prevents subsequent browser requests and bounded requests return typed failures"
-
-[[id]]
 id = "FA-05"
 level = "build"
 suite = "publication-identity"
@@ -611,12 +605,6 @@ suite = "portable-build-permission"
 statement = "Portable builds require revocable source-bound consent before package retrieval or generated-code execution"
 
 [[id]]
-id = "FA-45"
-level = "build"
-suite = "github-publication-permission"
-statement = "Public GitHub writes require explicit repository and source-bound approval rechecked before each mutation"
-
-[[id]]
 id = "FA-46"
 level = "build"
 suite = "durable-build-work"
@@ -879,3 +867,9 @@ id = "FA-88"
 level = "build"
 suite = "prism-id"
 statement = "A session from Foundry's frame verifies by stitch's Prism id only for the app, the active device and the time it was signed for, and a removed device or another id signs none"
+
+[[id]]
+id = "FA-90"
+level = "build"
+suite = "rule-judge"
+statement = "A published app's answer is decided by the rule judge in Foundry's Prism kernel: the first rule whose conditions all hold decides, otherwise decides when none does, and a request outside the fields' bounds is refused"

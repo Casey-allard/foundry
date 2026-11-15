@@ -19,6 +19,7 @@
 \importmodule{PrismR4Proofs}
 \importmodule{ProposalAdmission}
 \importmodule{RoutingProtocol}
+\importmodule{RuleJudge}
 \importmodule{SemanticRouter}
 \importmodule{VersionPreview}
 \importmodule{VersionPreviewProtocol}
@@ -1247,10 +1248,24 @@ definition{
 }
 
 definition{
-  name: testFA04,
+  name: acceptRuleJudgeRuleWordsMemberDecidesFirst,
   parameters: [],
   result: String,
-  body: "crates/conformance/tests/publication_cancellation.rs::publication_cancellation_fa_04"
+  body: "RuleJudge::ruleWords_memberDecidesFirst"
+}
+
+definition{
+  name: acceptRuleJudgeRuleWordsOtherwiseDecides,
+  parameters: [],
+  result: String,
+  body: "RuleJudge::ruleWords_otherwiseDecides"
+}
+
+definition{
+  name: acceptRuleJudgeRuleWordsOutsideBoundsRefused,
+  parameters: [],
+  result: String,
+  body: "RuleJudge::ruleWords_outsideBoundsRefused"
 }
 
 definition{
@@ -1261,17 +1276,17 @@ definition{
 }
 
 definition{
-  name: testFA45,
-  parameters: [],
-  result: String,
-  body: "crates/conformance/tests/github_publication_permission.rs::github_publication_permission_fa_45"
-}
-
-definition{
   name: testFA70,
   parameters: [],
   result: String,
   body: "crates/conformance/tests/source_bound_gallery.rs::source_bound_gallery_fa_70"
+}
+
+definition{
+  name: testFA90,
+  parameters: [],
+  result: String,
+  body: "crates/conformance/tests/in_tab_kernel_verdict.rs::rule_judge_fa_90"
 }
 
 definition{
@@ -1628,7 +1643,7 @@ definition{
   name: featurePublication,
   parameters: [],
   result: Foundation.Arch::Feature,
-  body: (record Foundation.Arch::Feature {statement := "Publication (FA-04, FA-05, FA-45, FA-70, AC-01): A proved app is published as a holo under its exact archive identity, with a cover from its preview and GitHub writes only on approval.", calls := (cons "FoundrySpecification::publicationEffectsBoundary" (cons "FoundrySpecification::githubPublicationPermissionBoundary" (cons "FoundrySpecification::publicationIdentityBoundary" (nil String)))), acceptance := (cons "Features::testFA04" (cons "Features::testFA05" (cons "Features::testFA45" (cons "Features::testFA70" (cons "Features::testAC01" (nil String))))))})
+  body: (record Foundation.Arch::Feature {statement := "Publication (FA-05, FA-70, FA-90, AC-01): A proved app is published on the device as a holo under its exact archive identity, answered by the kernel's rule judge, with a cover from its preview and no account or server.", calls := (cons "RuleJudge::dispatchRule" (cons "FoundrySpecification::publicationIdentityBoundary" (nil String))), acceptance := (cons "Features::acceptRuleJudgeRuleWordsMemberDecidesFirst" (cons "Features::acceptRuleJudgeRuleWordsOtherwiseDecides" (cons "Features::acceptRuleJudgeRuleWordsOutsideBoundsRefused" (cons "Features::testFA05" (cons "Features::testFA70" (cons "Features::testFA90" (cons "Features::testAC01" (nil String))))))))})
 }
 
 definition{

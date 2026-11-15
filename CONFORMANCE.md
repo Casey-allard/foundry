@@ -302,12 +302,6 @@ model does not sanction.
 | --- | --- | --- |
 | `PM-02` | `build` | Every IPC call a Foundry screen makes reaches a back-end feature the screen requires, every register ID and registry feature is owned by exactly one back-end feature, and every back-end feature, screen and stakeholder is reached by a journey |
 
-## github-publication-permission
-
-| ID | Level | Statement |
-| --- | --- | --- |
-| `FA-45` | `build` | Public GitHub writes require explicit repository and source-bound approval rechecked before each mutation |
-
 ## host-input-boundary
 
 | ID | Level | Statement |
@@ -441,12 +435,6 @@ model does not sanction.
 | --- | --- | --- |
 | `FA-18` | `build` | Router proposals resolve exact registered feature versions and cannot bypass ambiguity, registry revision or composition admission |
 
-## publication-cancellation
-
-| ID | Level | Statement |
-| --- | --- | --- |
-| `FA-04` | `build` | Cancelling publication prevents subsequent browser requests and bounded requests return typed failures |
-
 ## publication-identity
 
 | ID | Level | Statement |
@@ -464,6 +452,12 @@ model does not sanction.
 | ID | Level | Statement |
 | --- | --- | --- |
 | `FA-62` | `build` | Generated renderer stylesheet identity prevents duplicate blocking CSS retrieval |
+
+## rule-judge
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `FA-90` | `build` | A published app's answer is decided by the rule judge in Foundry's Prism kernel: the first rule whose conditions all hold decides, otherwise decides when none does, and a request outside the fields' bounds is refused |
 
 ## rules-source-binding
 

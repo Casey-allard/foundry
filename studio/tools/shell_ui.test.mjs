@@ -13,7 +13,7 @@ const section = css.slice(css.indexOf("/* Foundry's own surfaces"));
 
 test("every dialog the shell opens is a native dialog, which the one rule styles", () => {
   assert.ok(section.includes("dialog:not([data-slot]) {"), "the dialog rule is gone");
-  for (const file of ["preview-permissions.mjs", "hosted-source-permission.mjs", "github-publication-permission.mjs", "portable-build-permission.mjs", "discovery-ui.mjs", "interaction-ui.mjs"]) {
+  for (const file of ["preview-permissions.mjs", "hosted-source-permission.mjs", "portable-build-permission.mjs", "discovery-ui.mjs", "interaction-ui.mjs"]) {
     const source = read("../shell/" + file);
     assert.match(source, /(element|el)\((document, ?)?['"]dialog['"]/, file + " no longer builds a native dialog: its surface is unstyled");
     assert.equal(/data-slot/.test(source), false, file + " sets data-slot, which takes it out of the rule");

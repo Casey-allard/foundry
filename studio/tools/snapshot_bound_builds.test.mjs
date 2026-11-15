@@ -28,7 +28,7 @@ test("malformed sources cannot pass the comparison or checker", () => {
   assert.equal(sameBuildSource(source, { ...source, files: [...source.files].reverse() }), true);
   for (const patch of [{ name: "x" }, { reference: "x" }, { files: [] }, { dependencies: ["changed"] }]) assert.equal(sameBuildSource(source, { ...source, ...patch }), false);
 });
-test("actual portable publication requires rule route even when proof cache is absent", async () => {
+test("an app whose source has rules is never published as a plain app, even when its proof cache is absent", async () => {
   const start = host.indexOf('handlers.set("holo:publish"'), end = host.indexOf("\nwindow.electron", start), handlers = new Map(); let audits = 0;
   const captured = { ...source, files: [...source.files, ["prism/spec.json", "invalid or unchecked"]] };
   vm.runInNewContext(host.slice(start, end), {
@@ -36,7 +36,7 @@ test("actual portable publication requires rule route even when proof cache is a
     core: { run: ({ op }) => op === "view" ? {} : { decision: "Accept" } },
     fetch: async () => ({ ok: true, json: async () => ({ closure: "closure", attestation_id: "receipt", browser_projection_sha256: "closure" }) }),
     verifiedBuildSource: async () => captured, requiresRulePublication, put: async () => audits++,
-    rulesOf() { assert.fail("cached rules must not decide this route"); }, buildPortable() { assert.fail("rule publication bypassed"); },
+    rulesOf: async () => null, buildPortable() { assert.fail("rule publication bypassed"); },
   });
   const result = await handlers.get("holo:publish")({ appId: 1 }); assert.equal(result.decision, "Chat"); assert.equal(audits, 1);
 });

@@ -21,7 +21,6 @@ import {createDiscovery} from "./application-discovery.mjs";
 import {mountApplicationDiscovery} from "./discovery-ui.mjs";
 import {routeWithGuest} from './routing-codec.mjs';
 import {runBuildWork,buildWorkStore} from './build-work.mjs';
-import {authorizeGitHubPublication, bindPublicationSource} from "./github-publication-permission.mjs";
 import {withPortableBuildPermission, portablePermissionFailure} from "./portable-build-permission.mjs";
 import {commandRegistry, invokeBoundCommand} from "./command-registry.mjs";
 import {interactionPreset, interactionModule, validateInteractionDocument, interactionFailure} from "./interaction-application.mjs";
@@ -60,6 +59,7 @@ import * as inference from "./inference.js";
 import { r4Decide, r4Refusal, r4Request, r4Spec } from "./r4.mjs";
 import { viewReady, lookup, routeOf, refusalWord, seal as sealAnswer, gpuReady, gpuIds, heldFor, rulesModel, gpuAvailable, rememberSession, withEngine, engine, readWho, MODEL_ID, idOf } from "./inference.js";
 import { install, installed, encodeView, b64, unb64, sha256 } from "./holo.js";
+import { admitPublication } from "./publication-identity.mjs";
 import * as prism from "./prism.js";
 import * as live from "./live/project.mjs";
 import * as lexlean from "./live/lexlean.mjs";
@@ -72,7 +72,6 @@ import { copyGenerationInput, assertCanonicalGeneration } from "./canonical-gene
 import * as appShape from "./live/app.mjs";
 import { frameHtml, FONTS } from "./live/frame-html.mjs";
 import { applyOps, createEditor, PatchError } from "./live/edit.mjs";
-import { buildOnGitHub } from "./github-build.js";
 import * as covers from "./covers.mjs";
 import { createProbe, K } from "./telemetry/probe.mjs";
 import {publishGallery, readGallery, galleryFailure} from "./gallery-store.mjs";
@@ -1637,27 +1636,35 @@ async function approveTurn(chatId, appId, messages, userId, ref, intentId) {
 }
 handlers.set("prism:status", async ({ appId }) => (await rulesOf(appId)) || null);
 
-// "publish": the proved app built with the Prism SDK, as `npx prism-code` builds it when Docker is not on the
-// machine: a repository from UOR-Foundation/template under the visitor's GitHub account, one commit (the
-// commit prism-code makes, prism.templateCommit), the template's pages and bootstrap workflows (Lean export,
-// Rust, WebAssembly; Lean checks every theorem in the gate), then GitHub Pages. The holo is fetched back and
-// opened with prism-code's own code; only when every acceptance vector passes in its compiled guest does
-// the kernel move the rules to published, and the preview shows the live app. The turn stays open and
-// counts the build, like the approve turn; Stop stops watching, not the build on GitHub.
-const prismCode = () => import("./prism-code/src/index.mjs");
-// The commit, and beside it the app's own card (shell/live/card-files.mjs): the page the template builds then
-// draws the app with the preview's components, from the same spec, and answers through the verified guest.
-// templateCommit itself stays prism-code's, byte for byte (tools/prism_template.mjs); the builder
-// (prism/builder/commit.mjs) then writes the app as a full Prism model, every facet beside the behavior, so
-// the template's gate proves the whole model; the card files are the app's, which the template's page reads
-// and pins nothing about.
-async function publishCommit(args, parts = null) {
-  const { facetCommit } = await import("./prism/builder/commit.mjs");
-  const commit = await facetCommit(await prism.templateCommit(args), { ...args, parts });
+// "publish": a proved app with rules becomes a holo on this device, by its κ, with no account and no server.
+// Its page is Forge's kernel page (app/, whose verified app.holo carries RuleJudge, FA-90) with the app's
+// own card (shell/live/card-files.mjs); the card asks the kernel "rule " with the spec's words and the
+// request's, so the answer shown is the kernel guest's, after every acceptance vector replayed in this tab.
+// A rule that compares two fields has no rule words yet, so such an app is refused, never guessed.
+const OPS = { "<": 0, "<=": 1, ">": 2, ">=": 3, is: 4, "=": 4, "is not": 5, "!=": 5 };
+function ruleWords(spec) {
+  const hex = (n) => { if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) throw new Error("a bound outside 32 bits"); return [0, 8, 16, 24].map((k) => ((n >>> k) & 255).toString(16).padStart(2, "0")).join(""); };
+  const outcomes = [...new Set([spec.otherwise, ...spec.rules.map((r) => r.then)])], at = (n) => spec.fields.findIndex((f) => f.name === n);
+  const value = (c) => { const f = spec.fields[at(c.field)]; if (!f || typeof c.value === "object" || !(c.op in OPS)) throw new Error("a condition the rule judge does not take"); return f.kind === "choice" ? f.values.indexOf(c.value) : Number(c.value); };
+  const words = [1, spec.fields.length, ...spec.fields.flatMap((f) => (f.kind === "choice" ? [0, f.values.length - 1] : [f.min ?? 0, f.max ?? 0xffffffff])), outcomes.indexOf(spec.otherwise), spec.rules.length, ...spec.rules.flatMap((r) => [r.when.length, outcomes.indexOf(r.then), ...r.when.flatMap((c) => [at(c.field), OPS[c.op], value(c)])])];
+  return { words: words.map(hex).join(""), outcomes, choices: spec.fields.map((f) => (f.kind === "choice" ? f.values : null)) };
+}
+const START = (w) => `import { load } from "./vendor/prism-code/src/browser.mjs";import start from "./card.mjs";const W=${JSON.stringify(w)},e=new TextEncoder(),d=new TextDecoder(),h=(n)=>[0,8,16,24].map((k)=>((n>>>k)&255).toString(16).padStart(2,"0")).join("");
+const ask=(k)=>async(b)=>{const r=d.decode(await k.dispatch(e.encode("rule "+W.words+d.decode(b).split(" ").map((v,i)=>h(W.choices[i]?W.choices[i].indexOf(v):Number(v))).join(""))));if(!r.startsWith("ok "))throw new Error(r);return e.encode(W.outcomes[parseInt(r.slice(11,19).match(/../g).reverse().join(""),16)]);};
+let app=null;try{const k=await load("./app.holo"),a=await k.acceptance();if(k.identities.verified&&a.failed.length===0)app={dispatch:ask(k)};}catch(x){console.error(x);}start({app,show:(b)=>d.decode(b),$:(id)=>document.getElementById(id)});\n`;
+async function rulePage(spec) {
+  const w = ruleWords(spec), at = new URL("app/", BASE), bytes = async (u) => { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(u + " answered " + r.status); return new Uint8Array(await r.arrayBuffer()); };
+  const keep = (await (await fetch(new URL("precache.json", at), { cache: "no-store" })).json()).files.map((f) => f.path.slice(2)).filter((p) => /^(app\.holo|brand\/|fonts\/|prism-page\.css|favicon\.svg|guest-worker\.mjs|vendor\/|worker-runtime\/)/.test(p));
   const { cardFiles } = await import("./live/card-files.mjs");
-  const load = async (p) => { const r = await fetch(new URL(p, BASE)); if (!r.ok) throw new Error(p + " answered " + r.status); return r.text(); };
-  const { files } = await cardFiles(args.spec, { load });
-  return { ...commit, files: [...commit.files, ...files] };
+  const card = new Map((await cardFiles(spec, { load: async (p) => dec.decode(await bytes(new URL(p, BASE))) })).files.map((f) => [f.path.slice(5), f.content]));
+  const html = `<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${String(spec.title || spec.name).replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}</title><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="brand/hologram-warm.css"><link rel="stylesheet" href="brand/fonts.css"><link rel="stylesheet" href="prism-page.css"><style>${card.get("card.css")}</style></head><body class="has-card"><script type="application/json" id="app-data">${JSON.stringify({ inputLabel: spec.title || spec.name }).replace(/</g, "\\u003c")}</script>${card.get("card.html")}<output id="out"></output><ol id="hist"></ol><script type="module" src="start.mjs"></script></body></html>\n`;
+  const files = [{ path: "index.html", bytes: enc.encode(html) }, { path: "card.mjs", bytes: enc.encode(card.get("card.mjs")) }, { path: "start.mjs", bytes: enc.encode(START(w)) }];
+  for (const p of keep) files.push({ path: p, bytes: await bytes(new URL(p, at)) });
+  // FA-05: the kernel this page carries is the one its page build named, and every vector it carries passes here.
+  const kernel = await (await import("./prism-code/src/index.mjs")).loadArchive(files.find((f) => f.path === "app.holo").bytes, {});
+  const admitted = admitPublication((await (await fetch(new URL("app.json", at), { cache: "no-store" })).json()).attestations?.build?.id, kernel.identities?.archiveFingerprint, await kernel.acceptance());
+  if (!admitted.ok) throw new Error(admitted.error);
+  return files.sort((x, y) => (x.path < y.path ? -1 : 1));
 }
 async function publishTurn(chatId, appId, messages, userId, ref, intentId) {
   const m = chatMachineOf(chatId);
@@ -1673,54 +1680,23 @@ async function publishTurn(chatId, appId, messages, userId, ref, intentId) {
     emit("chat:stream:end", { chatId });
   };
   const rules = await rulesOf(appId);
-  const settings = (await get("settings", "user")) || {};
-  const token = settings.githubAccessToken && settings.githubAccessToken.value;
   const refusal = !rules || !rules.spec ? "This app has no rules to build yet. Tell me what it decides, approve the rules, then say publish."
-    : rules.phase !== "proved" && rules.phase !== "published" ? (rules.phase === "checked" ? "Reply approve first: Lean proves the rules, then the Prism SDK builds them." : `The rules are ${rules.phase === "proving" ? "being proved by Lean; say publish when it is done" : "not checked yet; ask me to fix them"}.`)
+    : rules.phase !== "proved" && rules.phase !== "published" ? (rules.phase === "checked" ? "Reply approve first: Lean proves the rules, then they are published on this device." : `The rules are ${rules.phase === "proving" ? "being proved by Lean; say publish when it is done" : "not checked yet; ask me to fix them"}.`)
     : rules.facets && !rules.facets.ok ? `Publishing writes the whole model, and its facets are not projected yet: ${rules.facets.issue} Ask me to fix the app's prompt, then say publish.`
-    : !token ? "Publishing builds the app with the Prism SDK on GitHub Actions, in a public repository in your account. Connect GitHub in Settings, under Integrations, then say publish."
     : null;
   if (refusal) { await show(refusal); return finish(); }
-  const spec = rules.spec;
-  const head = `**Publishing ${spec.title}** with the Prism SDK on GitHub Actions, as \`npx prism-code\` builds it. The repository is public, so anyone can read its rules and LexLean model.`;
-  let links = "", observing = true;
-  const abort = new AbortController(); m.abort = abort; if(m.queueSignal?.aborted){abort.abort();assertGenerationActive(abort.signal);}
-  const step = (word, detail, extra) => {
-    if (extra && extra.runs) links = `\n\n[Build run](${extra.runs["pages.yml"]}) · [Lean gate](${extra.runs["bootstrap.yml"]})`;
-    if (observing && !abort.signal.aborted) show(`${head}\n\n${word}: ${detail}.${links}`);
-  };
-  const stopped = new Promise((res) => abort.signal.addEventListener("abort", () => res("stopped")));
-  const t0 = Date.now();
-  const authorize = async request => {
-    const permission=await authorizeGitHubPublication(request,{signal:abort.signal});
-    return bindPublicationSource(permission,rules,()=>rulesOf(appId));
-  };
-  const build = buildOnGitHub({ token, spec, source:rules.specKappa, authorize, axioms: rules.axioms || {}, attestation: rules.proof && rules.proof.attestation_id, templateCommit: (args) => publishCommit(args, rules.prompt || null), open: async (bytes) => (await prismCode()).loadArchive(bytes), step, signal: abort.signal })
-    .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
-  const result = await Promise.race([build, stopped]);
-  observing = false;
-  if (m.abort === abort) m.abort = null;
-  if (result === "stopped") { await show(`${head}\n\nStopped browser requests. Work already submitted to GitHub may continue; say publish again to pick it up.${links}`); return finish(); }
   const row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "prism.application.publish", resource, outcome });
-  if (!result.ok) {
-    await row("refused", (result.repository || "") + (result.sha ? "@" + result.sha : ""));
-    const why = result.error || (result.vectors ? `${result.vectors.total - result.vectors.passed} of ${result.vectors.total} acceptance vectors failed in the built guest, or the live page names another holo` : "the build did not pass");
-    await show(`${head}\n\nPublication verification failed: ${why}. Remote content may already be live; this does not undo the GitHub build.${links}`);
-    return finish();
-  }
+  const head = `**Publishing ${rules.spec.title}** on this device, as a holo named by its contents. Nothing leaves this browser.`;
+  await show(`${head}\n\nComposing the page and replaying the kernel's acceptance vectors.`);
+  const out = await handlers.get("holo:publish")({ appId }).catch((e) => ({ decision: "Refuse", word: String((e && e.message) || e) }));
+  if (!out.kappa) { await row("refused", rules.specKappa || ""); await show(`${head}\n\nNot published: ${out.word}`); return finish(); }
   const next = await nextPhase(rules.phase, "publish");
-  const current = await saveRules(appId, { ...rules, phase: next === "published" ? next : rules.phase, publishedAs: result.live, publicationCurrent: true, build: { repository: result.repository, sha: result.sha, fingerprint: result.fingerprint, vectors: result.vectors, runs: Object.fromEntries(Object.entries(result.runs).map(([w, r]) => [w, r.html_url])), at: now() }, updated: now() }, rules);
-  if (!current) {
-    await row("stale", result.live);
-    await show(`${head}\n\nThe build completed for earlier rules and may already be live at ${result.live}. The current project has not been marked published. Check and approve the current rules before publishing them.${links}`);
-    return finish();
-  }
-  await row("granted", result.live);
-  // The preview shows what was published: the live app, from GitHub Pages.
+  const current = await saveRules(appId, { ...rules, phase: next === "published" ? next : rules.phase, publishedAs: out.url, publicationCurrent: true, build: { kappa: out.kappa } }, rules);
+  if (!current) { await row("stale", out.kappa); await show(`${head}\n\nThe holo was made from earlier rules, so the current rules are not marked published. Approve them, then say publish.`); return finish(); }
+  await row("granted", out.kappa);
   const run = machineOf(appId);
-  publish(appId, { phase: "ready", operation: null, url: { appUrl: result.live, originalUrl: result.live, mode: "cloud" }, previewReloadEpoch: run.state.previewReloadEpoch + 1 });
-  const minutes = Math.max(1, Math.round((Date.now() - t0) / 60000));
-  await show(`${head}\n\n**Live:** ${result.live}\n\nBuilt by the Prism SDK on GitHub Actions in ${minutes} min: Lean export, Rust, WebAssembly, and Lean checked every theorem in the gate. Forge fetched the holo and replayed ${result.vectors.passed} of ${result.vectors.total} acceptance vectors in its compiled guest. Holo \`${String(result.fingerprint).slice(0, 12)}…\` · [repository](https://github.com/${result.repository})${links}`);
+  publish(appId, { phase: "ready", operation: null, url: { appUrl: out.url, originalUrl: out.url, mode: "local" }, previewReloadEpoch: run.state.previewReloadEpoch + 1 });
+  await show(`${head}\n\n**Published:** [open it](${out.url}) · holo \`${out.kappa}\`, ${Math.round(out.byteLength / 1024)} KB, in ${Math.max(1, Math.round(out.ms / 1000))} s.\n\nShare the file from Publish, under Download; anyone opens it in any browser with holo.html, which checks it byte for byte before it runs.`);
   finish();
 }
 window.__prism = { rulesAfterTurn: afterTurn, approveRules: approve, rulesOf, appStateOf, nextPhase, check: prism.checkSpec };
@@ -2179,13 +2155,12 @@ handlers.set("holo:publish", async ({ appId }) => {
   const row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "holo.application.publish", resource, outcome });
   if (decision !== "Accept") { await row("refused", version || ""); return { decision, word: words.publishRefusedLabel, closure, built, attestation }; }
   // Cached proof status can be absent after an edit; source determines the publication route.
-  if (requiresRulePublication(captured)) {
-    await row("refused", version);
-    return { decision: "Chat", word: "This app has rules, so it is built with the Prism SDK: say publish in the chat.", closure, built, attestation };
-  }
-  const page = await buildPortable(appId, captured);
-  const view = encodeView([{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]);
-  const guest = new Uint8Array(await (await fetch(new URL("core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
+  // An app with rules is published only once Lean proved them; its page asks the kernel guest (rulePage).
+  const ruled = requiresRulePublication(captured), rules = ruled ? await rulesOf(appId) : null;
+  if (ruled && !(rules && rules.spec && (rules.phase === "proved" || rules.phase === "published"))) { await row("refused", version); return { decision: "Chat", word: "This app has rules: approve them in the chat, then say publish.", closure, built, attestation }; }
+  const page = ruled ? { files: await rulePage(rules.spec), ms: 0 } : await buildPortable(appId, captured);
+  const view = encodeView(ruled ? page.files : [{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]);
+  const guest = new Uint8Array(await (await fetch(new URL(ruled ? "kernel/guest.wasm" : "core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
   const model = core.run({ op: "publish-preimage", application: app.name, version, closure, attestation }).bytes;
   const modelBytes = enc.encode(model);
   const modelId = await sha256(modelBytes);

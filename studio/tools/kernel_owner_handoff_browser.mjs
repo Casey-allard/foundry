@@ -39,9 +39,6 @@ try {
   page.on("console",message=>{if(message.type()==='error'&&!message.text().includes('ERR_FAILED'))console.log('browser diagnostic:',message.text());});
   await context.route("**/*", route => {
     const request=route.request(),url=new URL(request.url());
-    if(['https://api.featherless.ai/v1/chat/completions','https://prism-featherless.trinity-03d.workers.dev/v1/chat/completions'].includes(url.href)){
-      sent.push(request.postData());return route.fulfill({status:200,contentType:'text/event-stream',body:'data: '+JSON.stringify({id:'theme-fixture',choices:[{index:0,delta:{content:'THEME-GENERATION-COMPLETE'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});
-    }
     return url.origin===origin?route.continue():route.abort();
   });
   await page.goto(base); await page.waitForFunction(() => !!navigator.serviceWorker.controller && !!window.__host && !!window.__prism && !!window.electron);
