@@ -46,7 +46,7 @@ fn rule_judge_fa_90() {
     let kernel = include_str!("../../../app/src/ForgeKernel.lex.tex");
     assert!(
         kernel.contains("(RuleJudge::dispatchRule (sliceOf value 5")
-            && kernel.contains("acceptanceVectors := (ruleAcceptance)")
+            && kernel.contains("(ruleAcceptance))")
     );
     let theorems = judge.matches("name: ruleWords_").count();
     let vectors = kernel.matches("request := 0x72756c6520").count();

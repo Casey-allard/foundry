@@ -156,7 +156,7 @@ const ENTRY = `definition{
   name: dispatch,
   parameters: [value : Bytes],
   result: Bytes,
-  body: (if (prim equal (sliceOf value 0 8) ${ascii("verdict ")} : Bool) then (InTabKernelProtocol::dispatchVerdict (sliceOf value 8 (prim subtract (Foundation.Bytes::byteLength value) 8 : Nat))) else (dispatchApplication value)),
+  body: (if (prim equal (sliceOf value 0 8) ${ascii("verdict ")} : Bool) then (InTabKernelProtocol::dispatchVerdict (sliceOf value 8 (prim subtract (Foundation.Bytes::byteLength value) 8 : Nat))) else (if (prim equal (sliceOf value 0 5) ${ascii("rule ")} : Bool) then (RuleJudge::dispatchRule (sliceOf value 5 (prim subtract (Foundation.Bytes::byteLength value) 5 : Nat))) else (dispatchApplication value))),
   axioms: [Quot.sound, propext]
 }
 
@@ -175,7 +175,7 @@ const acceptance = `definition{
   name: verdictAcceptance,
   parameters: [],
   result: (List Foundation.View.Text.V1.Model::AcceptanceVector),
-  body: ${corpus.vectors.filter((v) => v.embedded).reduceRight((tail, v) => `(cons ${vector(v)} ${tail})`, "(previewAcceptance)")}
+  body: ${corpus.vectors.filter((v) => v.embedded).reduceRight((tail, v) => `(cons ${vector(v)} ${tail})`, "(ruleAcceptance)")}
 }
 
 `;

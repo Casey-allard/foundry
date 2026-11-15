@@ -2156,11 +2156,11 @@ handlers.set("holo:publish", async ({ appId }) => {
   if (decision !== "Accept") { await row("refused", version || ""); return { decision, word: words.publishRefusedLabel, closure, built, attestation }; }
   // Cached proof status can be absent after an edit; source determines the publication route.
   // An app with rules is published only once Lean proved them; its page asks the kernel guest (rulePage).
-  const rules = requiresRulePublication(captured) ? await rulesOf(appId) : null;
-  if (rules && !(rules.spec && (rules.phase === "proved" || rules.phase === "published"))) { await row("refused", version); return { decision: "Chat", word: "This app has rules: approve them in the chat, then say publish.", closure, built, attestation }; }
-  const page = rules ? { files: await rulePage(rules.spec), ms: 0 } : await buildPortable(appId, captured);
-  const view = encodeView(rules ? page.files : [{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]);
-  const guest = new Uint8Array(await (await fetch(new URL(rules ? "kernel/guest.wasm" : "core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
+  const ruled = requiresRulePublication(captured), rules = ruled ? await rulesOf(appId) : null;
+  if (ruled && !(rules && rules.spec && (rules.phase === "proved" || rules.phase === "published"))) { await row("refused", version); return { decision: "Chat", word: "This app has rules: approve them in the chat, then say publish.", closure, built, attestation }; }
+  const page = ruled ? { files: await rulePage(rules.spec), ms: 0 } : await buildPortable(appId, captured);
+  const view = encodeView(ruled ? page.files : [{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]);
+  const guest = new Uint8Array(await (await fetch(new URL(ruled ? "kernel/guest.wasm" : "core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
   const model = core.run({ op: "publish-preimage", application: app.name, version, closure, attestation }).bytes;
   const modelBytes = enc.encode(model);
   const modelId = await sha256(modelBytes);
