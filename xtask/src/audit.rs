@@ -268,7 +268,7 @@ fn gather_all(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), Fail> {
 
 /// Only Prism is implemented here.
 ///
-/// Foundry is a Prism model: behavior is written in LexLean (`*.lex.tex`), checked by Lean and
+/// This product is a Prism model: behavior is written in LexLean (`*.lex.tex`), checked by Lean and
 /// built by PrismPM. Everything else that executes, hand-written Rust, TypeScript, JavaScript,
 /// Python, shell, CSS or HTML, is non-Prism implementation, and it may only shrink. This is the
 /// shrink-only ratchet of `afflom/rule30` (Python may not grow) and `afflom/verdant-resonance`
@@ -386,6 +386,9 @@ pub mod prism {
     /// and the digest its bytes must have.
     const PRISM_LOCKS: [&str; 2] = ["frame.lock", "identity/stitch.lock"];
 
+    /// How a commit's `xtask/src/audit.rs` shows it runs this gate.
+    const GATE: &[u8] = b"pub mod prism {";
+
     /// Paths the Prism locks bind, with the digest each must have. `read` answers a lock's text,
     /// or `None` where the tree has no such lock.
     fn bound(
@@ -397,6 +400,14 @@ pub mod prism {
                 continue;
             };
             let lock: serde_json::Value = serde_json::from_str(&text)?;
+            // A lock binds output only when it names where the output comes from. The template's
+            // own frame.lock has no source: there the frame is the template's implementation.
+            let upstream = lock["source"]["repository"]
+                .as_str()
+                .or(lock["repository"].as_str());
+            if upstream.is_none_or(str::is_empty) {
+                continue;
+            }
             let files = lock["files"].as_array().into_iter().flatten();
             for entry in files.chain(lock.get("output")) {
                 let (Some(path), Some(sha256)) = (entry["path"].as_str(), entry["sha256"].as_str())
@@ -598,6 +609,18 @@ pub mod prism {
             return Ok(());
         };
         let parent = String::from_utf8(parent)?.trim().to_string();
+        // The ratchet starts at the commit that installs it: a parent without this gate set no
+        // ceiling. Removing the gate needs a change that deletes it, which this does not open.
+        let gated = git(root, &["show", &format!("{parent}:xtask/src/audit.rs")])
+            .is_ok_and(|source| source.windows(GATE.len()).any(|w| w == GATE));
+        if !gated {
+            println!(
+                "audit-prism: installed here; the parent ran no ratchet, so this commit sets the ceiling: {} lines in {} files",
+                current.total(),
+                current.files.len()
+            );
+            return Ok(());
+        }
         let ceiling = measure_commit(root, &parent)?;
         let refused = refusals(&ceiling, &current);
         if !refused.is_empty() {
@@ -658,8 +681,8 @@ pub mod prism {
 
         #[test]
         fn locks_bind_frame_files_and_generated_output() {
-            let frame = r#"{"files": [{"path": "site/app.mjs", "sha256": "aa"}]}"#;
-            let stitch = r#"{"output": {"path": "identity/prism-id.mjs", "sha256": "bb"}}"#;
+            let frame = r#"{"source": {"repository": "UOR-Foundation/template"}, "files": [{"path": "site/app.mjs", "sha256": "aa"}]}"#;
+            let stitch = r#"{"repository": "afflom/stitch", "output": {"path": "identity/prism-id.mjs", "sha256": "bb"}}"#;
             let locks = bound(|name| {
                 Ok(match name {
                     "frame.lock" => Some(frame.to_string()),
@@ -673,7 +696,11 @@ pub mod prism {
                 locks.get("identity/prism-id.mjs").map(String::as_str),
                 Some("bb")
             );
-            assert!(bound(|_| Ok(Some(r#"{"files": [{"path": "x"}]}"#.to_string()))).is_err());
+            let bad = r#"{"repository": "afflom/stitch", "files": [{"path": "x"}]}"#;
+            assert!(bound(|_| Ok(Some(bad.to_string()))).is_err());
+            // The template's own frame.lock names no source, so it binds nothing.
+            let own = r#"{"files": [{"path": "site/app.mjs", "sha256": "aa"}]}"#;
+            assert!(bound(|_| Ok(Some(own.to_string()))).unwrap().is_empty());
         }
 
         #[test]

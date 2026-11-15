@@ -339,7 +339,11 @@ non-Prism language at once: `.rs`, `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.mjs`,
 nor comments, so a comment that says why costs nothing. Prism output that a
 Prism lock binds byte for byte is Prism's and is not counted while its bytes
 equal the lock: the frame `frame.lock` pins to the template, and the Prism id
-`identity/stitch.lock` generates from stitch's model.
+`identity/stitch.lock` generates from stitch's model. A lock binds only when it names its upstream (`source` in
+`frame.lock`, `repository` in `stitch.lock`). Since `UOR-Foundation/template#91`
+the frame list includes `frame/` and `identity/`, so a template re-pin no longer
+counts against the ratchet; the gate's code is the template's, kept identical
+here.
 
 The ceiling is measured, not recorded: it is the commit's first parent. A pull
 request or merge queue run checks out a merge whose first parent is the base
