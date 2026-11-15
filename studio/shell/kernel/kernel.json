@@ -1,12 +1,12 @@
 {
  "spec": "hologram-forge/kernel/1",
  "application": "Forge kernel",
- "source": "https://raw.githubusercontent.com/UOR-Foundation/foundry/3755845ef2737c679d89d587c82a71baa60fefa5/studio/shell/kernel/kernel.holo",
- "digest": "blake3:44b2bc1a74c9b7ca1e12f4368995d6f7067363639c653b1fbfd62b8bad68b189",
+ "source": "https://raw.githubusercontent.com/UOR-Foundation/foundry/c0675bb509cf3a784bcf0d92b77d8235e538720d/studio/shell/kernel/kernel.holo",
+ "digest": "blake3:625fd9c2fa510f63b93a6f8cec227c2f9733fe22212c06d3dad0d44a1907c0b8",
  "guest": {
   "path": "kernel/guest.wasm",
-  "sha256": "4f5ddedb700eb5599796b78d1866b63882fce3f436a50afc226b90e5554049ac",
-  "bytes": 72158
+  "sha256": "ec5680d98276515c059bd7e3490a380a1487613cfe5b892d0408b42ccade1864",
+  "bytes": 167924
  },
  "limits": {
   "request": 32776,
@@ -1301,6 +1301,18 @@
   [
    "dGVsZW1ldHJ5",
    "aW52YWxpZA=="
+  ],
+  [
+   "cmVhZCBCdWlsZCBhIGZyZWVsYW5jZSBpbnZvaWNlIHRyYWNrZXIgd2l0aCBjbGllbnQgcHJvZmlsZXMsIGludm9pY2Ugc3RhdHVzLCBtb250aGx5IHJldmVudWUgY2hhcnRzLCBvdmVyZHVlIHJlbWluZGVycywgYW5kIGEgY2xlYW4gZGFzaGJvYXJkLg==",
+   "YXBwIEZyZWVsYW5jZSBpbnZvaWNlIHRyYWNrZXIKdGV4dCBpbnZvaWNlICJJbnZvaWNlIiBtYXggNjAKdGV4dCBjbGllbnQgIkNsaWVudCIgbWF4IDYwCmNob2ljZSBzdGF0dXMgIlN0YXR1cyI6ICJEcmFmdCIsICJTZW50IiwgIlBhaWQiLCAiT3ZlcmR1ZSIKdGFibGUgaW52b2ljZXMgIkludm9pY2VzIjogaW52b2ljZSwgY2xpZW50LCBzdGF0dXMKY291bnQgaW52b2ljZXMgIkludm9pY2VzIgphY3Rpb24gIkFkZCBpbnZvaWNlIjogYWRkIHRvIGludm9pY2VzCmFjdGlvbiAiQ2xlYXIiOiBjbGVhciBpbnZvaWNlcwo/IGdvYWw6IHdoYXQgaXMgdGhlIGFwcCBmb3I/IFNheSBpdCBhZnRlciAic28gdGhhdCIKPyBtZWFzdXJlOiBob3cgd2lsbCB5b3Uga25vdyBpdCB3b3Jrcz8gTmFtZSBhIG51bWJlciB0byByZWFjaCwgbGlrZSAid2l0aGluIDMwIGRheXMiCj8gb3ZlcmR1ZSByZW1pbmRlcnM6IGEgcmVtaW5kZXIgbmVlZHMgYSBjbG9jaywgd2hpY2ggYW4gYXBwIGNhbm5vdCBrZWVwIHlldA=="
+  ],
+  [
+   "cmVhZCBhIHRvZG8gYXBw",
+   "YXBwIFRvZG8gYXBwCnRleHQgdGFzayAiVGFzayIgbWF4IDYwCnRhYmxlIHRhc2tzICJUYXNrcyI6IHRhc2sKYWN0aW9uICJBZGQgdGFzayI6IGFkZCB0byB0YXNrcwphY3Rpb24gIkNsZWFyIjogY2xlYXIgdGFza3MKPyBnb2FsOiB3aGF0IGlzIHRoZSBhcHAgZm9yPyBTYXkgaXQgYWZ0ZXIgInNvIHRoYXQiCj8gbWVhc3VyZTogaG93IHdpbGwgeW91IGtub3cgaXQgd29ya3M/IE5hbWUgYSBudW1iZXIgdG8gcmVhY2gsIGxpa2UgIndpdGhpbiAzMCBkYXlzIg=="
+  ],
+  [
+   "cmVhZCBoZWxsbyB0aGVyZQ==",
+   "PyB3aGF0IHRoZSBhcHAga2VlcHM6IG5vIHdvcmQgaW4gdGhlIGlkZWEgbmFtZXMgYSB0aGluZyB0byBrZWVw"
   ]
  ]
 }
