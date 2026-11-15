@@ -465,6 +465,12 @@ model does not sanction.
 | --- | --- | --- |
 | `FA-62` | `build` | Generated renderer stylesheet identity prevents duplicate blocking CSS retrieval |
 
+## rule-judge
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `FA-90` | `build` | A published app's answer is decided by the rule judge in Foundry's Prism kernel: the first rule whose conditions all hold decides, otherwise decides when none does, and a request outside the fields' bounds is refused |
+
 ## rules-source-binding
 
 | ID | Level | Statement |

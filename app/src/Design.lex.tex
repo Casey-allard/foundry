@@ -392,6 +392,13 @@ definition{
 }
 
 definition{
+  name: processPublicationInFoundryKernelGuest,
+  parameters: [],
+  result: Foundation.Arch::SystemProcess,
+  body: (record Foundation.Arch::SystemProcess {owner := "Architecture::componentFoundryKernelGuest"})
+}
+
+definition{
   name: processPublicationInBrowser,
   parameters: [],
   result: Foundation.Arch::SystemProcess,
@@ -445,13 +452,6 @@ definition{
   parameters: [],
   result: Foundation.Arch::SystemProcess,
   body: (record Foundation.Arch::SystemProcess {owner := "Architecture::componentHoloViewer"})
-}
-
-definition{
-  name: processPublicationInFoundryKernelGuest,
-  parameters: [],
-  result: Foundation.Arch::SystemProcess,
-  body: (record Foundation.Arch::SystemProcess {owner := "Architecture::componentFoundryKernelGuest"})
 }
 
 definition{
@@ -2348,49 +2348,63 @@ definition{
   name: msgPublishAnApp40,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 40, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 40, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgPublishAnApp41,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 41, source := "Architecture::componentStudio", target := "Architecture::componentBrowser", process := "Design::processPublicationInBrowser"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 41, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgPublishAnApp42,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 42, source := "Architecture::componentBrowser", target := "Architecture::componentStudio", process := "Design::processPublicationInBrowser"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 42, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
 }
 
 definition{
   name: msgPublishAnApp43,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 43, source := "Architecture::componentBrowser", target := "Architecture::componentHoloViewer", process := "Design::processPublicationInHoloViewer"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 43, source := "Architecture::componentStudio", target := "Architecture::componentBrowser", process := "Design::processPublicationInBrowser"})
 }
 
 definition{
   name: msgPublishAnApp44,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 44, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processBuildsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 44, source := "Architecture::componentBrowser", target := "Architecture::componentStudio", process := "Design::processPublicationInBrowser"})
 }
 
 definition{
   name: msgPublishAnApp45,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 45, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processBuildsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 45, source := "Architecture::componentBrowser", target := "Architecture::componentHoloViewer", process := "Design::processPublicationInHoloViewer"})
 }
 
 definition{
   name: msgPublishAnApp46,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 46, source := "Architecture::componentStudio", target := "Architecture::componentOriginKernelWorker", process := "Design::processBuildsInOriginKernelWorker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 46, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processBuildsInFoundryKernelGuest"})
+}
+
+definition{
+  name: msgPublishAnApp47,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 47, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processBuildsInFoundryKernelGuest"})
+}
+
+definition{
+  name: msgPublishAnApp48,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlPublishAnApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 48, source := "Architecture::componentStudio", target := "Architecture::componentOriginKernelWorker", process := "Design::processBuildsInOriginKernelWorker"})
 }
 
 definition{
@@ -2810,77 +2824,77 @@ definition{
   name: msgUseAPublishedApp9,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 9, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processPublicationInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 9, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp10,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 10, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 10, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp11,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 11, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 11, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processPublicationInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp12,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 12, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 12, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp13,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 13, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 13, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
 }
 
 definition{
   name: msgUseAPublishedApp14,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 14, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentOriginKernelWorker", process := "Design::processEffectGateInOriginKernelWorker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 14, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp15,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 15, source := "Architecture::componentOriginKernelWorker", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInOriginKernelWorker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 15, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp16,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 16, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 16, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentOriginKernelWorker", process := "Design::processEffectGateInOriginKernelWorker"})
 }
 
 definition{
   name: msgUseAPublishedApp17,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 17, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 17, source := "Architecture::componentOriginKernelWorker", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInOriginKernelWorker"})
 }
 
 definition{
   name: msgUseAPublishedApp18,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 18, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 18, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp19,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 19, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processStatefulAppsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 19, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
@@ -2901,42 +2915,42 @@ definition{
   name: msgUseAPublishedApp22,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 22, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 22, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp23,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 23, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 23, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processStatefulAppsInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp24,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 24, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processStatefulAppsInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 24, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp25,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 25, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 25, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp26,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 26, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 26, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processStatefulAppsInDeviceStore"})
 }
 
 definition{
   name: msgUseAPublishedApp27,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 27, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEventAdmissionInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 27, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInDeviceStore"})
 }
 
 definition{
@@ -2957,42 +2971,56 @@ definition{
   name: msgUseAPublishedApp30,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 30, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 30, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp31,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 31, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 31, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEventAdmissionInFoundryKernelGuest"})
 }
 
 definition{
   name: msgUseAPublishedApp32,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 32, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processEventAdmissionInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 32, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp33,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 33, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 33, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInStudio"})
 }
 
 definition{
   name: msgUseAPublishedApp34,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 34, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processExperienceRulesInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 34, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processEventAdmissionInDeviceStore"})
 }
 
 definition{
   name: msgUseAPublishedApp35,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 35, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processExperienceRulesInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 35, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInDeviceStore"})
+}
+
+definition{
+  name: msgUseAPublishedApp36,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 36, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processExperienceRulesInFoundryKernelGuest"})
+}
+
+definition{
+  name: msgUseAPublishedApp37,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlUseAPublishedApp", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 37, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processExperienceRulesInFoundryKernelGuest"})
 }
 
 definition{
@@ -3062,77 +3090,77 @@ definition{
   name: msgReplayAHolo9,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 9, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processPublicationInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 9, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo10,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 10, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 10, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processPublicationInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo11,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 11, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 11, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processPublicationInStudio"})
 }
 
 definition{
   name: msgReplayAHolo12,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 12, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 12, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processPublicationInStudio"})
 }
 
 definition{
   name: msgReplayAHolo13,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 13, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 13, source := "Architecture::componentStudio", target := "Architecture::componentGitHub", process := "Design::processPublicationInGitHub"})
 }
 
 definition{
   name: msgReplayAHolo14,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 14, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentOriginKernelWorker", process := "Design::processEffectGateInOriginKernelWorker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 14, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo15,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 15, source := "Architecture::componentOriginKernelWorker", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInOriginKernelWorker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 15, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo16,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 16, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 16, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentOriginKernelWorker", process := "Design::processEffectGateInOriginKernelWorker"})
 }
 
 definition{
   name: msgReplayAHolo17,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 17, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 17, source := "Architecture::componentOriginKernelWorker", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInOriginKernelWorker"})
 }
 
 definition{
   name: msgReplayAHolo18,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 18, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 18, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo19,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 19, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processStatefulAppsInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 19, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEffectGateInFoundryKernelGuest"})
 }
 
 definition{
@@ -3153,42 +3181,42 @@ definition{
   name: msgReplayAHolo22,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 22, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 22, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo23,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 23, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 23, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processStatefulAppsInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo24,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 24, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processStatefulAppsInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 24, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInStudio"})
 }
 
 definition{
   name: msgReplayAHolo25,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 25, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 25, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processStatefulAppsInStudio"})
 }
 
 definition{
   name: msgReplayAHolo26,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 26, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 26, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processStatefulAppsInDeviceStore"})
 }
 
 definition{
   name: msgReplayAHolo27,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 27, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEventAdmissionInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 27, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processStatefulAppsInDeviceStore"})
 }
 
 definition{
@@ -3209,119 +3237,133 @@ definition{
   name: msgReplayAHolo30,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 30, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 30, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo31,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 31, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 31, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processEventAdmissionInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo32,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 32, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processEventAdmissionInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 32, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInStudio"})
 }
 
 definition{
   name: msgReplayAHolo33,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 33, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInDeviceStore"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 33, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processEventAdmissionInStudio"})
 }
 
 definition{
   name: msgReplayAHolo34,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 34, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processExperienceRulesInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 34, source := "Architecture::componentStudio", target := "Architecture::componentDeviceStore", process := "Design::processEventAdmissionInDeviceStore"})
 }
 
 definition{
   name: msgReplayAHolo35,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 35, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processExperienceRulesInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 35, source := "Architecture::componentDeviceStore", target := "Architecture::componentStudio", process := "Design::processEventAdmissionInDeviceStore"})
 }
 
 definition{
   name: msgReplayAHolo36,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 36, source := "Architecture::componentBrowser", target := "Architecture::componentHoloViewer", process := "Design::processShowReplay"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 36, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processExperienceRulesInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo37,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 37, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 37, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processExperienceRulesInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo38,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 38, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processProofInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 38, source := "Architecture::componentBrowser", target := "Architecture::componentHoloViewer", process := "Design::processShowReplay"})
 }
 
 definition{
   name: msgReplayAHolo39,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 39, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processProofInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 39, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo40,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 40, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInStudio"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 40, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processProofInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo41,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 41, source := "Architecture::componentStudio", target := "Architecture::componentLeanChecker", process := "Design::processProofInLeanChecker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 41, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentStudio", process := "Design::processProofInStudio"})
 }
 
 definition{
   name: msgReplayAHolo42,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 42, source := "Architecture::componentLeanChecker", target := "Architecture::componentStudio", process := "Design::processProofInLeanChecker"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 42, source := "Architecture::componentStudio", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInStudio"})
 }
 
 definition{
   name: msgReplayAHolo43,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 43, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 43, source := "Architecture::componentStudio", target := "Architecture::componentLeanChecker", process := "Design::processProofInLeanChecker"})
 }
 
 definition{
   name: msgReplayAHolo44,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 44, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processProofInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 44, source := "Architecture::componentLeanChecker", target := "Architecture::componentStudio", process := "Design::processProofInLeanChecker"})
 }
 
 definition{
   name: msgReplayAHolo45,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 45, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processBuildPhaseInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 45, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processProofInFoundryKernelGuest"})
 }
 
 definition{
   name: msgReplayAHolo46,
   parameters: [],
   result: Foundation.Arch::UmlMessage,
-  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 46, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processBuildPhaseInFoundryKernelGuest"})
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 46, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processProofInFoundryKernelGuest"})
+}
+
+definition{
+  name: msgReplayAHolo47,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.synchronous), order := 47, source := "Architecture::componentHoloViewer", target := "Architecture::componentFoundryKernelGuest", process := "Design::processBuildPhaseInFoundryKernelGuest"})
+}
+
+definition{
+  name: msgReplayAHolo48,
+  parameters: [],
+  result: Foundation.Arch::UmlMessage,
+  body: (record Foundation.Arch::UmlMessage {view := "Design::viewUmlReplayAHolo", kind := (ctor Foundation.Arch::UmlMessageKind.reply), order := 48, source := "Architecture::componentFoundryKernelGuest", target := "Architecture::componentHoloViewer", process := "Design::processBuildPhaseInFoundryKernelGuest"})
 }
 
 definition{

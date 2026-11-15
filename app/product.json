@@ -867,9 +867,11 @@
         "FA-05",
         "FA-45",
         "FA-70",
+        "FA-90",
         "AC-01"
       ],
       "calls": [
+        "RuleJudge::dispatchRule",
         "FoundrySpecification::publicationEffectsBoundary",
         "FoundrySpecification::githubPublicationPermissionBoundary"
       ],
@@ -878,10 +880,15 @@
       ],
       "components": [
         "host",
+        "kernel",
         "github",
         "viewer"
       ],
-      "acceptance": []
+      "acceptance": [
+        "RuleJudge::ruleWords_memberDecidesFirst",
+        "RuleJudge::ruleWords_otherwiseDecides",
+        "RuleJudge::ruleWords_outsideBoundsRefused"
+      ]
     },
     {
       "name": "Shell integrity",
