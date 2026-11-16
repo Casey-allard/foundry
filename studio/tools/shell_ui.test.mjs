@@ -47,7 +47,7 @@ test("the look comes from the brand's tokens: no colour of its own, in any theme
 test("studio/experience: centred popups, golden measures, tools on Settings, a quiet Home", () => {
   // The preferences are a LexLean module of their own, outside the kernel's proof inputs.
   const spec = read("../experience/src/FoundryExperience.lex.tex");
-  for (const name of ["oneLook", "popupsCentred", "goldenRatio", "questionAsNotification", "whyHowWhat", "sidebarIsNavigation", "toolsOnSettings", "homeAsksOneThing", "homeIsAWorkspace", "composerRow", "featuredCovers", "modelMenu", "appsOnDevice"]) assert.ok(spec.includes("name: " + name + ","), name);
+  for (const name of ["oneLook", "popupsCentred", "goldenRatio", "questionAsNotification", "whyHowWhat", "sidebarIsNavigation", "toolsOnSettings", "homeAsksOneThing", "homeIsAWorkspace", "composerRow", "featuredCovers", "modelMenu", "appsOnDevice", "theaterInSidebar", "theaterStage", "theaterDetails", "theaterUpNext", "theaterKeys"]) assert.ok(spec.includes("name: " + name + ","), name);
   assert.equal(read("../../app/src/FoundrySpecification.lex.tex").includes("foundrySurfaceExperienceBoundary"), false, "a look-and-feel preference is back in the kernel's specification");
   for (const input of fs.readdirSync(new URL("../../app/src/", import.meta.url)).filter((n) => n.endsWith(".lex.tex"))) assert.equal(read("../../app/src/" + input).includes("FoundryExperience"), false, input + " reads the look-and-feel module, which makes it a kernel proof input");
   assert.ok(read("../../.github/workflows/studio.yml").includes("key: experience-check-v1-${{ hashFiles('studio/experience/**', 'prismpm.lock') }}"));

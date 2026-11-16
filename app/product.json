@@ -963,6 +963,21 @@
       "acceptance": []
     },
     {
+      "name": "Theater",
+      "text": "Prism apps play one after another on a stage beside an up next rail, each run as the build preview runs it.",
+      "ids": [
+        "FA-92"
+      ],
+      "calls": [
+        "FoundrySpecification::theaterBoundary"
+      ],
+      "registry": [],
+      "components": [
+        "studio"
+      ],
+      "acceptance": []
+    },
+    {
       "name": "Release integration",
       "text": "Current main integrates every protocol, only superseded pull request runs are cancelled, and every main and release run keeps its full acceptance.",
       "ids": [
@@ -1017,6 +1032,16 @@
         "Apps",
         "App details",
         "Code",
+        "Chat"
+      ]
+    },
+    {
+      "name": "Watch apps",
+      "stakeholder": "App builder",
+      "outcome": "Prism apps are played one after another, and the one worth changing is opened in the builder.",
+      "steps": [
+        "Theater",
+        "App details",
         "Chat"
       ]
     },
@@ -1683,6 +1708,21 @@
         "pages/templates.tsx",
         "pages/media.tsx",
         "pages/plugins.tsx"
+      ],
+      "on": "studio"
+    },
+    {
+      "name": "Theater",
+      "stakeholder": "App builder",
+      "text": "Prism apps play one after another on a stage, with what plays next beside it, and one is taken to the builder.",
+      "requires": [
+        "Theater",
+        "Project store",
+        "Versions and preview",
+        "Host boundary"
+      ],
+      "renderer": [
+        "components/FeaturedAppShowcase.tsx"
       ],
       "on": "studio"
     },

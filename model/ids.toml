@@ -867,3 +867,9 @@ id = "FA-91"
 level = "build"
 suite = "private-workspace"
 statement = "A private workspace opens only for the Prism id that owns it, on a device with a live session and its current boundary key; a record is read only when authentic and in place and stored only sealed; the workspace kept before an id moves in once; and Foundry's Prism kernel names every refusal"
+
+[[id]]
+id = "FA-92"
+level = "build"
+suite = "theater"
+statement = "Theater, right after Library in the sidebar, plays Prism apps one after another on a stage beside an up next rail, under the build preview's own sandbox, with the floor's catalogue, covers and bookmarks, and its look is the experience spec's five Theater statements"
