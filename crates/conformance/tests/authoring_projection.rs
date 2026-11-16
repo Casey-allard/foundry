@@ -5,11 +5,7 @@ use std::process::Command;
 /// FA-02 checks every projected file without allowing the checker to repair drift.
 #[test]
 fn authoring_projection_fa_02() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("repository root")
-        .to_path_buf();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("python3")
         .arg("-B")
         .arg(root.join("studio/tools/test_author.py"))
