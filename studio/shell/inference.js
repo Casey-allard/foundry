@@ -85,7 +85,8 @@ export const prismFrame = (globalThis.__prismFrame ??= () => (globalThis.__prism
 // case once, as the workspace opens. Left plain: what the service worker reads (the grants and published
 // .holo bytes, public and addressed by their content) and the audit it writes.
 const SEALED = new Set(["settings", "apps", "chats", "files", "objects", "refs", "versions"]);
-const plainPlace = (store, key) => !SEALED.has(store) || (store === "refs" && /^(capabilities|holo):/.test(key));
+// A gallery card is made to be published, and its picture is a Blob, which cannot be read inside a transaction.
+const plainPlace = (store, key) => !SEALED.has(store) || (store === "refs" && /^(capabilities|holo|gallery):/.test(key));
 const isSealed = (value) => value?.sealedWork instanceof Uint8Array;
 const word = (n) => [0, 8, 16, 24].map((shift) => ((n >>> shift) & 255).toString(16).padStart(2, "0")).join("");
 export const workspaceRequest = (...words) => "workspace " + [1, ...words].map(word).join("");
@@ -98,9 +99,20 @@ const refusal = (code) => Object.assign(new Error(code), { code });
 // including what was told before it mounted.
 export const tell = (answer) => { (globalThis.__workspaceTold ??= []).push(answer); window.dispatchEvent(new CustomEvent("foundry:workspace", { detail: answer })); };
 const base64 = (bytes) => { let text = ""; for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode(...bytes.subarray(i, i + 32768)); return btoa(text); };
-const encode = (value) => enc.encode(JSON.stringify(value, function (name, v) { const raw = this[name]; return raw instanceof Uint8Array ? { $bytes: base64(raw) } : raw instanceof Date ? { $date: v } : v; }));
+// Values as JSON, as IndexedDB would keep them: bytes, dates and a key whose value is undefined are tagged, then
+// restored by assignment, so the key stays (a reviver returning undefined would drop it).
+const encode = (value) => enc.encode(JSON.stringify(value, function (name, v) { const raw = this[name]; return raw instanceof Uint8Array ? { $bytes: base64(raw) } : raw instanceof Date ? { $date: v } : raw === undefined ? { $undefined: 1 } : v; }));
 const unbase64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
-const decode = (bytes) => JSON.parse(new TextDecoder().decode(bytes), (name, v) => (v?.$bytes !== undefined ? unbase64(v.$bytes) : v?.$date !== undefined ? new Date(v.$date) : v));
+const tagged = (v, tag) => Object.keys(v).length === 1 && tag in v;
+const restore = (v) => {
+  if (!v || typeof v !== "object") return v;
+  if (tagged(v, "$bytes")) return unbase64(v.$bytes);
+  if (tagged(v, "$date")) return new Date(v.$date);
+  if (tagged(v, "$undefined")) return undefined;
+  for (const k of Object.keys(v)) v[k] = restore(v[k]);
+  return v;
+};
+const decode = (bytes) => restore(JSON.parse(new TextDecoder().decode(bytes)));
 const wrap = (target, own) => new Proxy(target, { get: (t, p) => (p in own ? own[p] : typeof t[p] === "function" ? t[p].bind(t) : t[p]), set: (t, p, v) => ((t[p] = v), true) });
 let workspaceOpen = null;
 export const workspace = () => (workspaceOpen ??= openWorkspace());

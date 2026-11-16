@@ -55,7 +55,7 @@ try {
   const before=await page.evaluate(()=>window.__host.get('settings','user'));
   const late=await page.evaluate(async()=>{
     const put=IDBObjectStore.prototype.put;let injected=false;
-    IDBObjectStore.prototype.put=function(value,key){const q=put.call(this,value,key);if(this.name==='settings'&&key==='user'&&value.enableAppBlueprint===true){injected=true;q.addEventListener('success',()=>this.transaction.abort(),{once:true});}return q;};
+    IDBObjectStore.prototype.put=function(value,key){const q=put.call(this,value,key);if(this.name==='settings'&&key==='user'&&!injected){injected=true;q.addEventListener('success',()=>this.transaction.abort(),{once:true});}return q;};
     try{await window.electron.ipcRenderer.invoke('set-user-settings',{enableAppBlueprint:true});return {injected,code:null};}catch(e){return {injected,code:e.code};}finally{IDBObjectStore.prototype.put=put;}
   });assert.deepEqual(late,{injected:true,code:'settingsStorageFailed'});assert.deepEqual(await page.evaluate(()=>window.__host.get('settings','user')),before);
   await peer.reload();await peer.locator('[role=textbox]').waitFor();assert.equal((await peer.evaluate(()=>window.electron.ipcRenderer.invoke('get-user-settings'))).enableAppBlueprint,false);

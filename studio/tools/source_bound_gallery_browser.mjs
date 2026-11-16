@@ -28,7 +28,7 @@ try {
  const context=await browser.newContext({serviceWorkers:'block'}),page=await context.newPage(),peer=await context.newPage(),errors=[];
  for(const p of [page,peer])p.on('pageerror',e=>errors.push(e.message));
  await context.route('**/*',r=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
- const initialize=async p=>{await p.goto(base);await p.waitForFunction(()=>!!window.__host&&!!window.electron);await p.evaluate(async base=>{window.gallery=await import(base+'gallery-store.mjs');window.sourceModule=await import(base+'project-edit.mjs');window.database=await (await import(base+'inference.js')).db();},base);};
+ const initialize=async p=>{await p.goto(base);await p.waitForFunction(()=>!!window.__host&&!!window.electron);await p.evaluate(async base=>{window.gallery=await import(base+'gallery-store.mjs');window.sourceModule=await import(base+'project-edit.mjs');window.database=await (await import(base+'inference.js')).workspace();},base);};
  await initialize(page);await initialize(peer);
  const call=(channel,input)=>page.evaluate(({channel,input})=>window.electron.ipcRenderer.invoke(channel,input),{channel,input});
  const make=async name=>(await call('create-app',{name,initialChatMode:'build'})).app.id;
