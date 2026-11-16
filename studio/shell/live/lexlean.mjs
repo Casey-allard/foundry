@@ -18,7 +18,6 @@ import { names, declarations, proofDeclarations, declarationText } from "../pris
 if (!globalThis.Buffer) globalThis.Buffer = { from: (bytes) => ({ toString: () => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("") }) };
 
 const kebab = (pascal) => pascal.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Z])([A-Z][a-z])/g, "$1-$2").toLowerCase();
-const pascalOf = (word) => word.split(/[^a-z0-9]+/i).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join("");
 
 // ---- writing
 

@@ -37,7 +37,7 @@ shutil.copytree(src / "src", dst / "src")
 for name in ("package.json", "tailwind.config.ts", "index.html", "AI_RULES.md"):
     if (src / name).exists():
         shutil.copy(src / name, dst / name)
-# The product is Prism AI Foundry: the staged scaffold's words say so (the badge, the link); the vendored tree is untouched.
+# The product is Prism Foundry: the staged scaffold's words say so (the badge, the link); the vendored tree is untouched.
 WORD = re.compile(r"\bDyad\b")
 for p in dst.rglob("*"):
     if p.is_file() and p.suffix in (".tsx", ".ts", ".md", ".html", ".json"):

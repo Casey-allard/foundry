@@ -226,6 +226,4 @@ export async function buildApp(input, { lastModified, specAddress } = {}) {
   return { files, remove: [...TEMPLATE_EXAMPLE], model: m, claims };
 }
 
-/** One line per claim, for a summary: what Lean proves about the app. */
-export const claimLines = (claims) => claims.map((c) => `${c.id}: ${c.statement}`);
 export { describeConditions };

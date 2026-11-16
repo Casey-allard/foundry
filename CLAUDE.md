@@ -1,4 +1,4 @@
-# Working in Prism AI Foundry
+# Working in Prism Foundry
 
 Read `AGENTS.md` first; its rules R1 to R6 bind every change.
 

@@ -411,6 +411,12 @@ model does not sanction.
 | --- | --- | --- |
 | `FA-87` | `build` | A chat turn is answered only by Foundry's own model in Prism, and Prism R4 refuses every route to another model before the request leaves the tab |
 
+## private-workspace
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `FA-91` | `build` | A private workspace opens only for the Prism id that owns it, on a device with a live session and its current boundary key; a record is read only when authentic and in place and stored only sealed; the workspace kept before an id moves in once; and Foundry's Prism kernel names every refusal |
+
 ## product-model
 
 | ID | Level | Statement |
