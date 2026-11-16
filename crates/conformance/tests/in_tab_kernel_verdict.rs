@@ -63,6 +63,9 @@ fn private_workspace_fa_91() {
     let kernel = include_str!("../../../app/src/ForgeKernel.lex.tex");
     assert!(kernel.contains("(Workspace::dispatchWorkspace (sliceOf value 10"));
     let theorems = workspace.matches("name: workspaceWords_").count();
-    assert_eq!(theorems, kernel.matches("request := 0x776f726b737061636520").count());
+    assert_eq!(
+        theorems,
+        kernel.matches("request := 0x776f726b737061636520").count()
+    );
     assert!(theorems >= 19 && kernel.contains("(workspaceAcceptance))))"));
 }
