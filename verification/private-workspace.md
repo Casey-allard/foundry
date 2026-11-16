@@ -98,6 +98,12 @@ Planted defects, 2026-11-16:
 | `storage_request_browser.mjs` | the place is not checked (`bound` always 1) | rejected: `Error: 7:copied.md was returned`; restored, passes |
 | `in_tab_kernel_verdict.test.mjs` (FA-93) | `openFacts` never reports a removed device | rejected: `not ok 8`, the guest answered `ok` where `workspaceDeviceRemoved` was required; restored, 8 of 8 pass |
 
+What reaches the network. The workspace opens only for a device still the Prism ID's, so on each load after
+the first the frame asks stitch's relay (`ntfy.sh`) whether this device was removed, as every Prism app does
+(`identity/PROTOCOL.md`). The topics are hashes of secrets only the ID's devices hold, and nothing of the work
+goes there. The browser tests that hold Studio to its origin admit exactly those relay topics
+(`studio/tools/decorative_image_fixture.mjs`, `isPrismIdRelay`).
+
 What this does not establish. The work is sealed on this device; it is not carried to the visitor's other
 devices, so a lost browser still loses what it alone kept (the Prism ID's own recovery restores the ID, not the
 work). Keys are not sealed: an app's id and its files' paths stay readable as IndexedDB keys, because the

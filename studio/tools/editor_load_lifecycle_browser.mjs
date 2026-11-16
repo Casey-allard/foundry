@@ -1,4 +1,5 @@
 // Actual projected initializer and locked loader/editor in Chromium; no substituted loader.
+import { isPrismIdRelay } from "./decorative_image_fixture.mjs";
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -48,6 +49,6 @@ try{
   if(scenario==='cancel')assert.deepEqual(result,{cancelled:'cancelation',cachedCancelled:'cancelation',same:true,background:'rgb(19, 19, 22)'});
   else if(scenario==='themeFailure')assert.deepEqual(result,{code:'editorThemeFailed',message:'The browser editor could not be configured',background:'rgb(19, 19, 22)'});
   else assert.deepEqual(result,{code:'editorLoadFailed',message:'The browser editor could not load'});
-  await page.waitForTimeout(100);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log(JSON.stringify({scenario,...result,pageExceptions:0,externalRequests:0}));await context.close();
+  await page.waitForTimeout(100);assert.deepEqual(errors,[]);assert.deepEqual(external.filter(url=>!isPrismIdRelay(url)),[]);console.log(JSON.stringify({scenario,...result,pageExceptions:0,externalRequests:0}));await context.close();
  }
 }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

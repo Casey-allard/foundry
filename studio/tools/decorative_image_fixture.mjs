@@ -15,3 +15,13 @@ export function isDecorativeImage(address) {
       /^(75|85)$/.test(url.searchParams.get('q') || '') && /^(avif|webp)$/.test(url.searchParams.get('fm') || '');
   } catch { return false; }
 }
+
+// The Prism ID relay (identity/PROTOCOL.md). Its topics are hashes of secrets only the visitor's devices hold, and
+// what travels on them is sealed. Studio reaches it to keep the visitor's Prism ID current, since the workspace
+// opens only for that ID on a device still its own (FA-93); nothing else of Studio's goes there.
+export function isPrismIdRelay(address) {
+  try {
+    const url = new URL(address);
+    return (url.origin === "https://ntfy.sh" || url.origin === "wss://ntfy.sh") && !url.username && !url.password && /^\/prism-[0-9a-f]{58}(\/json|\/ws)?$/.test(url.pathname);
+  } catch { return false; }
+}

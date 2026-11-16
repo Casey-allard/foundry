@@ -1,4 +1,4 @@
-import { isDecorativeImage } from "./decorative_image_fixture.mjs";
+import { isDecorativeImage, isPrismIdRelay } from "./decorative_image_fixture.mjs";
 // Actual verified shell: offline editor, Settings and language worker.
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -79,7 +79,7 @@ try {
   const workerResources = (await Promise.all(workers.filter(worker=>!closedWorkers.has(worker)).map(worker => worker.evaluate(() => performance.getEntriesByType("resource").map(entry => entry.name))))).flat();
   assert.ok(workerResources.some(url => url.startsWith(base + "editor/vs/") && url.includes("jsonWorker.js")), JSON.stringify(workerResources));
   // The declared decorative background is a separate product request.
-  const unexpected = external.filter(url => !isDecorativeImage(url));
+  const unexpected = external.filter(url => !isDecorativeImage(url) && !isPrismIdRelay(url));
   assert.deepEqual(unexpected, []);
   console.log(JSON.stringify({ renderer: "actual-built-shell", offlineSettings: true, offlineEditor: true, offlineJsonWorker: true, missingAsset: result.missing, unexpectedExternalRequests: 0, pageExceptions: 0 }));
 } finally { if (browser) await browser.close(); await new Promise(resolve => server.close(resolve)); }
