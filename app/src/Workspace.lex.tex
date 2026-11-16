@@ -44,7 +44,7 @@ definition{
   name: mergeTakes,
   parameters: [present : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
   result: Bool,
-  body: ((not (present =? 1)) || ((((lHi * 4294967296) + lLo) <? ((rHi * 4294967296) + rLo)) || ((((rHi * 4294967296) + rLo) =? ((lHi * 4294967296) + lLo)) && (wins =? 1))))
+  body: ((not (present =? 1)) || ((((prim multiply lHi 4294967296 : Nat) + lLo) <? ((prim multiply rHi 4294967296 : Nat) + rLo)) || ((((prim multiply rHi 4294967296 : Nat) + rLo) =? ((prim multiply lHi 4294967296 : Nat) + lLo)) && (wins =? 1))))
 }
 
 definition{

@@ -280,7 +280,7 @@ definition{
   name: breaksMergeNeverTakesOlder,
   parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
   result: Bool,
-  body: (((((rHi * 4294967296) + rLo) <? ((lHi * 4294967296) + lLo))) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
+  body: (((((prim multiply rHi 4294967296 : Nat) + rLo) <? ((prim multiply lHi 4294967296 : Nat) + lLo))) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
 }
 
 theorem{
