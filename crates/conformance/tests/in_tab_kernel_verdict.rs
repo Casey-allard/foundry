@@ -59,7 +59,7 @@ fn rule_judge_fa_90() {
 fn private_workspace_fa_91() {
     // Lean proves every workspaceWords theorem by evaluation (`just app`) and the kernel gate replays
     // each as an acceptance vector in the compiled guest; this holds the two to each other and to dispatch.
-    let workspace = include_str!("../../../app/src/Workspace.lex.tex");
+    let workspace = include_str!("../../../app/src/WorkspaceProofs.lex.tex");
     let kernel = include_str!("../../../app/src/ForgeKernel.lex.tex");
     assert!(kernel.contains("(Workspace::dispatchWorkspace (sliceOf value 10"));
     let theorems = workspace.matches("name: workspaceWords_").count();
