@@ -49,7 +49,20 @@ definition{
 
 definition{
   name: mergeCode,
-  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, present : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    present : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
   result: Nat,
   body: (if (not (opened =? 1)) then 5 else (if (not (syncs =? 1)) then 12 else (if (not (authentic =? 1)) then 6 else (if (not (bound =? 1)) then 7 else (if (mergeTakes present rHi rLo lHi lLo wins) then (if ((gone =? 1) || (within =? 1)) then 13 else 9) else 14)))))
 }

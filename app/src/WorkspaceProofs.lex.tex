@@ -278,46 +278,140 @@ theorem{
 
 definition{
   name: breaksMergeNeverTakesOlder,
-  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
   result: Bool,
   body: ((((prim multiply rHi 4294967296 : Nat) + rLo) <? ((prim multiply lHi 4294967296 : Nat) + lLo)) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
 }
 
 theorem{
   name: mergeNeverTakesOlderHolds,
-  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
   statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within gone rHi rLo lHi lLo wins) = false),
-  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeNeverTakesOlder]},
+  proof: linear_arithmetic{
+    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeNeverTakesOlder]
+  },
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
 definition{
   name: breaksMergeConverges,
-  parameters: [aOpened : Nat, aSyncs : Nat, aAuthentic : Nat, aBound : Nat, aWithin : Nat, aGone : Nat, bOpened : Nat, bSyncs : Nat, bAuthentic : Nat, bBound : Nat, bWithin : Nat, bGone : Nat, aHi : Nat, aLo : Nat, bHi : Nat, bLo : Nat, wins : Nat, other : Nat],
+  parameters: [
+    aOpened : Nat,
+    aSyncs : Nat,
+    aAuthentic : Nat,
+    aBound : Nat,
+    aWithin : Nat,
+    aGone : Nat,
+    bOpened : Nat,
+    bSyncs : Nat,
+    bAuthentic : Nat,
+    bBound : Nat,
+    bWithin : Nat,
+    bGone : Nat,
+    aHi : Nat,
+    aLo : Nat,
+    bHi : Nat,
+    bLo : Nat,
+    wins : Nat,
+    other : Nat
+  ],
   result: Bool,
   body: ((((wins + other) =? 1) && ((Workspace::mergeCode aOpened aSyncs aAuthentic aBound aWithin 1 aGone bHi bLo aHi aLo wins) =? 13)) && ((Workspace::mergeCode bOpened bSyncs bAuthentic bBound bWithin 1 bGone aHi aLo bHi bLo other) =? 13))
 }
 
 theorem{
   name: mergeConvergesHolds,
-  parameters: [aOpened : Nat, aSyncs : Nat, aAuthentic : Nat, aBound : Nat, aWithin : Nat, aGone : Nat, bOpened : Nat, bSyncs : Nat, bAuthentic : Nat, bBound : Nat, bWithin : Nat, bGone : Nat, aHi : Nat, aLo : Nat, bHi : Nat, bLo : Nat, wins : Nat, other : Nat],
+  parameters: [
+    aOpened : Nat,
+    aSyncs : Nat,
+    aAuthentic : Nat,
+    aBound : Nat,
+    aWithin : Nat,
+    aGone : Nat,
+    bOpened : Nat,
+    bSyncs : Nat,
+    bAuthentic : Nat,
+    bBound : Nat,
+    bWithin : Nat,
+    bGone : Nat,
+    aHi : Nat,
+    aLo : Nat,
+    bHi : Nat,
+    bLo : Nat,
+    wins : Nat,
+    other : Nat
+  ],
   statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aGone bOpened bSyncs bAuthentic bBound bWithin bGone aHi aLo bHi bLo wins other) = false),
-  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeConverges]},
+  proof: linear_arithmetic{
+    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeConverges]
+  },
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
 definition{
   name: breaksMergeTakesOnlyWhatMayEnter,
-  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, present : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    present : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
   result: Bool,
   body: ((((((not (opened =? 1)) || (not (syncs =? 1))) || (not (authentic =? 1))) || (not (bound =? 1))) || ((not (within =? 1)) && (not (gone =? 1)))) && ((Workspace::mergeCode opened syncs authentic bound within present gone rHi rLo lHi lLo wins) =? 13))
 }
 
 theorem{
   name: mergeTakesOnlyWhatMayEnterHolds,
-  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, present : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    present : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
   statement: ((breaksMergeTakesOnlyWhatMayEnter opened syncs authentic bound within present gone rHi rLo lHi lLo wins) = false),
-  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeTakesOnlyWhatMayEnter]},
+  proof: linear_arithmetic{
+    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeTakesOnlyWhatMayEnter]
+  },
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
