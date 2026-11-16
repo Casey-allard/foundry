@@ -87,20 +87,35 @@ test('the model, the protocol and the kernel name one authority, and the authore
 
 // The tests above speak to a stand-in. This one asks the guest the studio ships. A pin that lags the model (the
 // guest of an earlier build archived under a later source) answers `invalid` here and passed everything above.
-test('the pinned guest, the bytes the studio runs, answers every vector of the corpus', async () => {
+async function pinnedGuest() {
   const bytes = fs.readFileSync(new URL('../shell/kernel/guest.wasm', import.meta.url)), meta = JSON.parse(read('../shell/kernel/kernel.json'));
   // The file asked is the one the Kernel gate names, not another build beside it.
   assert.equal(createHash('sha256').update(bytes).digest('hex'), meta.guest.sha256);
   const module = await WebAssembly.compile(bytes);
-  const dispatch = async (request) => {
+  return async (request) => {
     const { memory, holo_alloc, holo_run } = (await WebAssembly.instantiate(module, {})).exports, at = holo_alloc(request.length);
     new Uint8Array(memory.buffer, at, request.length).set(request);
     const packed = BigInt.asUintN(64, BigInt(holo_run(at, request.length)));
     return new Uint8Array(memory.buffer, Number(packed >> 32n), Number(packed & 0xffffffffn)).slice();
   };
+}
+test('the pinned guest, the bytes the studio runs, answers every vector of the corpus', async () => {
+  const dispatch = await pinnedGuest();
   let asked = 0;
   for (const v of vectors) { assert.equal(dec.decode(await dispatch(enc.encode(v.request))), v.response, v.name); asked++; }
   assert.equal(asked, 19);
   assert.deepEqual(await verdictWithGuest({ dispatch }, proved.input), { ok: true, code: 0, verdict: 'proved' });
   assert.deepEqual(await verdictWithGuest({ dispatch }, { ...structuredClone(proved.input), leanAccepted: 0 }), { ok: true, code: 3, verdict: 'refused' });
+});
+
+// FA-93: every request Studio's sealed store makes, built by its own code, asked of the guest it pins, and the
+// answer each case must have for Studio to do what it does (studio/shell/inference.js, openWorkspace).
+test('the pinned guest answers every workspace request Studio makes, as Studio acts on it (FA-93)', async () => {
+  const { workspaceRequest, openFacts } = await import('../shell/inference.js');
+  const dispatch = await pinnedGuest();
+  const ask = async (...words) => dec.decode(await dispatch(enc.encode(workspaceRequest(...words))));
+  assert.deepEqual(await Promise.all([null, 'removed', 'stale-key', 'unsupported'].map((code) => ask(0, ...openFacts(code)))), ['ok', 'workspaceDeviceRemoved', 'workspaceKeyStale', 'workspaceSessionExpired']);
+  assert.deepEqual(await Promise.all([[1, 1], [1, 0], [0, 1], [0, 0]].map(([authentic, bound]) => ask(1, 1, authentic, bound))), ['ok', 'recordMisplaced', 'recordTampered', 'recordTampered']);
+  assert.deepEqual(await Promise.all([1, 0].map((within) => ask(2, 1, 1, within))), ['ok', 'workspaceQuotaExceeded']);
+  assert.deepEqual(await Promise.all([0, 1].map((moved) => ask(3, 1, moved))), ['ok', 'workspaceAlreadyMoved']);
 });

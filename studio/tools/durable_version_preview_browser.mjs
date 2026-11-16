@@ -61,8 +61,8 @@ try {
   assert.equal((await get(peer,'refs',`preview:${appId}`)).state.active,0);
   // Simulate a separately committed, valid source while the owner previews history.
   // Recovery must preserve those bytes until an explicit accept/checkpoint decision.
-  const capture=tab=>tab.evaluate(async appId=>{const {db}=await import('./inference.js');const {captureProjectSource}=await import('./project-edit.mjs');return captureProjectSource(await db(),appId);},appId);
-  const replaceSource=(tab,source)=>tab.evaluate(async({appId,source})=>{const {db}=await import('./inference.js');const database=await db();await new Promise((resolve,reject)=>{const tx=database.transaction(['files','refs'],'readwrite');tx.oncomplete=resolve;tx.onabort=()=>reject(Error('fixture source transaction aborted'));const files=tx.objectStore('files');files.delete(IDBKeyRange.bound(appId+':',appId+':￿'));for(const [name,text] of source.files)files.put(text,appId+':'+name);tx.objectStore('refs').put(source.reference,appId+':main');});},{appId,source});
+  const capture=tab=>tab.evaluate(async appId=>{const {workspace:db}=await import('./inference.js');const {captureProjectSource}=await import('./project-edit.mjs');return captureProjectSource(await db(),appId);},appId);
+  const replaceSource=(tab,source)=>tab.evaluate(async({appId,source})=>{const {workspace:db}=await import('./inference.js');const database=await db();await new Promise((resolve,reject)=>{const tx=database.transaction(['files','refs'],'readwrite');tx.oncomplete=resolve;tx.onabort=()=>reject(Error('fixture source transaction aborted'));const files=tx.objectStore('files');files.delete(IDBKeyRange.bound(appId+':',appId+':￿'));for(const [name,text] of source.files)files.put(text,appId+':'+name);tx.objectStore('refs').put(source.reference,appId+':main');});},{appId,source});
   await call(peer,'edit-app-file',{appId,filePath:'recovery.txt',content:'external committed source'});
   const external=await capture(peer);
   await call(peer,'edit-app-file',{appId,filePath:'recovery.txt',content:'owner original source'});

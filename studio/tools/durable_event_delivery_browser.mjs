@@ -57,7 +57,7 @@ try {
     const updated=structuredClone(context);updated.generation=4;updated.envelope.generation=4;
     check((await call("forge:event-configure",{appId,context:updated})).ok,"new generation cannot configure");
     check((await call("forge:event-deliver",{appId,envelope:updated.envelope})).ok,"new generation cannot deliver");
-    const {db}=await import(new URL("inference.js",location.href));
+    const {workspace:db}=await import(new URL("inference.js",location.href));
     const {updateEventJournal}=await import(new URL("event-delivery.mjs",location.href));
     const database=await db(),guest=await window.ForgeKernel.load(path=>fetch(new URL(path,location.href)));
     let arrivals=0,release;const barrier=new Promise(resolve=>release=resolve);

@@ -44,6 +44,13 @@ test("the look comes from the brand's tokens: no colour of its own, in any theme
   assert.ok(section.includes("@media (pointer: coarse)") && section.includes("prefers-reduced-motion"));
 });
 
+test("studio/experience: the workspace speaks the experience module's sentences (FA-93)", () => {
+  const spec = read("../experience/src/FoundryExperience.lex.tex"), sidebar = read("../vendor/dyad/hologram.screens/AppSidebar.tsx");
+  const said = new Set([...sidebar.slice(sidebar.indexOf("const WORKSPACE_SAID"), sidebar.indexOf("function sayWorkspace")).matchAll(/[:=] "([^"]+)"/g)].map((m) => m[1]));
+  assert.equal(said.size, 6, "the sidebar says other than the six sentences");
+  for (const words of said) assert.ok(spec.includes(words), words);
+});
+
 test("studio/experience: centred popups, golden measures, tools on Settings, a quiet Home", () => {
   // The preferences are a LexLean module of their own, outside the kernel's proof inputs.
   const spec = read("../experience/src/FoundryExperience.lex.tex");

@@ -39,7 +39,7 @@ try {
     const versions = () => window.__host.get("versions", appId);
     const snapshot = async () => JSON.stringify(await Promise.all([get("prism/spec.json"), window.__host.all("files"), window.__host.get("refs", appId + ":main"), window.__host.get("refs", "prism:" + appId), versions()]));
     const module = "prism/" + lexlean.canonicalSource(fixture).name + ".lex.tex";
-    const { db } = await import(new URL("inference.js",location.href));
+    const { workspace: db } = await import(new URL("inference.js",location.href));
     const { captureBuildSource } = await import(new URL("build-source.mjs",location.href));
     const boundary = {derive:window.__host.kappa,readObject:key=>window.__host.get("objects",key),admit:(derived,expected)=>window.__host.core().run({op:"restore",derived,expected}).decision === "Accept"};
     const canonical = await captureBuildSource(await db(),appId,boundary);

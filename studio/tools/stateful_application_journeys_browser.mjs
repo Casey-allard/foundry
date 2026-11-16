@@ -58,7 +58,7 @@ try {
     let code;try{await run({});}catch(error){code=error.code;}check(code==='interactionStateStale','changed graph reused stale state');
     check((await run({reset:true})).output.state===0,'explicit reset failed');
     try{await call('edit-app-file',{appId,filePath:'prism/Application.lex.tex',content:'tampered'});throw Error('canonical write succeeded');}catch(error){check(error.code==='interactionApplicationMismatch','canonical authority was writable');}
-    const {db,kappa}=await import(new URL('inference.js',location.href)),database=await db();
+    const {workspace:db,kappa}=await import(new URL('inference.js',location.href)),database=await db();
     const {runStoredInteraction}=await import(new URL('interaction-state.mjs',location.href));
     const guest=await window.ForgeKernel.load(path=>fetch(new URL(path,location.href))),model=await (await fetch(new URL('interaction-model.lex.tex',location.href))).text();
     let arrivals=0,release;const barrier=new Promise(resolve=>release=resolve),delayed={dispatch:async bytes=>{if(++arrivals===2)release();await barrier;return guest.dispatch(bytes);}};

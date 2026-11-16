@@ -1,12 +1,12 @@
 {
  "spec": "hologram-forge/kernel/1",
  "application": "Forge kernel",
- "source": "https://raw.githubusercontent.com/UOR-Foundation/foundry/5f532f2352a8ca5c14c9d8aa1a1ddc9c311dcd66/studio/shell/kernel/kernel.holo",
- "digest": "blake3:9735d1bc7ae4dda36feb6c0da4ec53c4e1ec0157eccadd466992974b6f78c156",
+ "source": "https://raw.githubusercontent.com/UOR-Foundation/foundry/62add15f4cc420a82593f65765b07f686b93c06b/studio/shell/kernel/kernel.holo",
+ "digest": "blake3:f1c50fb298367ed10e324ff9ccfa755bfc11603611be5e186b4abaf39a04da89",
  "guest": {
   "path": "kernel/guest.wasm",
-  "sha256": "e99c9e85bc4af6a1feffae955b2100b0ab88dac12624f8c8ceabf731685a4bbb",
-  "bytes": 171547
+  "sha256": "bfd8947b93c43bd5941b73dc69c48e7cd06571e5b771b3a20448b876463c52e6",
+  "bytes": 173398
  },
  "limits": {
   "request": 32776,
@@ -61,6 +61,82 @@
   [
    "cnVsZSAwMTAwMDAwMDAyMDAwMDAwMDAwMDAwMDAxODAwMDAwMDAwMDAwMDAwMDEwMDAwMDAwMTAwMDAwMDAyMDAwMDAwMDEwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDQwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDIwMDAwMDAwMDAwMDAwMDAyMDAwMDAwMDMwMDAwMDAwNTAwMDAwMDAxMDAwMDAwMDAwMDAwMDA=",
    "bWFsZm9ybWVkUnVsZVJlcXVlc3Q="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMA==",
+   "b2s="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDAwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMA==",
+   "d29ya3NwYWNlRGV2aWNlUmVtb3ZlZA=="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDEwMDAwMDAwMTAwMDAwMA==",
+   "d29ya3NwYWNlU2Vzc2lvbkV4cGlyZWQ="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDAwMDAwMDAwMTAwMDAwMA==",
+   "d29ya3NwYWNlTm90T3duZXI="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDEwMDAwMDAwMDAwMDAwMA==",
+   "d29ya3NwYWNlS2V5U3RhbGU="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDEwMDAwMDA=",
+   "b2s="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDEwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDEwMDAwMDA=",
+   "d29ya3NwYWNlQ2xvc2Vk"
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMDAwMDAwMDAwMDEwMDAwMDA=",
+   "cmVjb3JkVGFtcGVyZWQ="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDAwMDAwMDA=",
+   "cmVjb3JkTWlzcGxhY2Vk"
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDIwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDEwMDAwMDA=",
+   "b2s="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDIwMDAwMDAwMTAwMDAwMDAwMDAwMDAwMDEwMDAwMDA=",
+   "cmVjb3JkVW5zZWFsZWQ="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDIwMDAwMDAwMTAwMDAwMDAxMDAwMDAwMDAwMDAwMDA=",
+   "d29ya3NwYWNlUXVvdGFFeGNlZWRlZA=="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDMwMDAwMDAwMTAwMDAwMDAwMDAwMDAw",
+   "b2s="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDMwMDAwMDAwMTAwMDAwMDAxMDAwMDAw",
+   "d29ya3NwYWNlQWxyZWFkeU1vdmVk"
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDQwMDAwMDAwMTAwMDAwMDAxMDAwMDAw",
+   "b2s="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDQwMDAwMDAwMTAwMDAwMDAwMDAwMDAw",
+   "c2VhbGVkQ29weU5vdENvbW1pdHRlZA=="
+  ],
+  [
+   "d29ya3NwYWNlIDAyMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxMDAwMDAwMDEwMDAwMDAwMTAwMDAwMA==",
+   "bWFsZm9ybWVkV29ya3NwYWNlUmVxdWVzdA=="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDMwMDAwMDAwMTAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+   "bWFsZm9ybWVkV29ya3NwYWNlUmVxdWVzdA=="
+  ],
+  [
+   "d29ya3NwYWNlIDAxMDAwMDAwMDkwMDAwMDAwMTAwMDAwMDAxMDAwMDAw",
+   "bWFsZm9ybWVkV29ya3NwYWNlUmVxdWVzdA=="
   ],
   [
    "cHJldmlldyAwMTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMTAwMDAwMDA3MDAwMDAwMDEwMDAwMDAwMjAwMDAwMDAzMDAwMDAwMDQwMDAwMDAwNTAwMDAwMDA2MDAwMDAwMDcwMDAwMDAwODAwMDAwMA==",

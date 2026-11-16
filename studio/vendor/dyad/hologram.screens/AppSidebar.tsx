@@ -26,6 +26,7 @@ import {
 import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
@@ -87,24 +88,28 @@ function PrismMark({ className }: { className?: string }) {
   );
 }
 
-// Prism ID is the Prism frame's own panel, so Foundry keeps the one id every Prism app keeps. The frame is
-// fetched on the first reach for it and run only if its bytes match its pointer's SHA-256, as an app page
-// runs it (site/app.mjs). It stays off screen: its panel is a centred popover in the top layer.
-const FRAME_HOST = "https://uor-foundation.github.io/template/frame/";
-let prismFrame: Promise<HTMLElement> | null = null;
-async function loadPrismFrame() {
-  const pointer = await (await fetch(new URL("current.json", FRAME_HOST), { cache: "no-cache" })).json();
-  const bytes = await (await fetch(new URL(pointer.module, FRAME_HOST))).arrayBuffer();
-  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
-  if (!/^[0-9a-f]{64}$/.test(pointer.sha256 ?? "") || digest !== pointer.sha256) throw Object.assign(new Error("prismFrameUnverified"), { code: "prismFrameUnverified" });
-  await import(/* @vite-ignore */ URL.createObjectURL(new Blob([bytes], { type: "text/javascript" })));
-  const frame = document.createElement("prism-frame");
-  frame.style.cssText = "position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)";
-  return document.body.appendChild(frame);
-}
+// Prism ID is the Prism frame's own panel, so Foundry keeps the one ID every Prism app keeps. The shell runs
+// the frame its lock pins (shell/inference.js, prismFrame); its panel is a centred popover in the top layer.
+declare global { interface Window { __prismFrame?: () => Promise<HTMLElement>; __workspaceTold?: string[] } }
 function openPrismId() {
-  prismFrame ??= loadPrismFrame().catch((error) => { prismFrame = null; throw error; });
-  prismFrame.then((frame) => frame.shadowRoot?.getElementById("account-panel")?.showPopover(), (error) => console.warn(`Prism id: ${error.code ?? error}`));
+  window.__prismFrame?.().then((frame) => frame.shadowRoot?.getElementById("account-panel")?.showPopover(), (error) => console.warn(`Prism ID: ${error}`));
+}
+// What the visitor is told about their work, by the kernel's answer (shell/inference.js, tell). Each sentence
+// is a statement of studio/experience/src/FoundryExperience.lex.tex.
+const WORKSPACE_SAID: Record<string, string> = {
+  workspaceMoved: "Your work is now sealed to your Prism ID. Only your devices can open it.",
+  workspaceDeviceRemoved: "This device was removed from your Prism ID, so the work it kept stays closed. You start fresh here.",
+  workspaceQuotaExceeded: "Your browser's storage is full, so this was not saved. Remove an app you no longer need, then try again.",
+  recordTampered: "Some of your work was changed outside Foundry, so it was left closed.",
+  recordMisplaced: "Some of your work was changed outside Foundry, so it was left closed.",
+  workspaceKeyStale: "This device is waiting for your Prism ID's newest key. Open Foundry on one of your other devices, then try again.",
+};
+const WORKSPACE_CLOSED = "Foundry could not reach your Prism ID, so your work stays closed for now.";
+function sayWorkspace(answer: string) {
+  const words = WORKSPACE_SAID[answer];
+  if (answer === "workspaceMoved" || answer === "workspaceDeviceRemoved") toast(words, { id: answer });
+  else if (words && answer !== "workspaceKeyStale") toast.error(words, { id: answer });
+  else toast.error(words ?? WORKSPACE_CLOSED, { id: answer, duration: Infinity, action: { label: "Try again", onClick: () => location.reload() } });
 }
 
 type Nav = { title: string; to: string; icon: LucideIcon; exact?: boolean };
@@ -159,6 +164,12 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
   const href = useLocation({ select: (l) => l.href });
   useEffect(() => { if (isMobile) setOpenMobile(false); }, [href, isMobile, setOpenMobile]);
+  useEffect(() => {
+    (window.__workspaceTold ?? []).forEach(sayWorkspace);
+    const said = (event: Event) => sayWorkspace((event as CustomEvent<string>).detail);
+    window.addEventListener("foundry:workspace", said);
+    return () => window.removeEventListener("foundry:workspace", said);
+  }, []);
   // A tooltip names an item of the collapsed rail. In the Sheet it is never shown, but the kit still opens it
   // when the Sheet focuses its first item, and the first Escape then closed that invisible tooltip, not the
   // Sheet. On a phone the items carry none.
