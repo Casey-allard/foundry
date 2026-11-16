@@ -26,6 +26,7 @@
 \importmodule{WorkOwnership}
 \importmodule{WorkProtocol}
 \importmodule{Workspace}
+\importmodule{WorkspaceProofs}
 \importmodule{Architecture}
 \importmodule{Foundation.Arch}
 \title{feature}
@@ -1340,24 +1341,24 @@ definition{
 }
 
 definition{
-  name: acceptWorkspaceWorkspaceWordsOwnerOpens,
+  name: acceptWorkspaceProofsWorkspaceWordsOwnerOpens,
   parameters: [],
   result: String,
-  body: "Workspace::workspaceWords_ownerOpens"
+  body: "WorkspaceProofs::workspaceWords_ownerOpens"
 }
 
 definition{
-  name: acceptWorkspaceWorkspaceWordsAnotherIdRefused,
+  name: acceptWorkspaceProofsWorkspaceWordsAnotherIdRefused,
   parameters: [],
   result: String,
-  body: "Workspace::workspaceWords_anotherIdRefused"
+  body: "WorkspaceProofs::workspaceWords_anotherIdRefused"
 }
 
 definition{
-  name: acceptWorkspaceWorkspaceWordsTamperedRecordRefused,
+  name: acceptWorkspaceProofsWorkspaceWordsTamperedRecordRefused,
   parameters: [],
   result: String,
-  body: "Workspace::workspaceWords_tamperedRecordRefused"
+  body: "WorkspaceProofs::workspaceWords_tamperedRecordRefused"
 }
 
 definition{
@@ -1672,7 +1673,7 @@ definition{
   name: featurePrismId,
   parameters: [],
   result: Foundation.Arch::Feature,
-  body: (record Foundation.Arch::Feature {statement := "Prism id (FA-88, FA-91): The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay; the kernel opens a private workspace only for that id and names every refusal.", calls := (cons "FoundrySpecification::prismIdBoundary" (cons "Workspace::dispatchWorkspace" (nil String))), acceptance := (cons "Features::acceptWorkspaceWorkspaceWordsOwnerOpens" (cons "Features::acceptWorkspaceWorkspaceWordsAnotherIdRefused" (cons "Features::acceptWorkspaceWorkspaceWordsTamperedRecordRefused" (cons "Features::testFA88" (cons "Features::testFA91" (nil String))))))})
+  body: (record Foundation.Arch::Feature {statement := "Prism id (FA-88, FA-91): The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay; the kernel opens a private workspace only for that id and names every refusal.", calls := (cons "FoundrySpecification::prismIdBoundary" (cons "Workspace::dispatchWorkspace" (nil String))), acceptance := (cons "Features::acceptWorkspaceProofsWorkspaceWordsOwnerOpens" (cons "Features::acceptWorkspaceProofsWorkspaceWordsAnotherIdRefused" (cons "Features::acceptWorkspaceProofsWorkspaceWordsTamperedRecordRefused" (cons "Features::testFA88" (cons "Features::testFA91" (nil String))))))})
 }
 
 definition{

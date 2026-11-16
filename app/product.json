@@ -917,9 +917,9 @@
         "store"
       ],
       "acceptance": [
-        "Workspace::workspaceWords_ownerOpens",
-        "Workspace::workspaceWords_anotherIdRefused",
-        "Workspace::workspaceWords_tamperedRecordRefused"
+        "WorkspaceProofs::workspaceWords_ownerOpens",
+        "WorkspaceProofs::workspaceWords_anotherIdRefused",
+        "WorkspaceProofs::workspaceWords_tamperedRecordRefused"
       ]
     },
     {
