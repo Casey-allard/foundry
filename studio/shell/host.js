@@ -90,7 +90,7 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 let core = null;
 const coreReady = inference.coreReady().then((c) => (core = c));
 const kappa = inference.kappa;
-const dbReady = inference.db();
+const dbReady = inference.workspace();
 // The Prism R4 decision is read once, while the studio starts, so a first turn does not wait to fetch it.
 r4Spec().catch(() => {});
 async function tx(store, mode, fn) { return storageRequest(await dbReady, store, mode, fn); }

@@ -38,7 +38,7 @@ try {
   await call(page,'set-user-settings',{selectedModel:DEVICE_MODEL});
   await page.evaluate(({appId,spec})=>window.__prism.rulesAfterTurn(appId,'<dyad-spec>'+JSON.stringify(spec)+'</dyad-spec>'),{appId,spec:fixture('rsvp')});
   const snapshot=()=>page.evaluate(async appId=>{
-    const {captureProjectSource}=await import('./project-edit.mjs'),{db}=await import('./inference.js');
+    const {captureProjectSource}=await import('./project-edit.mjs'),{workspace:db}=await import('./inference.js');
     const source=await captureProjectSource(await db(),appId);
     return {source,rules:await window.__prism.rulesOf(appId),versions:await window.__host.get('versions',appId),preview:await window.__host.get('refs',`preview:${appId}`),run:await window.electron.ipcRenderer.invoke('distributed-machine:subscribe',{protocolVersion:1,machineId:'app_run',encodedKey:{appId}})};
   },appId);

@@ -23,8 +23,8 @@ fn in_tab_kernel_verdict_fa_86() {
     );
     // A run that skipped, filtered or lost a test is not the oracle.
     for required in [
-        "# tests 7",
-        "# pass 7",
+        "# tests 8",
+        "# pass 8",
         "# fail 0",
         "# cancelled 0",
         "# skipped 0",
@@ -68,4 +68,27 @@ fn private_workspace_fa_91() {
         kernel.matches("request := 0x776f726b737061636520").count()
     );
     assert!(theorems >= 19 && kernel.contains("(workspaceAcceptance))))"));
+}
+
+/// `FA-93`: Studio keeps a visitor's work sealed to their Prism ID: each record is sealed as it is stored and opened as it is read, only as Foundry's Prism kernel answers; the work kept before moves in once; a removed device's work is cleared; and the visitor is told each outcome in one sentence
+///
+/// Here, every request Studio's sealed store makes, asked of the guest Studio pins; the sealing itself runs in
+/// Chromium in Studio CI (`studio/tools/storage_request_browser.mjs`), where the shell is built.
+#[test]
+fn private_workspace_fa_93() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let output = Command::new("node")
+        .args(["--test", "--test-reporter=tap"])
+        .arg(root.join("studio/tools/in_tab_kernel_verdict.test.mjs"))
+        .output()
+        .expect("the locked SDK supplies Node");
+    let report = String::from_utf8_lossy(&output.stdout);
+    let name = "the pinned guest answers every workspace request Studio makes, as Studio acts on it (FA-93)";
+    assert!(
+        output.status.success()
+            && report
+                .lines()
+                .any(|l| l.starts_with("ok ") && l.ends_with(name)),
+        "{report}"
+    );
 }

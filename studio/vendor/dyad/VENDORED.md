@@ -7,6 +7,9 @@ NOTICE, README.md, AGENTS.md.
 Removed: `src/pro/` (Functional Source License 1.1; not reused). Everything kept is Apache 2.0 per
 LICENSE.
 
+Removed: `src/__tests__/` (upstream's own unit tests and eval fixtures) and `src/window_infrastructure/chat_tab_session_storage.test.ts`, which read its fixtures. Foundry never runs them, and its
+typecheck (`tsconfig.hologram.json`, `tsconfig.hologram.dyad.json`) already excluded them.
+
 Changes to reused files are listed here, one line each, so upstream can be tracked:
 
 - `hologram.contracts.ts` (ours) also publishes imported input schemas as `window.__inputContracts`; the browser host validates and copies command inputs before effects, and returns typed refusals rather than synthesizing successful output.

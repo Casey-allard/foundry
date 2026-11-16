@@ -53,7 +53,7 @@ try {
   assert.equal(await page.locator("#permission-test-frame").getAttribute("src"),"about:blank");
   const revoked=await page.evaluate(id=>window.__host.get("refs","capabilities:"+id),previewId);assert.equal(revoked.serve,false);assert.deepEqual(revoked.network.endpoints,[]);
   const stale=await page.evaluate(async({id,record})=>{
-    const {commitPreviewPermission}=await import(new URL("preview-permissions.mjs",location.href));const {db}=await import(new URL("inference.js",location.href));
+    const {commitPreviewPermission}=await import(new URL("preview-permissions.mjs",location.href));const {workspace:db}=await import(new URL("inference.js",location.href));
     try {await commitPreviewPermission(await db(),id,{disclosure:{id,source:record.previewConsent.source,endpoints:record.network.endpoints},expires:Date.now()+10000},record);return "accepted";}catch(error){return error.code;}
   },{id:previewId,record:initial});assert.equal(stale,"previewPermissionChanged");
   await permissions.getByRole("button",{name:"Close permissions"}).click();
