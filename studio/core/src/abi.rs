@@ -16,13 +16,35 @@
 //!              document, the source manifest and the provenance; bytes travel as base64) and
 //!              validate-application (PrismPM's strict Holo/1 profile check)
 //!   Forge:     view
+//!   Sealing:   seal, open (the visitor's work, FA-93: hologram-space's PayloadCipher seam)
 //! Errors: {"error":"…"}.
 
 use crate::holo::archive::{compose_application, validate_application, ApplicationArchiveInput, ArchiveProvenance};
 use crate::{
     admitPage, holoPath, publishDecision, publishPreimage, sourceManifest, warmup, done, encodeCompletion, encodeDelta, encodeError, encodeFinal, encodeModels, encodeOpenRouterRequest, encodeRole, endpointReady, expertPage, fetchSource, firstTokenReady, headOf, loaderStart, networkDecision, objEntry, packRank, packed, pageAction, poolAdmit, prefetchOrder, preimages, previewPath, promote, restoreDecision, rootPreimage, route, snapshotPreimage, tablePage, view, Admission, Capabilities, Completion, Decision, Entry, Grant, Manifest, Message, Obj, PageAction, Priority, Project, Ref, Request, Route, Section, Shard, Source, Staging, Start, Tier,
 };
+use hologram::space::{seal_private, PayloadCipher};
 use serde_json::{json, Value};
+
+/// hologram-space's private payload seam, with the concrete cipher its reference impl names:
+/// ChaCha20-Poly1305 (spec 04 §Private). It never panics on ill-sized input.
+struct ChaCha;
+impl PayloadCipher for ChaCha {
+    fn seal(&self, key: &[u8], nonce: &[u8], plaintext: &[u8]) -> Vec<u8> {
+        use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, Key, KeyInit, Nonce};
+        if key.len() != 32 || nonce.len() != 12 {
+            return Vec::new();
+        }
+        ChaCha20Poly1305::new(Key::from_slice(key)).encrypt(Nonce::from_slice(nonce), plaintext).unwrap_or_default()
+    }
+    fn open(&self, key: &[u8], nonce: &[u8], ciphertext: &[u8]) -> Option<Vec<u8>> {
+        use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, Key, KeyInit, Nonce};
+        if key.len() != 32 || nonce.len() != 12 {
+            return None;
+        }
+        ChaCha20Poly1305::new(Key::from_slice(key)).decrypt(Nonce::from_slice(nonce), ciphertext).ok()
+    }
+}
 
 fn request(value: &Value) -> Result<Request, String> {
     let messages = value["messages"]
@@ -193,6 +215,22 @@ fn run(input: &[u8]) -> Value {
             json!({ "kappa": headOf(&refs, text(&value["branch"])) })
         }
         "view" => view_json(),
+        // Sealing: nonce ‖ ciphertext ‖ tag, the nonce convergent (seal_private), so one place's same value
+        // seals the same; anything that does not authenticate is recordTampered.
+        "seal" => match (bytes_of(&value["key"]), bytes_of(&value["bytes"])) {
+            (Ok(key), Ok(plain)) if key.len() == 32 => {
+                let (nonce, sealed) = seal_private(&ChaCha, &key, &plain);
+                json!({ "sealed": b64_encode(&[&nonce[..], &sealed].concat()) })
+            }
+            _ => json!({ "error": "seal takes a 32-byte key and base64 bytes" }),
+        },
+        "open" => match (bytes_of(&value["key"]), bytes_of(&value["sealed"])) {
+            (Ok(key), Ok(sealed)) if sealed.len() >= 12 => match ChaCha.open(&key, &sealed[..12], &sealed[12..]) {
+                Some(plain) => json!({ "bytes": b64_encode(&plain) }),
+                None => json!({ "error": "recordTampered" }),
+            },
+            _ => json!({ "error": "recordTampered" }),
+        },
         // Publish: the words and bytes the model owns, then PrismPM's own composer and validator.
         "publish-preimage" => json!({ "bytes": publishPreimage(text(&value["application"]), text(&value["version"]), text(&value["closure"]), text(&value["attestation"])) }),
         "source-manifest" => json!({ "bytes": sourceManifest(text(&value["leanManifest"]), text(&value["coverage"]), text(&value["kernel"]), text(&value["modelId"]), text(&value["semanticId"]), text(&value["sourceId"])) }),

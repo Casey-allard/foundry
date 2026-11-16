@@ -85,7 +85,10 @@ fn private_workspace_fa_93() {
     let report = String::from_utf8_lossy(&output.stdout);
     let name = "the pinned guest answers every workspace request Studio makes, as Studio acts on it (FA-93)";
     assert!(
-        output.status.success() && report.lines().any(|l| l.starts_with("ok ") && l.ends_with(name)),
+        output.status.success()
+            && report
+                .lines()
+                .any(|l| l.starts_with("ok ") && l.ends_with(name)),
         "{report}"
     );
 }

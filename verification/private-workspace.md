@@ -55,8 +55,12 @@ boundary key (UOR-Foundation/template FR-04, `frame.workspaceKey()`), which only
 which follows the ID when this browser joins it from another device or recovers it. Studio bundles the frame
 `frame.lock` pins (`vite.shell.config.mts`, `assets/prism-frame.js`), so it works offline and asks no network.
 `studio/shell/inference.js` (`workspace`) wraps the one database handle the host hands every writer: a value is
-sealed with Hologram's `seal_bytes` (ChaCha20-Poly1305, a fresh nonce each time) as it is put, and opened with
-`open_bytes` as it is read, inside the writer's own transaction, because the cipher is synchronous. The sealed
+sealed by the verified core as it is put and opened as it is read, inside the writer's own transaction, because
+the core runs synchronously. The cipher is hologram-space's `PayloadCipher` seam (`seal_private`, a convergent
+nonce) with ChaCha20-Poly1305 as the concrete cipher, the one the seam's reference impl names
+(`studio/core/src/abi.rs`, ops `seal` and `open`). It is not the holospaces wasm's `seal_bytes`: that module is
+6.5 MB, and waiting for it made a first visit's mobile LCP 31 s (the Performance gate refused it); `core.wasm` is
+loaded at start already and grew 13 KB. The sealed
 bytes carry the record's place (store and key), so a record copied elsewhere does not open there. No writer
 changed. Left plain: the grants and published `.holo` bytes the service worker reads (a `.holo` is public and
 checked by its address on read) and the audit it writes.

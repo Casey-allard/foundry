@@ -37,9 +37,14 @@ export let VIEW = null;
 export async function viewReady() { if (VIEW) return VIEW; const inline = document.getElementById("view"); VIEW = inline ? JSON.parse(inline.textContent) : (await coreReady()).run({ op: "view" }); return VIEW; }
 
 // ---- BLAKE3 addresses from the holospaces wasm (the same κ every daemon computes)
-let holospaces = null;
-const holospacesReady = () => (holospaces ??= import(new URL("q/pkg/holospaces_web.js", BASE).href).then(async (mod) => { if (typeof mod.default === "function") { try { await mod.default(); } catch (e) {} } return mod; }));
-export async function kappaReady() { const mod = await holospacesReady(); return (bytes) => String(mod.kappa(bytes)); }
+let kappaFn = null;
+export async function kappaReady() {
+  if (kappaFn) return kappaFn;
+  const mod = await import(new URL("q/pkg/holospaces_web.js", BASE).href);
+  if (typeof mod.default === "function") { try { await mod.default(); } catch (e) {} }
+  kappaFn = (bytes) => String(mod.kappa(bytes));
+  return kappaFn;
+}
 export async function kappa(bytes) { return (await kappaReady())(bytes); }
 
 // ---- the device store: one database for the builder and the seals. Seals are rows keyed by κ,
@@ -73,9 +78,9 @@ export const prismFrame = (globalThis.__prismFrame ??= () => (globalThis.__prism
 })));
 
 // ---- the visitor's work, sealed to their Prism ID (FA-93, verification/private-workspace.md). Each record
-// is sealed with Hologram's seal_bytes under the workspace key the Prism frame keeps for this origin, which
-// only a device of the visitor's Prism ID opens. seal_bytes is synchronous, so a record is sealed inside its
-// own transaction and no writer changes. Foundry's Prism kernel (app/src/Workspace.lex.tex) decides whether
+// is sealed by the verified core (ChaCha20-Poly1305 behind hologram-space's PayloadCipher seam) under the
+// workspace key the Prism frame keeps for this origin, which only a device of the visitor's Prism ID opens.
+// The core seals synchronously, so a record is sealed inside its own transaction and no writer changes. Foundry's Prism kernel (app/src/Workspace.lex.tex) decides whether
 // the workspace opens, the one move of the work kept before it, and each read and store: it answers every
 // case once, as the workspace opens. Left plain: what the service worker reads (the grants and published
 // .holo bytes, public and addressed by their content) and the audit it writes.
@@ -94,17 +99,22 @@ const refusal = (code) => Object.assign(new Error(code), { code });
 export const tell = (answer) => { (globalThis.__workspaceTold ??= []).push(answer); window.dispatchEvent(new CustomEvent("foundry:workspace", { detail: answer })); };
 const base64 = (bytes) => { let text = ""; for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode(...bytes.subarray(i, i + 32768)); return btoa(text); };
 const encode = (value) => enc.encode(JSON.stringify(value, function (name, v) { const raw = this[name]; return raw instanceof Uint8Array ? { $bytes: base64(raw) } : raw instanceof Date ? { $date: v } : v; }));
-const decode = (bytes) => JSON.parse(new TextDecoder().decode(bytes), (name, v) => (v?.$bytes !== undefined ? Uint8Array.from(atob(v.$bytes), (c) => c.charCodeAt(0)) : v?.$date !== undefined ? new Date(v.$date) : v));
+const unbase64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+const decode = (bytes) => JSON.parse(new TextDecoder().decode(bytes), (name, v) => (v?.$bytes !== undefined ? unbase64(v.$bytes) : v?.$date !== undefined ? new Date(v.$date) : v));
 const wrap = (target, own) => new Proxy(target, { get: (t, p) => (p in own ? own[p] : typeof t[p] === "function" ? t[p].bind(t) : t[p]), set: (t, p, v) => ((t[p] = v), true) });
 let workspaceOpen = null;
 export const workspace = () => (workspaceOpen ??= openWorkspace());
 async function openWorkspace() {
-  const [mod, handle, frame] = await Promise.all([holospacesReady(), db(), prismFrame()]);
+  // The cipher is the verified core's (core.wasm, hologram-space's PayloadCipher seam): it is loaded at start
+  // already, and it seals synchronously, inside a writer's own transaction.
+  const [verified, handle, frame] = await Promise.all([coreReady(), db(), prismFrame()]);
   let secret = null, code = null;
   try { secret = await frame.workspaceKey(); } catch (error) { code = error?.code ?? "unavailable"; }
   let opened = await decide(0, ...openFacts(code));
-  // A published .holo is public and checked by its address: the one plain record a sealed store may hold.
-  const published = (store, key, value) => store === "objects" && value instanceof Uint8Array && String(mod.kappa(value)) === key;
+  // A published .holo is public, and holo.js keeps its bytes plain beside its ref: the one plain record a
+  // sealed store may hold.
+  const holos = new Set((await readKeys(handle, "refs")).filter((k) => typeof k === "string" && k.startsWith("holo:")).map((k) => k.slice(5)));
+  const published = (store, key, value) => store === "objects" && value instanceof Uint8Array && holos.has(key);
   // A removed device's work is sealed under a key it no longer holds: it is cleared, with anything else kept
   // where work belongs, so nothing left behind enters the new workspace, and the device starts again.
   if (opened === "workspaceDeviceRemoved") {
@@ -129,12 +139,12 @@ async function openWorkspace() {
     const answer = stores[+(usage + bytes.length < quota)];
     if (answer !== "ok") { tell(answer); throw refusal(answer); }
     usage += bytes.length;
-    return { sealedWork: mod.seal_bytes(secret, bytes) };
+    return { sealedWork: unbase64(verified.run({ op: "seal", key: base64(secret), bytes: base64(bytes) }).sealed) };
   };
   const open = (store, key, value) => {
     if (value === undefined || plainPlace(store, key) || published(store, key, value)) return value;
     let authentic = 0, bound = 0, kept;
-    try { const [where, inner] = decode(mod.open_bytes(secret, value.sealedWork)); [authentic, bound, kept] = [1, +(where === place(store, key)), inner]; } catch {}
+    try { const [where, inner] = decode(unbase64(verified.run({ op: "open", key: base64(secret), sealed: base64(value.sealedWork) }).bytes)); [authentic, bound, kept] = [1, +(where === place(store, key)), inner]; } catch {}
     const answer = reads[`${authentic}${bound}`];
     if (answer === "ok") return kept;
     tell(answer);
@@ -143,7 +153,6 @@ async function openWorkspace() {
   // copy is gone exactly when the sealed copy commits. A published .holo's own bytes stay as they are.
   const moved = (await readOne(handle, "refs", "workspace:moved")) !== undefined;
   if ((await decide(3, 1, +moved)) === "ok") {
-    const holos = new Set((await readKeys(handle, "refs")).filter((k) => typeof k === "string" && k.startsWith("holo:")).map((k) => k.slice(5)));
     let count = 0;
     await everyRecord(handle, "readwrite", (store, cursor) => {
       if (isSealed(cursor.value) || plainPlace(store, cursor.key) || (store === "objects" && holos.has(cursor.key))) return;
