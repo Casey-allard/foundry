@@ -1418,6 +1418,13 @@ definition{
 }
 
 definition{
+  name: testFA92,
+  parameters: [],
+  result: String,
+  body: "crates/conformance/tests/sidebar_tool_access.rs::theater_fa_92"
+}
+
+definition{
   name: testFA24,
   parameters: [],
   result: String,
@@ -1691,6 +1698,13 @@ definition{
 }
 
 definition{
+  name: featureTheater,
+  parameters: [],
+  result: Foundation.Arch::Feature,
+  body: (record Foundation.Arch::Feature {statement := "Theater (FA-92): Prism apps play one after another on a stage beside an up next rail, each run as the build preview runs it.", calls := (cons "FoundrySpecification::theaterBoundary" (nil String)), acceptance := (cons "Features::testFA92" (nil String))})
+}
+
+definition{
   name: featureReleaseIntegration,
   parameters: [],
   result: Foundation.Arch::Feature,
@@ -1768,6 +1782,13 @@ definition{
 }
 
 definition{
+  name: screenTheater,
+  parameters: [],
+  result: Foundation.Arch::Feature,
+  body: (record Foundation.Arch::Feature {statement := "Theater screen, for the app builder: Prism apps play one after another on a stage, with what plays next beside it, and one is taken to the builder.", calls := (cons "Features::featureTheater" (cons "Features::featureProjectStore" (cons "Features::featureVersionsAndPreview" (cons "Features::featureHostBoundary" (nil String))))), acceptance := (cons "Features::featureTheater" (cons "Features::featureProjectStore" (cons "Features::featureVersionsAndPreview" (cons "Features::featureHostBoundary" (nil String)))))})
+}
+
+definition{
   name: screenSettings,
   parameters: [],
   result: Foundation.Arch::Feature,
@@ -1814,6 +1835,13 @@ definition{
   parameters: [],
   result: Foundation.Arch::Journey,
   body: (record Foundation.Arch::Journey {actor := "Architecture::stakeholderAppBuilder", steps := (cons "Features::screenApps" (cons "Features::screenAppDetails" (cons "Features::screenCode" (cons "Features::screenChat" (nil String)))))})
+}
+
+definition{
+  name: journeyWatchApps,
+  parameters: [],
+  result: Foundation.Arch::Journey,
+  body: (record Foundation.Arch::Journey {actor := "Architecture::stakeholderAppBuilder", steps := (cons "Features::screenTheater" (cons "Features::screenAppDetails" (cons "Features::screenChat" (nil String))))})
 }
 
 definition{

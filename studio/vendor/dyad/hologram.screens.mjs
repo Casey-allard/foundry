@@ -149,6 +149,18 @@ const SCREEN_PATCHES = [
             <p className="text-muted-foreground">Themes, prompts and media you can use in any app.</p>`,
   },
   {
+    // Theater (FA-92) lives in the floor's module, which already holds the catalogue, the covers and the
+    // bookmarks it plays from, so the route is declared here rather than in a route file of its own.
+    file: "src/router.ts",
+    from: `import { mediaRoute } from "./routes/media";`,
+    to: `import { mediaRoute } from "./routes/media";
+import { Route } from "@tanstack/react-router";
+import { TheaterPage } from "./components/FeaturedAppShowcase";
+const theaterRoute = new Route({ getParentRoute: () => rootRoute, path: "/theater", component: TheaterPage,
+  validateSearch: (search: Record<string, unknown>): { play?: string } => (typeof search.play === "string" ? { play: search.play } : {}) });`,
+  },
+  { file: "src/router.ts", from: `  mediaRoute,\n  chatRoute,`, to: `  mediaRoute,\n  theaterRoute,\n  chatRoute,` },
+  {
     // The page sits in the sidebar's inset, under a site header, as in dashboard-01.
     file: "src/app/layout.tsx",
     from: `import { AppSidebar } from "@/components/app-sidebar";`,

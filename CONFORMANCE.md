@@ -552,6 +552,12 @@ model does not sanction.
 | `TL-27` | `build` | The time an app or a site was last seen never moves back |
 | `TL-28` | `build` | The device never keeps more than 256 apps |
 
+## theater
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `FA-92` | `build` | Theater, right after Library in the sidebar, plays Prism apps one after another on a stage beside an up next rail, under the build preview's own sandbox, with the floor's catalogue, covers and bookmarks, and its look is the experience spec's five Theater statements |
+
 ## verified-host-bundle
 
 | ID | Level | Statement |

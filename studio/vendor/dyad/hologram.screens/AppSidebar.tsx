@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   Menu,
   MessageSquare,
+  MonitorPlay,
   Search,
   Settings,
   Star,
@@ -112,6 +113,7 @@ const NAV: Nav[] = [
   { title: "Apps", to: "/apps", icon: LayoutGrid },
   { title: "Templates", to: "/templates", icon: Store },
   { title: "Library", to: "/library", icon: BookOpen },
+  { title: "Theater", to: "/theater", icon: MonitorPlay },
   { title: "Plugins", to: "/plugins", icon: Blocks },
 ];
 // What the visitor keeps in the sidebar; the rest waits under More. Home, Search and Apps always stay. The choice is a
@@ -379,6 +381,7 @@ const TITLES: [string, string][] = [
   ["/apps", "Apps"],
   ["/templates", "Templates"],
   ["/library", "Library"],
+  ["/theater", "Theater"],
   ["/plugins", "Plugins"],
   ["/settings", "Settings"],
 ];
