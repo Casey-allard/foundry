@@ -59,3 +59,34 @@ Where it was run. `prismpm --project app verify` in the SDK image `prismpm.lock`
 machine: its Lean stage allows 600 seconds, and compiling the SDK's runtime from cold took longer before reaching
 any project module (`PP5007: application-lean timed out`). The proofs above used `prism-code` 0.8.0 with the
 local Lean toolchain; CI runs the gate in the SDK image.
+
+## Which device's copy wins (FA-94)
+
+Authority: `FA-94` in `model/ids.toml`, scenario in `features/suites/private-workspace.feature`.
+
+Why: two devices of one Prism ID each keep the visitor's work, and when they meet each must decide, for every
+thing the other sends, whether to take it or keep its own, and both must end with the same copy.
+
+How: a sixth kind of workspace request, 5, merge a record another device sent. Its facts are whether the
+workspace is open, the place syncs (it is not one of this device's own), the sealed bytes are authentic, the record
+is the one its place names, it fits, this device holds the place, the sent record is a deletion, both times as
+high and low 32-bit words, and whether the sender wins a tie. `Workspace::mergeCode` answers `take` for a newer
+copy, a place this device does not hold, or a tie the sender wins, and `keep` otherwise; before that it refuses,
+by name, a closed workspace, a device-local place (`recordLocalOnly`), an unauthentic or misplaced record, and a
+copy over quota unless it is a deletion. A merge request is 14 words, 122 bytes, inside the 128-byte wire.
+
+Evidence:
+
+- Three theorems in `app/src/WorkspaceProofs.lex.tex`, each that no request meets a `breaks` condition:
+  `mergeNeverTakesOlderHolds` (an older copy is never taken), `mergeConvergesHolds` (two devices exchanging one
+  place, the tie going one way on each, never both take, whatever else holds), and
+  `mergeTakesOnlyWhatMayEnterHolds` (nothing closed, device-local, unauthentic, misplaced or over quota enters).
+- Thirteen `workspaceWords_merge` theorems Lean proves by evaluation, each also an acceptance vector the guest
+  replays: newer taken, older kept, the high word deciding, a tie won and lost, an absent place, each refusal, a
+  deletion over quota taken, and a short request refused.
+- `private_workspace_fa_94` (`crates/conformance/tests/in_tab_kernel_verdict.rs`) holds the dispatch arm, the
+  three theorems, and the merge words to the merge vectors one for one; `private_workspace_fa_91` still holds
+  every workspace word to every workspace vector (32). `application_main_integration.test.mjs` counts 368.
+
+Before the model, `private_workspace_fa_94` failed (`3 passed; 1 failed`); after it, 4 passed.
+

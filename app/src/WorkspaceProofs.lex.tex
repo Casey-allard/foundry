@@ -275,5 +275,154 @@ theorem{
   proof: reflexivity{},
   axioms: []
 }
+
+definition{
+  name: breaksMergeNeverTakesOlder,
+  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  result: Bool,
+  body: (((((rHi * 4294967296) + rLo) <? ((lHi * 4294967296) + lLo))) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
+}
+
+theorem{
+  name: mergeNeverTakesOlderHolds,
+  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within gone rHi rLo lHi lLo wins) = false),
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeNeverTakesOlder]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: breaksMergeConverges,
+  parameters: [aOpened : Nat, aSyncs : Nat, aAuthentic : Nat, aBound : Nat, aWithin : Nat, aGone : Nat, bOpened : Nat, bSyncs : Nat, bAuthentic : Nat, bBound : Nat, bWithin : Nat, bGone : Nat, aHi : Nat, aLo : Nat, bHi : Nat, bLo : Nat, wins : Nat, other : Nat],
+  result: Bool,
+  body: ((((wins + other) =? 1) && ((Workspace::mergeCode aOpened aSyncs aAuthentic aBound aWithin 1 aGone bHi bLo aHi aLo wins) =? 13)) && ((Workspace::mergeCode bOpened bSyncs bAuthentic bBound bWithin 1 bGone aHi aLo bHi bLo other) =? 13))
+}
+
+theorem{
+  name: mergeConvergesHolds,
+  parameters: [aOpened : Nat, aSyncs : Nat, aAuthentic : Nat, aBound : Nat, aWithin : Nat, aGone : Nat, bOpened : Nat, bSyncs : Nat, bAuthentic : Nat, bBound : Nat, bWithin : Nat, bGone : Nat, aHi : Nat, aLo : Nat, bHi : Nat, bLo : Nat, wins : Nat, other : Nat],
+  statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aGone bOpened bSyncs bAuthentic bBound bWithin bGone aHi aLo bHi bLo wins other) = false),
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeConverges]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: breaksMergeTakesOnlyWhatMayEnter,
+  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, present : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  result: Bool,
+  body: ((((((not (opened =? 1)) || (not (syncs =? 1))) || (not (authentic =? 1))) || (not (bound =? 1))) || ((not (within =? 1)) && (not (gone =? 1)))) && ((Workspace::mergeCode opened syncs authentic bound within present gone rHi rLo lHi lLo wins) =? 13))
+}
+
+theorem{
+  name: mergeTakesOnlyWhatMayEnterHolds,
+  parameters: [opened : Nat, syncs : Nat, authentic : Nat, bound : Nat, within : Nat, present : Nat, gone : Nat, rHi : Nat, rLo : Nat, lHi : Nat, lLo : Nat, wins : Nat],
+  statement: ((breaksMergeTakesOnlyWhatMayEnter opened syncs authentic bound within present gone rHi rLo lHi lLo wins) = false),
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeTakesOnlyWhatMayEnter]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: workspaceWords_mergeNewerTaken,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x74616b65),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeOlderKept,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 1 (cons 0 (cons 2 (cons 0 (nil Nat)))))))))))))))) = 0x6b656570),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeHighWordDecides,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 1 (cons 0 (cons 0 (cons 4294967295 (cons 0 (nil Nat)))))))))))))))) = 0x74616b65),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeTieWonTaken,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 5 (cons 0 (cons 5 (cons 1 (nil Nat)))))))))))))))) = 0x74616b65),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeTieLostKept,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 5 (cons 0 (cons 5 (cons 0 (nil Nat)))))))))))))))) = 0x6b656570),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeAbsentTaken,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 0 (cons 1 (cons 0 (cons 9 (cons 0 (nil Nat)))))))))))))))) = 0x74616b65),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeTamperedRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 0 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x7265636f726454616d7065726564),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeMisplacedRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 0 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x7265636f72644d6973706c61636564),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeLocalOnlyRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 0 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x7265636f72644c6f63616c4f6e6c79),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeOverQuotaRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x776f726b737061636551756f74614578636565646564),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeDeletionOverQuotaTaken,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 1 (cons 1 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x74616b65),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeClosedRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 0 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (cons 0 (nil Nat)))))))))))))))) = 0x776f726b7370616365436c6f736564),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: workspaceWords_mergeShortRefused,
+  parameters: [],
+  statement: ((Workspace::workspaceAnswer (cons 1 (cons 5 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 0 (cons 0 (cons 2 (cons 0 (cons 1 (nil Nat))))))))))))))) = 0x6d616c666f726d6564576f726b737061636552657175657374),
+  proof: reflexivity{},
+  axioms: []
+}
 \end{semanticmodule}
 \end{lexlean}

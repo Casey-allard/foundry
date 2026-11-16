@@ -873,3 +873,9 @@ id = "FA-92"
 level = "build"
 suite = "theater"
 statement = "Theater, right after Library in the sidebar, plays Prism apps one after another on a stage beside an up next rail, under the build preview's own sandbox, with the floor's catalogue, covers and bookmarks, and its look is the experience spec's five Theater statements"
+
+[[id]]
+id = "FA-94"
+level = "build"
+suite = "private-workspace"
+statement = "Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters"
