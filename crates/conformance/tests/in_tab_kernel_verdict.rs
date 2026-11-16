@@ -53,3 +53,19 @@ fn rule_judge_fa_90() {
     assert_eq!(theorems, vectors);
     assert!(theorems >= 9);
 }
+
+/// `FA-91`: A private workspace opens only for the Prism id that owns it, on a device with a live session and its current boundary key; a record is read only when authentic and in place and stored only sealed; the workspace kept before an id moves in once; and Foundry's Prism kernel names every refusal
+#[test]
+fn private_workspace_fa_91() {
+    // Lean proves every workspaceWords theorem by evaluation (`just app`) and the kernel gate replays
+    // each as an acceptance vector in the compiled guest; this holds the two to each other and to dispatch.
+    let workspace = include_str!("../../../app/src/WorkspaceProofs.lex.tex");
+    let kernel = include_str!("../../../app/src/ForgeKernel.lex.tex");
+    assert!(kernel.contains("(Workspace::dispatchWorkspace (sliceOf value 10"));
+    let theorems = workspace.matches("name: workspaceWords_").count();
+    assert_eq!(
+        theorems,
+        kernel.matches("request := 0x776f726b737061636520").count()
+    );
+    assert!(theorems >= 19 && kernel.contains("(workspaceAcceptance))))"));
+}

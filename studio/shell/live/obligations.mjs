@@ -9,7 +9,6 @@
 // the obligations whose key is new; every other one is a hit. That cache is the delta.
 
 const cache = new Map(); // key -> null (holds) | witness point
-export const cacheStats = () => ({ size: cache.size });
 
 // Keys are UOR content addresses: BLAKE3 of the obligation's canonical bytes, as everywhere in Foundry.
 import { kappa } from "../prism-code/src/blake3.mjs";

@@ -5,7 +5,7 @@
 //   npx vite build --config vite.shell.config.mts --base <base> --outDir dist --emptyOutDir
 // then python3 ../../scripts/stamp_shell.py copies dist/assets into shell/assets.
 //
-// The product is Prism AI Foundry, and the assistant in it is Prism: at build time every standalone "Dyad" word in the renderer's sources,
+// The product is Prism Foundry, and the assistant in it is Prism: at build time every standalone "Dyad" word in the renderer's sources,
 // locales and markdown becomes "Prism", and upstream's logo becomes Hologram's mark. Identifiers
 // (DyadError, dyad-write, __dyadIpcEnvelope) are untouched, so the contracts with the host hold.
 //

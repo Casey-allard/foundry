@@ -890,13 +890,6 @@ async function stepSpec(appId, way) {
     catch (e) { liveEditors.delete(appId); await refreshLive(appId); refuse(appId, null, e.message); throw e; }
   });
 }
-// What the user points at, said to the agent with the request, so "make this cheaper" has a "this".
-function pointedNote(appId) {
-  const p = livePointed.get(appId);
-  if (!p) return "";
-  const paths = Object.entries(p.edit).filter(([, v]) => Array.isArray(v)).map(([slot, v]) => `${slot} at ${JSON.stringify(v)}`).join("; ");
-  return `\n\n(The user is pointing at the ${p.kind} "${p.text}" on the screen${paths ? ": " + paths : ""}. To change it, write a <dyad-spec-patch>.)`;
-}
 // The built page takes the preview back from the live frame (an app's first turn opened the frame, then
 // wrote code, not rules): announced as a restart, so the renderer forgets the live frame's route.
 async function showBuilt(appId) {
@@ -1149,19 +1142,6 @@ const djb2 = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = (
 const now = () => new Date().toISOString();
 async function messagesOf(chatId) { const c = await get("chats", chatId); return c ? c.messages : []; }
 async function saveMessages(chatId, messages) { return updateStoredChat(await dbReady, chatId, { messages }); }
-// What the model is shown of the project: every path, and the source of the files a visitor's app
-// is made of; the shadcn ui library files are named, not pasted, since the model knows them.
-async function codebaseOf(appId, source) {
-  const captured = source ? new Map(source.files) : null;
-  const paths = captured ? [...captured.keys()] : await filesOf(appId);
-  const parts = [];
-  for (const p of paths) {
-    if (p.startsWith("src/components/ui/")) continue;
-    const c = captured ? captured.get(p) : await get("files", appId + ":" + p);
-    parts.push(`<dyad-file path="${p}">\n${c}\n</dyad-file>`);
-  }
-  return "Files in the project:\n" + paths.join("\n") + "\n\n" + parts.join("\n\n");
-}
 // ---- proved rules. An app that decides something carries prism/spec.json, a Prism spec. Its build
 // phase (drafting, checked, proving, proved, published) is the Forge kernel's answer, never this
 // file's: the kernel is the Prism app whose state machine Lean proves (FK-01 to FK-04), so the chat

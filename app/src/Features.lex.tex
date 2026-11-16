@@ -25,6 +25,8 @@
 \importmodule{VersionPreviewProtocol}
 \importmodule{WorkOwnership}
 \importmodule{WorkProtocol}
+\importmodule{Workspace}
+\importmodule{WorkspaceProofs}
 \importmodule{Architecture}
 \importmodule{Foundation.Arch}
 \title{feature}
@@ -1339,10 +1341,38 @@ definition{
 }
 
 definition{
+  name: acceptWorkspaceProofsWorkspaceWordsOwnerOpens,
+  parameters: [],
+  result: String,
+  body: "WorkspaceProofs::workspaceWords_ownerOpens"
+}
+
+definition{
+  name: acceptWorkspaceProofsWorkspaceWordsAnotherIdRefused,
+  parameters: [],
+  result: String,
+  body: "WorkspaceProofs::workspaceWords_anotherIdRefused"
+}
+
+definition{
+  name: acceptWorkspaceProofsWorkspaceWordsTamperedRecordRefused,
+  parameters: [],
+  result: String,
+  body: "WorkspaceProofs::workspaceWords_tamperedRecordRefused"
+}
+
+definition{
   name: testFA88,
   parameters: [],
   result: String,
   body: "crates/conformance/tests/prism_id.rs::prism_id_fa_88"
+}
+
+definition{
+  name: testFA91,
+  parameters: [],
+  result: String,
+  body: "crates/conformance/tests/in_tab_kernel_verdict.rs::private_workspace_fa_91"
 }
 
 definition{
@@ -1643,7 +1673,7 @@ definition{
   name: featurePrismId,
   parameters: [],
   result: Foundation.Arch::Feature,
-  body: (record Foundation.Arch::Feature {statement := "Prism id (FA-88): The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay.", calls := (cons "FoundrySpecification::prismIdBoundary" (nil String)), acceptance := (cons "Features::testFA88" (nil String))})
+  body: (record Foundation.Arch::Feature {statement := "Prism id (FA-88, FA-91): The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay; the kernel opens a private workspace only for that id and names every refusal.", calls := (cons "FoundrySpecification::prismIdBoundary" (cons "Workspace::dispatchWorkspace" (nil String))), acceptance := (cons "Features::acceptWorkspaceProofsWorkspaceWordsOwnerOpens" (cons "Features::acceptWorkspaceProofsWorkspaceWordsAnotherIdRefused" (cons "Features::acceptWorkspaceProofsWorkspaceWordsTamperedRecordRefused" (cons "Features::testFA88" (cons "Features::testFA91" (nil String))))))})
 }
 
 definition{
@@ -1671,7 +1701,7 @@ definition{
   name: screenStudioShell,
   parameters: [],
   result: Foundation.Arch::Feature,
-  body: (record Foundation.Arch::Feature {statement := "Studio shell screen, for the app builder: Foundry opens at once in the tab: the sidebar, the title bar and the Prism frame, with no sign-in and the shell served from its verified closure.", calls := (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))), acceptance := (cons "Features::acceptStudioShellBudget" (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))))})
+  body: (record Foundation.Arch::Feature {statement := "Studio shell screen, for the app builder: Foundry opens at once in the tab: the sidebar, with Search (a centred palette over the apps and chats in memory, Ctrl or Cmd K) under Home, More for the items the visitor tucks away (Edit sidebar) and the Prism frame's Prism ID panel at its foot, and the title bar, with no sign-in and the shell served from its verified closure.", calls := (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))), acceptance := (cons "Features::acceptStudioShellBudget" (cons "Features::featureShellIntegrity" (cons "Features::featureWindowsAndTools" (cons "Features::featureHostBoundary" (cons "Features::featurePrivateTelemetry" (cons "Features::featureProjectStore" (cons "Features::featureChat" (cons "Features::featureLibrariesAndSettings" (cons "Features::featureOwnLanguageAndReasoning" (cons "Features::featureReleaseIntegration" (cons "Features::featureEffectGate" (cons "Features::featurePrismId" (nil String)))))))))))))})
 }
 
 definition{

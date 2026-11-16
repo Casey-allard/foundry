@@ -2,7 +2,7 @@
   "schema": "prism/product/1",
   "lastModified": "2026-11-14T00:00:00Z",
   "goal": "Turn an idea typed in a browser tab into a full Prism model, proved by Lean and shared as one self-verifying holo, with no sign-in and no model outside Foundry.",
-  "title": "Prism AI Foundry",
+  "title": "Prism Foundry",
   "repository": "UOR-Foundation/foundry",
   "license": "MIT OR Apache-2.0",
   "stakeholders": [
@@ -900,19 +900,27 @@
     },
     {
       "name": "Prism id",
-      "text": "The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay.",
+      "text": "The frame keeps one Prism id per visitor, stitch's, made on first touch with no sign-in; a session verifies only for its app, an active device and its time, and linking, removal and recovery are quiet panel actions over stitch's relay; the kernel opens a private workspace only for that id and names every refusal.",
       "ids": [
-        "FA-88"
+        "FA-88",
+        "FA-91"
       ],
       "calls": [
-        "FoundrySpecification::prismIdBoundary"
+        "FoundrySpecification::prismIdBoundary",
+        "Workspace::dispatchWorkspace"
       ],
       "registry": [],
       "components": [
         "frame",
-        "relay"
+        "relay",
+        "kernel",
+        "store"
       ],
-      "acceptance": []
+      "acceptance": [
+        "WorkspaceProofs::workspaceWords_ownerOpens",
+        "WorkspaceProofs::workspaceWords_anotherIdRefused",
+        "WorkspaceProofs::workspaceWords_tamperedRecordRefused"
+      ]
     },
     {
       "name": "Libraries and settings",
@@ -1488,7 +1496,7 @@
     {
       "name": "Studio shell",
       "stakeholder": "App builder",
-      "text": "Foundry opens at once in the tab: the sidebar, the title bar and the Prism frame, with no sign-in and the shell served from its verified closure.",
+      "text": "Foundry opens at once in the tab: the sidebar, with Search (a centred palette over the apps and chats in memory, Ctrl or Cmd K) under Home, More for the items the visitor tucks away (Edit sidebar) and the Prism frame's Prism ID panel at its foot, and the title bar, with no sign-in and the shell served from its verified closure.",
       "requires": [
         "Shell integrity",
         "Windows and tools",
