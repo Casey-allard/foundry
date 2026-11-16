@@ -29,8 +29,6 @@ export const SCREENS = {
   "src/hooks/useAppThumbnails.ts": "hologram.screens/useAppThumbnails.ts",
   // The home's floor: the apps already made, or, before the first one, the gallery's templates.
   "src/components/FeaturedAppShowcase.tsx": "hologram.screens/FeaturedAppShowcase.tsx",
-  // One search: the sidebar's palette, which the home input's app picker also opens.
-  "src/components/AppSearchDialog.tsx": "hologram.screens/SearchDialog.tsx",
 };
 
 // A page's body in the inset, as dashboard-01 spaces it: the site header names the page, so the page keeps
