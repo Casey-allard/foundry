@@ -1,7 +1,7 @@
 Feature: front-end-trace
 
   The front end drives the back end. A screen of app/product.json names the back-end features it
-  requires; studio/tools/foundry_surfaces.mjs walks its renderer code from vendor/dyad/src and
+  requires; studio/tools/foundry_surfaces.mjs walks its renderer code from vendor/prism/src and
   resolves every IPC call to its channel and the command-registry feature that answers it, and
   studio/tools/foundry_model.mjs refuses any call that no required feature owns.
 

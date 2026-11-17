@@ -40,12 +40,12 @@ fn sidebar_tool_access_fa_68() {
 fn theater_fa_92() {
     // The screen is read as built: the sidebar, the router patch and the floor's module that holds the stage.
     let spec = include_str!("../../../studio/experience/src/FoundryExperience.lex.tex");
-    let sidebar = include_str!("../../../studio/vendor/dyad/hologram.screens/AppSidebar.tsx");
-    let screens = include_str!("../../../studio/vendor/dyad/hologram.screens.mjs");
+    let sidebar = include_str!("../../../studio/vendor/prism/hologram.screens/AppSidebar.tsx");
+    let screens = include_str!("../../../studio/vendor/prism/hologram.screens.mjs");
     let theater =
-        include_str!("../../../studio/vendor/dyad/hologram.screens/FeaturedAppShowcase.tsx");
+        include_str!("../../../studio/vendor/prism/hologram.screens/FeaturedAppShowcase.tsx");
     let preview =
-        include_str!("../../../studio/vendor/dyad/src/components/preview_panel/PreviewIframe.tsx");
+        include_str!("../../../studio/vendor/prism/src/components/preview_panel/PreviewIframe.tsx");
     for name in [
         "theaterInSidebar",
         "theaterStage",

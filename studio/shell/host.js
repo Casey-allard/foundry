@@ -182,7 +182,7 @@ handlers.set("get-node-path", () => null);
 handlers.set("get-system-debug-info", async () => {
   const s = (await get("settings", "user")) || DEFAULT_SETTINGS;
   const m = s.selectedModel || {};
-  return { nodeVersion: null, pnpmVersion: null, nodePath: "esbuild in the tab", telemetryId: "web", telemetryConsent: "opted_out", telemetryUrl: "", dyadVersion: "1.15.0-web", platform: "web", architecture: navigator.userAgent.includes("WOW64") || navigator.userAgent.includes("x86_64") ? "x86_64" : "unknown", logs: "", updaterLogs: null, selectedLanguageModel: (m.provider ? m.provider + "/" : "") + (m.name || "") };
+  return { nodeVersion: null, pnpmVersion: null, nodePath: "esbuild in the tab", telemetryId: "web", telemetryConsent: "opted_out", telemetryUrl: "", prismVersion: "1.15.0-web", platform: "web", architecture: navigator.userAgent.includes("WOW64") || navigator.userAgent.includes("x86_64") ? "x86_64" : "unknown", logs: "", updaterLogs: null, selectedLanguageModel: (m.provider ? m.provider + "/" : "") + (m.name || "") };
 });
 // Foundry's reader is the one provider, already set up: it needs no key, GPU or download.
 const LOCAL = { id: "local", name: "In this browser", type: "custom", hasFreeTier: true, envVarName: "HOLOGRAM_DEVICE" };
@@ -624,7 +624,7 @@ async function buildPreview(appId) {
   const files = new Map(source.files);
   const pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
   const pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")]));
-  // Packages the model added with <dyad-add-dependency>: name or name@version, resolved by esm.sh.
+  // Packages the model added with <prism-add-dependency>: name or name@version, resolved by esm.sh.
   for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
   const react = pkgs.react, dom = pkgs["react-dom"];
   const imports = { react: `https://esm.sh/react@${react}`, "react/": `https://esm.sh/react@${react}/`, "react-dom": `https://esm.sh/react-dom@${dom}?external=react`, "react-dom/": `https://esm.sh/react-dom@${dom}&external=react/` };
@@ -844,7 +844,7 @@ function refuse(appId, key, message) {
   for (const [win, app] of liveWindows) if (app === appId && !win.closed) win.postMessage({ type: "live/refused", app: String(appId), key, message }, "*");
 }
 async function saveSpec(appId, spec, options = {}) {
-  const result = await rulesAfterTurn(appId, "<dyad-spec>" + JSON.stringify(spec).replaceAll("<", "\\u003c") + "</dyad-spec>", [], { onCommit: (oid) => emit("version-created", { appId, oid }), ...options });
+  const result = await rulesAfterTurn(appId, "<prism-spec>" + JSON.stringify(spec).replaceAll("<", "\\u003c") + "</prism-spec>", [], { onCommit: (oid) => emit("version-created", { appId, oid }), ...options });
   await refreshLive(appId);
   return result;
 }
@@ -1071,14 +1071,14 @@ window.__preview = buildPreview;
 function parsePrismTags(text) {
   const writes = [], deletes = [], renames = [], deps = [];
   const attr = (s, name) => { const m = s.match(new RegExp(name + '="([^"]*)"')); return m ? m[1] : null; };
-  for (const m of text.matchAll(/<dyad-write\s+([^>]*)>([\s\S]*?)<\/dyad-write>/g)) {
+  for (const m of text.matchAll(/<prism-write\s+([^>]*)>([\s\S]*?)<\/prism-write>/g)) {
     let content = m[2]; if (content.startsWith("\n")) content = content.slice(1); if (content.endsWith("\n")) content = content.slice(0, -1);
     const fence = content.match(/^```[\w-]*\n([\s\S]*?)\n```\s*$/); if (fence) content = fence[1];
     writes.push({ path: attr(m[1], "path"), description: attr(m[1], "description"), content });
   }
-  for (const m of text.matchAll(/<dyad-delete\s+([^>]*?)\s*\/?>/g)) deletes.push({ path: attr(m[1], "path") });
-  for (const m of text.matchAll(/<dyad-rename\s+([^>]*?)\s*\/?>/g)) renames.push({ from: attr(m[1], "from"), to: attr(m[1], "to") });
-  for (const m of text.matchAll(/<dyad-add-dependency\s+([^>]*?)\s*\/?>/g)) { const p = attr(m[1], "packages") || attr(m[1], "package"); if (p) deps.push(...p.split(/\s+/).filter(Boolean)); }
+  for (const m of text.matchAll(/<prism-delete\s+([^>]*?)\s*\/?>/g)) deletes.push({ path: attr(m[1], "path") });
+  for (const m of text.matchAll(/<prism-rename\s+([^>]*?)\s*\/?>/g)) renames.push({ from: attr(m[1], "from"), to: attr(m[1], "to") });
+  for (const m of text.matchAll(/<prism-add-dependency\s+([^>]*?)\s*\/?>/g)) { const p = attr(m[1], "packages") || attr(m[1], "package"); if (p) deps.push(...p.split(/\s+/).filter(Boolean)); }
   return { writes, deletes, renames, deps };
 }
 async function applyPrismTags(appId, tags, options = {}) {
@@ -1094,7 +1094,7 @@ window.__chat = { parsePrismTags, applyPrismTags };
 // ---- the chat stream machine. the renderer submits a turn only here: SUBMIT on the chat_stream
 // machine, then it watches the snapshot (admitting, streaming, finalizing, idle) and applies the
 // chunk events to the message it renders. The model is OpenRouter with the visitor's own key; the
-// prompt is the renderer's text tag build prompt, so the answer carries <dyad-write> blocks the host applies
+// prompt is the renderer's text tag build prompt, so the answer carries <prism-write> blocks the host applies
 // to the project, seals as a version, and the renderer then reloads the preview by itself.
 const chatActorEpoch=crypto.randomUUID();
 const chatActorId=chatId=>"web-chat_stream-"+chatId+"-"+chatActorEpoch;
@@ -1126,11 +1126,11 @@ if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message",
 addEventListener("beforeunload", (e) => { if (turnRunning()) { e.preventDefault(); e.returnValue = ""; } });
 // A turn a reload cut: the last message of a chat left as an open reasoning block or empty. Nothing runs
 // when the page starts, so such a message is never a live turn.
-const CUT = "\n\n<dyad-output type=\"warning\" message=\"This answer was interrupted: the page reloaded before it finished. Ask again.\"></dyad-output>";
+const CUT = "\n\n<prism-output type=\"warning\" message=\"This answer was interrupted: the page reloaded before it finished. Ask again.\"></prism-output>";
 async function markInterruptedTurns() {
   for (const chat of await all("chats")) {
     const last = chat && chat.messages && chat.messages[chat.messages.length - 1];
-    if (!last || last.role !== "assistant" || last.content.includes("<dyad-output")) continue;
+    if (!last || last.role !== "assistant" || last.content.includes("<prism-output")) continue;
     const open = /^<think>/.test(last.content) && !last.content.includes("</think>");
     if (!open && last.content.trim()) continue;
     last.content = (open ? last.content + "</think>" : last.content) + CUT;
@@ -1287,7 +1287,7 @@ async function rulesAfterTurn(appId, text, written = [], options = {}) {
     const presentation = modulePresentation(previous, lex.spec);
     if (presentation.code) return { changed: 0, source, card: `**Rules** · not read\n\n- ${presentation.error}\n\nAsk me to fix the module.` };
     presentationReset = presentation.reset;
-    text = "<dyad-spec>" + JSON.stringify(presentation.spec).replaceAll("<", "\\u003c") + "</dyad-spec>";
+    text = "<prism-spec>" + JSON.stringify(presentation.spec).replaceAll("<", "\\u003c") + "</prism-spec>";
   }
   const tag = prism.parseSpecTag(text);
   if (!tag?.spec && appShape.isAppShape(files.get(appShape.SOURCE_PATH))) return {changed:0,source,card:null};
@@ -1577,7 +1577,7 @@ async function approveTurn(chatId, appId, messages, userId, ref, intentId) {
     observing = false;
     try { await started?.cancel?.(); } catch (rollbackFailure) { failure = rollbackFailure; }
     if (!abort.signal.aborted || failure?.code !== "generationCancelled") error = String((failure && failure.message) || failure);
-    try { await show(error ? `<dyad-output type="error" message="${error.replace(/"/g, "'")}"></dyad-output>` : started?.submitted?.()
+    try { await show(error ? `<prism-output type="error" message="${error.replace(/"/g, "'")}"></prism-output>` : started?.submitted?.()
       ? "Stopped watching. Lean keeps working; the result is kept with the app's rules."
       : "Stopped before proof submission. No proof request was sent."); }
     catch (storageFailure) { error = String((storageFailure && storageFailure.message) || storageFailure); }
@@ -1708,7 +1708,7 @@ async function chatTurn(chatId, intent) {
       full = t;
       if (tm.turn === chatId) {
         if (!tm.token && t && !t.startsWith("<think>")) tmOnce("token");
-        if (!tm.complete && (t.includes("\\end{semanticmodule}") || t.includes("</prism-lexlean>") || t.includes("</dyad-spec>"))) tmOnce("complete");
+        if (!tm.complete && (t.includes("\\end{semanticmodule}") || t.includes("</prism-lexlean>") || t.includes("</prism-spec>"))) tmOnce("complete");
       }
       // The chat shows the answer without the module's text (prism.shownText); `full` keeps it for reading.
       const shown = execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full));
@@ -1717,7 +1717,7 @@ async function chatTurn(chatId, intent) {
       else emit("chat:response:chunk", { chatId, invocationRef: ref, streamingMessageId: asstId, streamingPatch: { offset: lcp, content: shown.slice(lcp), ...(lcp > 0 ? { prefixHash: djb2(shown.slice(0, lcp)) } : {}) } });
       lastSent = shown;
       // The rules as far as the model has written them go to the live frame now, not after the turn.
-      if (execution.sourceEffects && full.includes("<dyad-spec>")) {
+      if (execution.sourceEffects && full.includes("<prism-spec>")) {
         const raw = live.partialSpec(full);
         if (raw) { if (!liveShown.has(appId)) { liveShown.add(appId); showLive(appId).catch(() => liveShown.delete(appId)); } tmOnce("declaration"); pushLive(appId, raw, "draft"); }
       }
@@ -1751,7 +1751,7 @@ async function chatTurn(chatId, intent) {
     // own transaction changes that snapshot, so ownership checks cannot mistake our commit for an edit.
     if (execution.sourceEffects) await settleAppFrames(appId, abort.signal);
     assertGenerationActive(abort.signal);
-    const sm = full.match(/<dyad-chat-summary>([\s\S]*?)<\/dyad-chat-summary>/); summary = sm ? sm[1].trim() : undefined;
+    const sm = full.match(/<prism-chat-summary>([\s\S]*?)<\/prism-chat-summary>/); summary = sm ? sm[1].trim() : undefined;
     if (summary && (!chat.title || chat.title === "New chat")) { await updateStoredChat(await dbReady, chatId, { title: summary }); }
     if (execution.sourceEffects) {
       // Code a model wrote is never applied: the app's code and screen are projections of its module.
@@ -1763,7 +1763,7 @@ async function chatTurn(chatId, intent) {
       const turn = full;
       const spec = (await appAfterTurn(appId, turn, { signal: abort.signal, source: applied.source, onCommit })) || await rulesAfterTurn(appId, turn, [], { signal: abort.signal, source: applied.source, onCommit });
       const patchRefusals = [];
-      for (const match of full.matchAll(/<dyad-spec-patch>([\s\S]*?)<\/dyad-spec-patch>/g)) {
+      for (const match of full.matchAll(/<prism-spec-patch>([\s\S]*?)<\/prism-spec-patch>/g)) {
         assertGenerationActive(abort.signal);
         let ops; try { ops = JSON.parse(match[1]); } catch {}
         const list = ops ? (Array.isArray(ops) ? ops : [ops]) : [];
@@ -1801,7 +1801,7 @@ async function chatTurn(chatId, intent) {
     emit("chat:response:chunk", { chatId, invocationRef: ref, messages });
   } catch (e) {
     error = abort.signal.aborted ? null : String((e && e.message) || e);
-    messages[messages.length - 1] = { ...messages[messages.length - 1], commitHash: committed.at(-1) || null, content: (execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full))) + (updatedFiles ? "\n\nCommitted project changes were retained." : "") + (abort.signal.aborted ? "\n\n<dyad-output type=\"warning\" message=\"Response cancelled by user\"></dyad-output>" : error ? `\n\n<dyad-output type="error" message="${error.replace(/"/g, "'")}"></dyad-output>` : "") };
+    messages[messages.length - 1] = { ...messages[messages.length - 1], commitHash: committed.at(-1) || null, content: (execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full))) + (updatedFiles ? "\n\nCommitted project changes were retained." : "") + (abort.signal.aborted ? "\n\n<prism-output type=\"warning\" message=\"Response cancelled by user\"></prism-output>" : error ? `\n\n<prism-output type="error" message="${error.replace(/"/g, "'")}"></prism-output>` : "") };
     await saveMessages(chatId, messages);
     emit("chat:response:chunk", { chatId, invocationRef: ref, messages });
   } finally {
@@ -1858,7 +1858,7 @@ function dispatch(channel, args) {
   let captured;try{captured=structuredClone(args);}catch{captured=null;}
   return invokeBoundCommand(commandRegistry, channel, args, handlers.get(channel), (name, values, handler) => invokeHost(name, values, handler, output, output || input ? { schema: input } : null)).then(async envelope=>{
     const binding=commandRegistry.entries.find(c=>c.channel===channel),feature=commandRegistry.features.find(f=>f.id===binding?.feature);
-    if(envelope.ok&&feature?.effects.includes("storage")&&!/^(get-|list-|read-|count-|check-|window-infrastructure:|distributed-machine:(subscribe|unsubscribe))/.test(channel)){
+    if(envelope.ok&&feature?.effects.includes("storage")&&!/^([a-z-]+:)?(get|list|read|count|check)(-|$)|^(window-infrastructure:|distributed-machine:(subscribe|unsubscribe))/.test(channel)){
       const value=captured?.[0],appId=value?.appId??value?.encodedKey?.appId??envelope.value?.app?.id,chatId=value?.chatId??value?.encodedKey?.chatId??envelope.value?.chatId;
       const scopes=windowRecoveryScopes();if(Number.isSafeInteger(appId)&&appId>0)scopes.push({family:"app",appId});if(Number.isSafeInteger(chatId)&&chatId>0)scopes.push({family:"chat",chatId});await windowCoordination.invalidate(scopes).catch(()=>{});
     }return envelope;

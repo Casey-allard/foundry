@@ -16,7 +16,7 @@ test('worker activation retains verified complete closure and has no unverified 
  const worker=read('studio/shell/sw.template.js');assert.ok(worker.includes('ShellClosure.prepare(self.registration.scope, CLOSURE)'));assert.ok(worker.includes('File absent from the active shell'));assert.ok(!worker.includes('caches.open("assets")'));assert.ok(!worker.includes('async function fillOne('));
 });
 test('renderer integration retains real privacy projection and local editor while applying main improvements',()=>{
- const config=read('studio/vendor/dyad/vite.shell.config.mts'),screens=read('studio/vendor/dyad/hologram.screens.mjs');assert.ok(config.includes('hologram.editor.ts'));assert.ok(config.includes('import ${JSON.stringify(editor)}'));assert.ok(screens.includes('privacySource(rel, out)'));assert.ok(screens.includes('...LEAN'));assert.ok(screens.includes('home-suggestions'));
+ const config=read('studio/vendor/prism/vite.shell.config.mts'),screens=read('studio/vendor/prism/hologram.screens.mjs');assert.ok(config.includes('hologram.editor.ts'));assert.ok(config.includes('import ${JSON.stringify(editor)}'));assert.ok(screens.includes('privacySource(rel, out)'));assert.ok(screens.includes('...LEAN'));assert.ok(screens.includes('home-suggestions'));
  assert.ok(read('.github/workflows/studio.yml').includes('node tools/privacy_projection.mjs')); 
 });
 test('full Studio acceptance retains feature gates and canonical PR-only concurrency',()=>{
@@ -31,7 +31,7 @@ test('performance lane stages locked compiler and renderer before complete shell
  const workflow=read('.github/workflows/forge-perf.yml'),compiler=workflow.indexOf('npm ci --prefix runtime --ignore-scripts --no-audit --no-fund'),stage=workflow.indexOf('python3 ../../scripts/stamp_shell.py'),projection=workflow.indexOf('run: ./scripts/lane.sh');
  assert.ok(compiler>=0&&compiler<stage&&stage<projection);
  assert.ok(workflow.includes('node tools/perf_budget.mjs --browser'));
- assert.ok(workflow.includes('node vendor/dyad/node_modules/playwright-core/cli.js install --with-deps chromium'));assert.ok(!workflow.includes('npm install --no-audit --no-fund --global'));
- const performance=read('studio/tools/perf_budget.mjs');assert.ok(performance.includes('../vendor/dyad/node_modules/playwright-core/index.mjs'));assert.ok(performance.includes('/Open questions/.test(document.body.innerText)'));assert.ok(!performance.includes('Send this request'));assert.ok(!performance.includes('featherless'));assert.ok(!performance.includes('warmup.json'));assert.ok(!performance.includes('ui/index.html'));
+ assert.ok(workflow.includes('node vendor/prism/node_modules/playwright-core/cli.js install --with-deps chromium'));assert.ok(!workflow.includes('npm install --no-audit --no-fund --global'));
+ const performance=read('studio/tools/perf_budget.mjs');assert.ok(performance.includes('../vendor/prism/node_modules/playwright-core/index.mjs'));assert.ok(performance.includes('/Open questions/.test(document.body.innerText)'));assert.ok(!performance.includes('Send this request'));assert.ok(!performance.includes('featherless'));assert.ok(!performance.includes('warmup.json'));assert.ok(!performance.includes('ui/index.html'));
  const gate=read('studio/tools/live_lexlean.mjs');assert.ok(gate.includes('value?.code === "invalidCanonicalModule"'));assert.ok(gate.includes('value.message === "The canonical decision module is invalid or unsupported"'));assert.ok(gate.includes('canonical reconstruction retains the example decisions'));assert.ok(gate.includes('alternate numeric bounds require canonical reconstruction'));assert.ok(gate.includes('unexpanded guarantees cannot bypass declaration comparison'));
 });

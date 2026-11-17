@@ -5,10 +5,10 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { after, test } from "node:test";
-import { Window } from "../vendor/dyad/node_modules/happy-dom/lib/index.js";
-import { screenSource } from "../vendor/dyad/hologram.screens.mjs";
+import { Window } from "../vendor/prism/node_modules/happy-dom/lib/index.js";
+import { screenSource } from "../vendor/prism/hologram.screens.mjs";
 
-const require = createRequire(new URL("../vendor/dyad/package.json", import.meta.url));
+const require = createRequire(new URL("../vendor/prism/package.json", import.meta.url));
 const ts = require("typescript");
 const { parse: parseYaml } = require("yaml");
 const { act, createElement } = require("react");
@@ -64,14 +64,14 @@ for (const file of [
 // Load the same replacement the Vite renderer uses, then compile its unchanged Card and Keep.
 // Only the unused showcase hooks/router and the decorative icon are isolated from this component test.
 const upstream = fileURLToPath(
-  new URL("../vendor/dyad/src/components/FeaturedAppShowcase.tsx", import.meta.url),
+  new URL("../vendor/prism/src/components/FeaturedAppShowcase.tsx", import.meta.url),
 );
 const source = screenSource(upstream, fs.readFileSync(upstream, "utf8"));
 assert.equal(
   source,
   fs
     .readFileSync(
-      new URL("../vendor/dyad/hologram.screens/FeaturedAppShowcase.tsx", import.meta.url),
+      new URL("../vendor/prism/hologram.screens/FeaturedAppShowcase.tsx", import.meta.url),
       "utf8",
     )
     .replace(/\r\n/g, "\n"),
@@ -89,11 +89,11 @@ assert.deepEqual(compiled.diagnostics, []);
 const module = { exports: {} };
 const unusedImports = new Set([
   "@tanstack/react-router",
-  "@/hooks/useLoadApps",
-  "@/hooks/useOpenApp",
-  "@/hooks/useAppThumbnails",
-  "@/lib/sortApps",
+  "@/hooks/useLoadApps", "@/hooks/useOpenApp",
+  "@/hooks/useAppThumbnails", "@/lib/sortApps",
   "../../hologram.featured-apps.mjs",
+  // Theater's: the row plays and edits apps, which Card and Keep never reach.
+  ...["jotai", "@/atoms/chatAtoms", "@/hooks/useRunApp", "@/hooks/useAppRun", "@/components/ui/button", "@/lib/utils"],
 ]);
 vm.runInNewContext(
   compiled.outputText,

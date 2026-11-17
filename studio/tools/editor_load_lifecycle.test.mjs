@@ -3,8 +3,8 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
-import {LEAN} from '../vendor/dyad/hologram.lean.mjs';
-function projected(){let text=fs.readFileSync(new URL('../vendor/dyad/src/components/chat/monaco.ts',import.meta.url),'utf8');for(const patch of LEAN.filter(x=>x.file==='src/components/chat/monaco.ts')){assert.ok(text.includes(patch.from));text=text.replace(patch.from,patch.to);}return text.slice(text.indexOf('if (!IS_VITEST)'));}
+import {LEAN} from '../vendor/prism/hologram.lean.mjs';
+function projected(){let text=fs.readFileSync(new URL('../vendor/prism/src/components/chat/monaco.ts',import.meta.url),'utf8');for(const patch of LEAN.filter(x=>x.file==='src/components/chat/monaco.ts')){assert.ok(text.includes(patch.from));text=text.replace(patch.from,patch.to);}return text.slice(text.indexOf('if (!IS_VITEST)'));}
 function exercise(scenario){
  const script=`const assert=require('node:assert/strict'),vm=require('node:vm');
  const unhandled=[];process.on('unhandledRejection',reason=>unhandled.push(reason));
@@ -28,9 +28,9 @@ test('canonical lifecycle and mandatory actual browser gates remain registered',
 });
 
 test('locked loader source projection refuses drift and owns underlying promise rejection',async()=>{
- const {editorLoaderSource}=await import('../vendor/dyad/hologram.editor-loader.mjs');const id='/locked/node_modules/@monaco-editor/loader/lib/es/utils/makeCancelable.js',source=fs.readFileSync(new URL('./fixtures/editor-loader/makeCancelable.mjs',import.meta.url),'utf8');
+ const {editorLoaderSource}=await import('../vendor/prism/hologram.editor-loader.mjs');const id='/locked/node_modules/@monaco-editor/loader/lib/es/utils/makeCancelable.js',source=fs.readFileSync(new URL('./fixtures/editor-loader/makeCancelable.mjs',import.meta.url),'utf8');
  assert.equal(editorLoaderSource('/unrelated.js',source),null);for(const changed of [source+'\n',source.replace('promise.then','promise.finally'),''])assert.throws(()=>editorLoaderSource(id,changed),{code:'editorLoaderProjectionMismatch'});
  const code=editorLoaderSource(id,source);assert.ok(code.includes('}, reject);'));assert.ok(!code.includes('promise["catch"](reject)'));
  const result=spawnSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';const errors=[];process.on('unhandledRejection',e=>errors.push(e));const {default:wrap}=await import('data:text/javascript;base64,${Buffer.from(code).toString('base64')}');const failure=Error('private');assert.equal(await wrap(Promise.reject(failure)).catch(e=>e),failure);const pending=wrap(Promise.resolve(3));pending.cancel();assert.equal((await pending.catch(e=>e)).type,'cancelation');await new Promise(r=>setTimeout(r,10));assert.deepEqual(errors,[]);`],{encoding:'utf8',timeout:10000});assert.equal(result.status,0,result.stdout+result.stderr);
- const vite=fs.readFileSync(new URL('../vendor/dyad/vite.shell.config.mts',import.meta.url),'utf8');assert.ok(vite.includes('editorLoaderSource(file, code)'));assert.ok(vite.includes('if (!projectedEditorLoaders.size)'));
+ const vite=fs.readFileSync(new URL('../vendor/prism/vite.shell.config.mts',import.meta.url),'utf8');assert.ok(vite.includes('editorLoaderSource(file, code)'));assert.ok(vite.includes('if (!projectedEditorLoaders.size)'));
 });

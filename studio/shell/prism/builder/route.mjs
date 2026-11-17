@@ -18,7 +18,7 @@ export const PARTS = ["goal", "pattern", "machine", "stakeholders", "concerns", 
 export const PROMPT_RULES = `
 
 # Route the idea onto every feature of the app
-An app is a whole Prism model, not only its rules. After the <dyad-spec> block, write one <prism-prompt> block: JSON holding the rest of the app's prism/prompt/1, everything the spec does not say. Route what the user asked for onto each member; derive the rest from the rules, and leave out a member only when it adds nothing to what the rules imply.
+An app is a whole Prism model, not only its rules. After the <prism-spec> block, write one <prism-prompt> block: JSON holding the rest of the app's prism/prompt/1, everything the spec does not say. Route what the user asked for onto each member; derive the rest from the rules, and leave out a member only when it adds nothing to what the rules imply.
 - "goal": the goal in one sentence a developer would say.
 - "pattern": ${Object.entries(PATTERNS).map(([k, p]) => `"${k}" (${p.standard})`).join(", ")}. A stateMachine also writes "machine": {"state": <the choice field holding the state>, "initial", "final": [...]}.
 - "stakeholders": [{"name", "text", "concerns": [<concern names>]}], who the app is for; a Verifier is always added.

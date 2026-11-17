@@ -31,7 +31,7 @@ or test is added without the other two.
 | `contract_tc_01` | `Conformant` drops the `bootstrap` conjunct, or `dispatch` answers on `true` instead of `conformant` | both rejected |
 | `prismpm verify` | an acceptance vector set without the exact guest-allocation boundary | rejected (PP2009) |
 | `audit-bootstrap` | a floating/copied action, mutable SDK tag, changed universal file, narrowed boundary, shallow/credential-retaining checkout, copied project renderer, omitted standards lock, acceptance bypass, deploy-job signing privilege, incomplete release lifecycle, or a bootstrap that drops a native architecture from main or tags, cancels or replaces a main run, or skips runs by path, condition or matrix exclusion | all rejected |
-| `audit-prism` | a new non-Prism file (`studio/tools/planted.mjs`); 800 lines added to the gate's own source, `xtask/src/audit.rs`, beyond what the change removed; a shallow clone that hides the parent | all rejected: `1 new non-Prism file(s): studio/tools/planted.mjs`; `non-Prism implementation grew by 93 lines (483631 to 483724); grown: xtask/src/audit.rs +1203`; `the clone is shallow, so the parent commit, the ratchet's ceiling, cannot be read`. Comment and blank lines added to `studio/shell/host.js` pass |
+| `audit-prism` | a new non-Prism file (`studio/tools/planted.mjs`); 800 lines added to the gate's own source, `xtask/src/audit.rs`, beyond what the change removed; a shallow clone that hides the parent | all rejected: `1 new non-Prism file(s): studio/tools/planted.mjs`; `non-Prism implementation grew by 93 lines (483631 to 483724); grown: xtask/src/audit.rs +1203`; `the clone is shallow, so the parent commit, the ratchet's ceiling, cannot be read`. Comment and blank lines added to `studio/shell/host.js` pass. Moves, 2026-11-17: the refusal `if !added.is_empty()` restored in place of the file-count test made `admits_shrinking_and_growth_paid_for_by_deletion` fail on its moved file (`b/a.mjs`); restored, 9 passed, and the `studio/vendor/dyad` to `studio/vendor/prism` move measured 454,872 lines in 2,666 files against 454,875 in 2,666 |
 | `audit-reuse` | a push or pull-request trigger with no path filter, no `hashFiles` address and no stated exemption: `try-codespace.yml` without its `paths-ignore` on push, and on pull request; `pages.yml` with its keys no longer hashing files; `build.yml` with an empty exemption | all rejected |
 
 ### Forge kernel capability gate, FK-05 to FK-09
@@ -349,7 +349,10 @@ The ceiling is measured, not recorded: it is the commit's first parent. A pull
 request or merge queue run checks out a merge whose first parent is the base
 branch, and main's first parent is the previous main, so a removal lowers the
 ceiling as it merges, nothing is regenerated, and no file can raise it. Refused:
-a non-Prism file the parent lacks, and net growth in non-Prism lines. A shallow
+more non-Prism files than the parent had, and net growth in non-Prism lines. A
+moved or renamed file is not new: git cannot pair a rename that rewrites a short
+file's every line, so the gate counts files rather than following paths, and
+lines added in a move still count as growth. A shallow
 clone fails rather than passing without its ceiling.
 
 Baseline when the gate landed, measured on main at `c7ad40f`: 483,631 lines in

@@ -17,11 +17,11 @@ async function journal(name='enqueue'){const j=emptyChatQueue(1,2);j.state=struc
 const refuses=(fn,code)=>assert.rejects(fn,{code});
 test('imported schemas and immutable payload serialization are byte-bound to locked sources',()=>{
  const root=new URL('../',import.meta.url),lock=JSON.parse(fs.readFileSync(new URL('CHAT_CONTRACTS_LOCK.json',root)));
- assert.equal(hash(fs.readFileSync(new URL('vendor/dyad/package-lock.json',root))),lock.packageLockSha256);
+ assert.equal(hash(fs.readFileSync(new URL('vendor/prism/package-lock.json',root))),lock.packageLockSha256);
  assert.equal(hash(fs.readFileSync(new URL('tools/chat_contracts_projection.mjs',root))),lock.generatorSha256);
  assert.equal(hash(fs.readFileSync(new URL('shell/chat-contracts.mjs',root))),lock.output.sha256);
  assert.equal(hash(fs.readFileSync(new URL('shell/chat-contracts.LICENSE.txt',root))),lock.licenseSha256);
- for(const row of lock.inputs.filter(r=>!r.path.startsWith('node_modules/')))assert.equal(hash(fs.readFileSync(new URL('vendor/dyad/'+row.path,root))),row.sha256,row.path);
+ for(const row of lock.inputs.filter(r=>!r.path.startsWith('node_modules/')))assert.equal(hash(fs.readFileSync(new URL('vendor/prism/'+row.path,root))),row.sha256,row.path);
  assert.ok(fs.readFileSync(new URL('../.github/workflows/studio.yml',root),'utf8').includes('node tools/durable_chat_queue_browser.mjs'));
  assert.equal(ChatStreamIntentEventSchema.safeParse({type:'PAUSE_QUEUE'}).success,false);
  assert.ok(fs.readFileSync(new URL('../.github/workflows/studio.yml',root),'utf8').includes('node tools/chat_contracts_projection.mjs --check'));

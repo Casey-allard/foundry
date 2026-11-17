@@ -1,16 +1,16 @@
-// A sent prompt is on screen at once: the decisions (vendor/dyad/hologram.pending-message.mjs) and the
-// patches that apply them (vendor/dyad/hologram.pending-message-patches.mjs). The browser half is
+// A sent prompt is on screen at once: the decisions (vendor/prism/hologram.pending-message.mjs) and the
+// patches that apply them (vendor/prism/hologram.pending-message-patches.mjs). The browser half is
 // tools/instant_user_message_browser.mjs.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { pendingUserMessageFor, pendingUserMessageShown, restoredDraft } from "../vendor/dyad/hologram.pending-message.mjs";
-import { PENDING_MESSAGE_PATCHES } from "../vendor/dyad/hologram.pending-message-patches.mjs";
-import { screenSource } from "../vendor/dyad/hologram.screens.mjs";
+import { pendingUserMessageFor, pendingUserMessageShown, restoredDraft } from "../vendor/prism/hologram.pending-message.mjs";
+import { PENDING_MESSAGE_PATCHES } from "../vendor/prism/hologram.pending-message-patches.mjs";
+import { screenSource } from "../vendor/prism/hologram.screens.mjs";
 
-const dyad = (p) => fileURLToPath(new URL("../vendor/dyad/" + p, import.meta.url));
-const read = (p) => fs.readFileSync(dyad(p), "utf8").replace(/\r\n/g, "\n");
+const prism = (p) => fileURLToPath(new URL("../vendor/prism/" + p, import.meta.url));
+const read = (p) => fs.readFileSync(prism(p), "utf8").replace(/\r\n/g, "\n");
 
 test("only a text-only prompt stands in for its message", () => {
   assert.equal(pendingUserMessageFor({ prompt: "What does this rule decide?", attachmentCount: 0 }), "What does this rule decide?");
@@ -41,8 +41,8 @@ test("every patch applies once, and the pending prompt is presentation only", ()
   assert.ok(read("hologram.screens.mjs").includes("...PENDING_MESSAGE_PATCHES,"));
   assert.deepEqual([...new Set(PENDING_MESSAGE_PATCHES.map((p) => p.file))].sort(), ["src/components/chat/ChatInput.tsx", "src/components/chat/MessagesList.tsx"]);
   for (const patch of PENDING_MESSAGE_PATCHES) assert.equal(read(patch.file).split(patch.from).length, 2, `${patch.file}: ${patch.from.split("\n")[0]}`);
-  const input = screenSource(dyad("src/components/chat/ChatInput.tsx"), read("src/components/chat/ChatInput.tsx"));
-  const list = screenSource(dyad("src/components/chat/MessagesList.tsx"), read("src/components/chat/MessagesList.tsx"));
+  const input = screenSource(prism("src/components/chat/ChatInput.tsx"), read("src/components/chat/ChatInput.tsx"));
+  const list = screenSource(prism("src/components/chat/MessagesList.tsx"), read("src/components/chat/MessagesList.tsx"));
   for (const patch of PENDING_MESSAGE_PATCHES) assert.ok((patch.file.endsWith("ChatInput.tsx") ? input : list).includes(patch.to), patch.from.split("\n")[0]);
   // Shown before the send, withdrawn on every path that ends without a stored message, and left to the queue when queued.
   const at = (text) => { const i = input.indexOf(text); assert.ok(i >= 0, text); return i; };

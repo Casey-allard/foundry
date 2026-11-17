@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
-assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/dyad/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
+assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/prism/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
 for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "provenance.json"]) assert.ok(fs.existsSync(path.join(root, name)), `Build and project the actual shell first: ${name}`);
 const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".html": "text/html" };
@@ -38,7 +38,8 @@ try {
   const set=async selectedThemeId=>call(page,'set-user-settings',{selectedThemeId});
   const create=(tab,name)=>call(tab,'create-app',{name,initialChatMode:'build'});
   const refuse=async name=>{const result=await page.evaluate(async name=>{try{await window.electron.ipcRenderer.invoke('create-app',{name});return null;}catch(e){return e.code;}},name);assert.equal(result,'projectStorageFailed');};
-  const snapshot=()=>page.evaluate(async()=>Object.fromEntries(await Promise.all(['apps','chats','files','objects','refs','versions'].map(async s=>[s,await window.__host.all(s)]))));
+  // Project storage only: the window journal counts the tab's own bookkeeping, which runs beside every step.
+  const snapshot=()=>page.evaluate(async()=>Object.fromEntries(await Promise.all(['apps','chats','files','objects','refs','versions'].map(async s=>[s,(await window.__host.all(s)).filter(v=>v?.profile!=='foundry/windows/1')]))));
   await set('default');const builtin=await create(page,'initial-builtin');assert.equal(builtin.app.themeId,'default');
   await set('');const empty=await create(page,'initial-empty');assert.equal(empty.app.themeId,null);
   const theme=await call(page,'create-custom-theme',{name:'Initial',prompt:'INITIAL-THEME'});

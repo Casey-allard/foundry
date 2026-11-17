@@ -94,9 +94,9 @@ def staging():
     blob = fixture()
     with tempfile.TemporaryDirectory() as temporary:
         root = pathlib.Path(temporary)
-        (root / "vendor/dyad").mkdir(parents=True)
+        (root / "vendor/prism").mkdir(parents=True)
         (root / "shell").mkdir()
-        (root / "vendor/dyad/package-lock.json").write_text(json.dumps(lock(blob)))
+        (root / "vendor/prism/package-lock.json").write_text(json.dumps(lock(blob)))
         def transport(command, **options):
             assert command[:5] == ["npm", "pack", "--offline", "--ignore-scripts", "--json"]
             assert command[-1] == a.URL and options["timeout"] == 60 and options["check"] and options["capture_output"]

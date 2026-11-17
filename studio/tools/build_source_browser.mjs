@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import http from "node:http";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 const sources = new Map([
   ["/browser-chat-modes.mjs", fs.readFileSync(new URL("../shell/browser-chat-modes.mjs", import.meta.url))],
   ["/chat-mode-catalog.mjs", fs.readFileSync(new URL("../shell/chat-mode-catalog.mjs", import.meta.url))],

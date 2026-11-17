@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import http from "node:http";
 import { createHash } from "node:crypto";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const template = fs.readFileSync(new URL("../shell/sw.template.js", import.meta.url), "utf8");
 const verifier = fs.readFileSync(new URL("../shell/shell-cache.js", import.meta.url));

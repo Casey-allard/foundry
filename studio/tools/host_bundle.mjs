@@ -24,11 +24,11 @@ export function checkHostBundleBytes(shellRoot,output,receiptBytes){
 export function checkHostBundleCompiler(locked,version){
  try{if(JSON.parse(locked).packages?.['node_modules/esbuild']?.version!==version)throw 0;}catch{throw failure('hostBundleCompilerMismatch');}
 }
-export async function projectHostBundle({shellRoot=path.join(studio,'shell'),lockPath=path.join(studio,'vendor/dyad/package-lock.json'),modelPath=path.join(studio,'../app/src/FoundrySpecification.lex.tex'),check=false}={}){
+export async function projectHostBundle({shellRoot=path.join(studio,'shell'),lockPath=path.join(studio,'vendor/prism/package-lock.json'),modelPath=path.join(studio,'../app/src/FoundrySpecification.lex.tex'),check=false}={}){
  try{
   shellRoot=path.resolve(shellRoot);
   const locked=fs.readFileSync(lockPath),model=fs.readFileSync(modelPath),generatorBytes=fs.readFileSync(generator);
-  let esbuild;try{esbuild=await import('../vendor/dyad/node_modules/esbuild/lib/main.js');}catch{throw failure('hostBundleCompilerMismatch');}
+  let esbuild;try{esbuild=await import('../vendor/prism/node_modules/esbuild/lib/main.js');}catch{throw failure('hostBundleCompilerMismatch');}
   checkHostBundleCompiler(locked,esbuild.version);
   const {captured,relative,capture}=hostBundleInputs(shellRoot),dynamic=new Set();
   const result=await esbuild.build({absWorkingDir:shellRoot,entryPoints:['host.js'],outfile:'host.bundle.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,write:false,metafile:true,logLevel:'silent',plugins:[{name:'preserve-source-module-urls',setup(build){
@@ -58,7 +58,7 @@ export async function projectHostBundle({shellRoot=path.join(studio,'shell'),loc
   for(const input of Object.keys(result.metafile.inputs))if(!captured.has(relative(path.resolve(shellRoot,input))))throw failure('invalidHostBundleInput');
   for(const [rel,input] of captured)if(digest(fs.readFileSync(path.join(shellRoot,rel)))!==input.sha256)throw failure('invalidHostBundleInput');
   const output=Buffer.from(result.outputFiles[0].contents);
-  const receipt={schema:'foundry/host-bundle/1',authority:{path:'app/src/FoundrySpecification.lex.tex',sha256:digest(model)},generator:{path:'studio/tools/host_bundle.mjs',sha256:digest(generatorBytes)},compiler:{name:'esbuild',version:esbuild.version,lockPath:'studio/vendor/dyad/package-lock.json',lockSha256:digest(locked)},inputs:[...captured].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([name,input])=>({path:name,sha256:input.sha256,bytes:input.bytes.length})),dynamicImports:[...dynamic].sort(),output:{path:'host.bundle.js',sha256:digest(output),bytes:output.length}};
+  const receipt={schema:'foundry/host-bundle/1',authority:{path:'app/src/FoundrySpecification.lex.tex',sha256:digest(model)},generator:{path:'studio/tools/host_bundle.mjs',sha256:digest(generatorBytes)},compiler:{name:'esbuild',version:esbuild.version,lockPath:'studio/vendor/prism/package-lock.json',lockSha256:digest(locked)},inputs:[...captured].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([name,input])=>({path:name,sha256:input.sha256,bytes:input.bytes.length})),dynamicImports:[...dynamic].sort(),output:{path:'host.bundle.js',sha256:digest(output),bytes:output.length}};
   const receiptBytes=JSON.stringify(receipt,null,2)+'\n',bundlePath=path.join(shellRoot,'host.bundle.js'),receiptPath=path.join(shellRoot,'host-bundle.json');
   if(check){
    checkHostBundleBytes(shellRoot,output,receiptBytes);

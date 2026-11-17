@@ -138,34 +138,34 @@ EOF
     rm -f vendor/shadcn-ui/registry/new-york-v4/ui/fancy.tsx ;;
   rolled)
     # A screen that reaches for a primitive library itself instead of the kit's component.
-    cp vendor/dyad/src/pages/home.tsx /tmp/plant-home.tsx
-    sed -i '1i import { Tooltip as Rolled } from "@base-ui/react/tooltip"; console.log(Rolled);' vendor/dyad/src/pages/home.tsx
-    expect_fail bash -c 'cd vendor/dyad && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir /tmp/plant-dist --emptyOutDir'
-    cp /tmp/plant-home.tsx vendor/dyad/src/pages/home.tsx ;;
+    cp vendor/prism/src/pages/home.tsx /tmp/plant-home.tsx
+    sed -i '1i import { Tooltip as Rolled } from "@base-ui/react/tooltip"; console.log(Rolled);' vendor/prism/src/pages/home.tsx
+    expect_fail bash -c 'cd vendor/prism && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir /tmp/plant-dist --emptyOutDir'
+    cp /tmp/plant-home.tsx vendor/prism/src/pages/home.tsx ;;
   rewrite)
     # A Base UI render prop given a call, not an element: Radix's asChild cannot take it.
-    cp vendor/dyad/src/components/chat/AttachmentsList.tsx /tmp/plant-attachments.tsx
-    sed -i 's#<TooltipTrigger render={<div className="flex" />}>#<TooltipTrigger render={wrap()}>#' vendor/dyad/src/components/chat/AttachmentsList.tsx
-    expect_fail bash -c 'cd vendor/dyad && node hologram.typecheck.mjs'
-    cp /tmp/plant-attachments.tsx vendor/dyad/src/components/chat/AttachmentsList.tsx ;;
+    cp vendor/prism/src/components/chat/AttachmentsList.tsx /tmp/plant-attachments.tsx
+    sed -i 's#<TooltipTrigger render={<div className="flex" />}>#<TooltipTrigger render={wrap()}>#' vendor/prism/src/components/chat/AttachmentsList.tsx
+    expect_fail bash -c 'cd vendor/prism && node hologram.typecheck.mjs'
+    cp /tmp/plant-attachments.tsx vendor/prism/src/components/chat/AttachmentsList.tsx ;;
   passage)
     # An upstream edit to the layout the shell puts in the sidebar's inset: the patch must not silently miss.
-    cp vendor/dyad/src/app/layout.tsx /tmp/plant-layout.tsx
-    sed -i 's/<SubscriptionStatusBanner \/>/<SubscriptionStatusBanner compact \/>/' vendor/dyad/src/app/layout.tsx
-    expect_fail bash -c 'cd vendor/dyad && node hologram.typecheck.mjs'
-    cp /tmp/plant-layout.tsx vendor/dyad/src/app/layout.tsx ;;
+    cp vendor/prism/src/app/layout.tsx /tmp/plant-layout.tsx
+    sed -i 's/<SubscriptionStatusBanner \/>/<SubscriptionStatusBanner compact \/>/' vendor/prism/src/app/layout.tsx
+    expect_fail bash -c 'cd vendor/prism && node hologram.typecheck.mjs'
+    cp /tmp/plant-layout.tsx vendor/prism/src/app/layout.tsx ;;
   unapplied)
     # A patch aimed at a module the build never reads did nothing, silently, before the build asked.
-    cp vendor/dyad/hologram.lean.mjs /tmp/plant-lean.mjs
-    sed -i 's#\["src/routes/apps.ts", #["src/routes/apps.mts", #' vendor/dyad/hologram.lean.mjs
-    expect_fail bash -c 'cd vendor/dyad && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir /tmp/plant-dist --emptyOutDir'
-    cp /tmp/plant-lean.mjs vendor/dyad/hologram.lean.mjs ;;
+    cp vendor/prism/hologram.lean.mjs /tmp/plant-lean.mjs
+    sed -i 's#\["src/routes/apps.ts", #["src/routes/apps.mts", #' vendor/prism/hologram.lean.mjs
+    expect_fail bash -c 'cd vendor/prism && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir /tmp/plant-dist --emptyOutDir'
+    cp /tmp/plant-lean.mjs vendor/prism/hologram.lean.mjs ;;
   heavy)
     # The heaviest page pulled into the first load by one static import: what the route split exists to stop.
-    cp vendor/dyad/src/pages/home.tsx /tmp/plant-home.tsx
-    sed -i '1i import ChatPage from "./chat"; console.log(ChatPage);' vendor/dyad/src/pages/home.tsx
-    expect_fail bash -c 'cd vendor/dyad && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir dist --emptyOutDir && python3 ../../scripts/stamp_shell.py && cd ../.. && node tools/perf_budget.mjs'
-    cp /tmp/plant-home.tsx vendor/dyad/src/pages/home.tsx ;;
+    cp vendor/prism/src/pages/home.tsx /tmp/plant-home.tsx
+    sed -i '1i import ChatPage from "./chat"; console.log(ChatPage);' vendor/prism/src/pages/home.tsx
+    expect_fail bash -c 'cd vendor/prism && MSYS_NO_PATHCONV=1 npx vite build --config vite.shell.config.mts --base /foundry/ --outDir dist --emptyOutDir && python3 ../../scripts/stamp_shell.py && cd ../.. && node tools/perf_budget.mjs'
+    cp /tmp/plant-home.tsx vendor/prism/src/pages/home.tsx ;;
   table)
     # A table that answers differently from the rules: every answer, guarantee and diff built on it is wrong.
     cp shell/live/table.mjs /tmp/plant-table.mjs
@@ -230,11 +230,11 @@ EOF
     cp /tmp/plant-appearance.css shell/appearance.css ;;
   account)
     # The chevron leaves the name for the far end of the foot, as the stretched rows did.
-    cp vendor/dyad/hologram.screens/AppSidebar.tsx /tmp/plant-sidebar.tsx
-    sed -i 's/-ml-\[3px\] size-\[13px\]/ml-auto size-4/' vendor/dyad/hologram.screens/AppSidebar.tsx
-    grep -q 'ml-auto size-4 shrink-0 text-muted-foreground' vendor/dyad/hologram.screens/AppSidebar.tsx || { echo "anchor not found"; exit 1; }
+    cp vendor/prism/hologram.screens/AppSidebar.tsx /tmp/plant-sidebar.tsx
+    sed -i 's/-ml-\[3px\] size-\[13px\]/ml-auto size-4/' vendor/prism/hologram.screens/AppSidebar.tsx
+    grep -q 'ml-auto size-4 shrink-0 text-muted-foreground' vendor/prism/hologram.screens/AppSidebar.tsx || { echo "anchor not found"; exit 1; }
     expect_fail node --test tools/shell_ui.test.mjs
-    cp /tmp/plant-sidebar.tsx vendor/dyad/hologram.screens/AppSidebar.tsx ;;
+    cp /tmp/plant-sidebar.tsx vendor/prism/hologram.screens/AppSidebar.tsx ;;
   published)
     # The page lights the wrong rule: the preview, drawn by React from the view, would not light it.
     cp shell/live/card-runtime.mjs /tmp/plant-card-runtime.mjs

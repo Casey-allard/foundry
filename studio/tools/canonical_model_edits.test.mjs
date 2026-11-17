@@ -26,7 +26,7 @@ test("module edits preserve presentation and reconstruct the changed semantics",
 test("JSON and first-module authoring require checked canonical semantics", () => {
   const plan = planCanonicalEdit(edit("prism/spec.json", JSON.stringify(fixture)), { files: [] }, boundary);
   assert.ok(prism.parseSpecTag(plan.text).spec);
-  const text = "a </dyad-spec> b";
+  const text = "a </prism-spec> b";
   const escaped = planCanonicalEdit(edit("prism/spec.json", JSON.stringify({...fixture, purpose:text})), source, boundary);
   assert.equal(prism.parseSpecTag(escaped.text).spec?.purpose, text);
   assert.ok(planCanonicalEdit(edit(modulePath, canonical.source), { files: [] }, boundary));
@@ -65,7 +65,7 @@ test("model renames delete only the previous active module in the atomic batch",
   const run = vm.runInNewContext(host.slice(start, end) + "\nrulesAfterTurn", { assertGenerationActive() {}, coreReady: Promise.resolve(), core: {}, dbReady: Promise.resolve({}), captureProjectSource: async () => source,
     prism, lexlean, live, appShape:{SOURCE_PATH:'prism/App.lex.tex',isAppShape:isStatefulModule},retiredApplicationPaths,forgetApplicationFrames(){}, enc: new TextEncoder(), kappa: async bytes => live.kappaOfValue([...bytes]), rulesSnapshotOf: async () => ({state:null,expected:undefined}), nextPhase: async () => "checked", now: () => "now",
     applyStoredProjectPatch: async (_, id, patch, opts) => { batch = patch; options = opts; return { changed: 4, source }; } });
-  await run(1, "<dyad-spec>" + JSON.stringify({...fixture, name:"renamed-seat"}) + "</dyad-spec>");
+  await run(1, "<prism-spec>" + JSON.stringify({...fixture, name:"renamed-seat"}) + "</prism-spec>");
   assert.deepEqual(JSON.parse(JSON.stringify(batch.deletes)), [{path:modulePath}]); assert.ok(batch.writes.some(w => w.path === "prism/RenamedSeat.lex.tex"));
   assert.ok(batch.writes.some(w => w.path === "prism/spec.json")); assert.ok(batch.writes.some(w => w.path === "src/lib/prism.ts"));
   assert.equal(options.source, source); assert.equal(options.rulesUpdate.state.phase, "checked");

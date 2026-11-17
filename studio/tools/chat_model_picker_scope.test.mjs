@@ -1,1 +1,1 @@
-import '../vendor/dyad/hologram.model-selection.test.mjs';
+import '../vendor/prism/hologram.model-selection.test.mjs';

@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
-assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/dyad/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
+assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/prism/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
 for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "provenance.json"]) assert.ok(fs.existsSync(path.join(root, name)), `Build and project the actual shell first: ${name}`);
 const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".html": "text/html" };
@@ -55,7 +55,7 @@ try {
   const before=await page.evaluate(()=>window.__host.get('settings','user'));
   const late=await page.evaluate(async()=>{
     const put=IDBObjectStore.prototype.put;let injected=false;
-    IDBObjectStore.prototype.put=function(value,key){const q=put.call(this,value,key);if(this.name==='settings'&&key==='user'&&value.enableAppBlueprint===true){injected=true;q.addEventListener('success',()=>this.transaction.abort(),{once:true});}return q;};
+    IDBObjectStore.prototype.put=function(value,key){const q=put.call(this,value,key);if(this.name==='settings'&&key==='user'&&!injected){injected=true;q.addEventListener('success',()=>this.transaction.abort(),{once:true});}return q;};
     try{await window.electron.ipcRenderer.invoke('set-user-settings',{enableAppBlueprint:true});return {injected,code:null};}catch(e){return {injected,code:e.code};}finally{IDBObjectStore.prototype.put=put;}
   });assert.deepEqual(late,{injected:true,code:'settingsStorageFailed'});assert.deepEqual(await page.evaluate(()=>window.__host.get('settings','user')),before);
   await peer.reload();await peer.locator('[role=textbox]').waitFor();assert.equal((await peer.evaluate(()=>window.electron.ipcRenderer.invoke('get-user-settings'))).enableAppBlueprint,false);

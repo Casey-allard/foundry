@@ -19,7 +19,7 @@
 //   model/ids.toml                        the register IDs each feature carries
 //   crates/conformance/tests/*.rs         the test that accepts each register ID
 //   shell/command-registry-data.mjs       the registry features and the declaration owning each
-//   vendor/dyad/src                       what each screen calls (foundry_surfaces.mjs)
+//   vendor/prism/src                       what each screen calls (foundry_surfaces.mjs)
 //   app/src/ForgeKernel.lex.tex           the build phases and the rules between them (the design's
 //                                         state machine), and every budget and experience rule
 //   app/src/FoundrySpecification.lex.tex  the product obligations (compliance)

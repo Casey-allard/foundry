@@ -292,13 +292,13 @@ mod tests {
     #[test]
     fn the_renderer_is_addressed_by_what_it_is_built_from() {
         let pages = workflow("pages.yml");
-        let bundle = "key: forge-bundle-v1-${{ hashFiles('studio/vendor/dyad/**', '!studio/vendor/dyad/node_modules/**', '!studio/vendor/dyad/dist/**') }}";
+        let bundle = "key: forge-bundle-v1-${{ hashFiles('studio/vendor/prism/**', '!studio/vendor/prism/node_modules/**', '!studio/vendor/prism/dist/**') }}";
         assert!(
             pages.contains(bundle),
             "the bundle's address changed: say here what it is built from"
         );
         assert!(
-            pages.contains("key: forge-modules-v1-${{ hashFiles('studio/runtime/package-lock.json', 'studio/vendor/dyad/package-lock.json') }}"),
+            pages.contains("key: forge-modules-v1-${{ hashFiles('studio/runtime/package-lock.json', 'studio/vendor/prism/package-lock.json') }}"),
             "the dependency trees' address changed"
         );
         for guarded in [

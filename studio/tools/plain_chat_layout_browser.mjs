@@ -5,9 +5,9 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 import { DEVICE_MODEL, deviceAsked, deviceHold, deviceRelease, deviceSeam } from "./device_fixture.mjs";
-import { plainChatSuggestions, PLAIN_CHAT_WORDS } from "../vendor/dyad/hologram.plain-chat-data.mjs";
+import { plainChatSuggestions, PLAIN_CHAT_WORDS } from "../vendor/prism/hologram.plain-chat-data.mjs";
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
 for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "provenance.json"]) assert.ok(fs.existsSync(path.join(root, name)), `Build and project the actual shell first: ${name}`);
 const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".html": "text/html" };
@@ -78,7 +78,7 @@ try {
   await input.fill("");
 
   // An app with rules is asked about itself; a chat that opens in Chat opens collapsed, its preview mounted as ever.
-  await page.evaluate(({ appId, spec }) => window.__prism.rulesAfterTurn(appId, "<dyad-spec>" + JSON.stringify(spec) + "</dyad-spec>"), { appId, spec: fixture.spec ?? fixture });
+  await page.evaluate(({ appId, spec }) => window.__prism.rulesAfterTurn(appId, "<prism-spec>" + JSON.stringify(spec) + "</prism-spec>"), { appId, spec: fixture.spec ?? fixture });
   await choose("ask");
   // Opened as a chat this browser has never seen: its mode is read before the preview is given anything.
   await page.evaluate((chatId) => localStorage.removeItem("holo.chat.mode." + chatId), chatId); await open();
@@ -95,7 +95,7 @@ try {
   await page.getByTestId("messages-list").getByText("foundry:reader").first().waitFor();
   const after = await until((s) => s.chips.length === 4, "the suggestions return after the reply");
   assert.equal(after.previewWidth, 0); assert.equal((await deviceAsked(page)).length, 1); assert.deepEqual(await snapshot(), before, "a Chat turn writes nothing to the app");
-  assert.equal(await page.getByTestId("messages-list").locator("dyad-write").count(), 0);
+  assert.equal(await page.getByTestId("messages-list").locator("prism-write").count(), 0);
   const settled = await page.evaluate(() => { const row = document.querySelector('[data-slot="chat-suggestions"]').getBoundingClientRect(), box = document.querySelector('[data-testid="chat-input-container"]').getBoundingClientRect(); return { rowHeight: Math.round(row.height), above: row.bottom <= box.top + 1, inside: box.bottom <= innerHeight + 1 }; });
   assert.deepEqual(settled, { rowHeight: 48, above: true, inside: true });
   await input.fill("typing hides them"); await until((s) => s.chips.length === 0 && s.row, "typing over a conversation hides the chips and keeps their row");

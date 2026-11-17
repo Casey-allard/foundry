@@ -8,7 +8,7 @@ only re-exports that source.
 ## Reproduction and repair
 
 On unchanged PR #164 head `6a1202afc817608c4552cf6d335bfbd6413f561d`,
-`node studio/vendor/dyad/hologram.typecheck.mjs` exited 1 with exactly one added
+`node studio/vendor/prism/hologram.typecheck.mjs` exited 1 with exactly one added
 diagnostic and no rewrite failures:
 
 ```text
@@ -23,7 +23,7 @@ resolution so stale declarations cannot determine their own replacement.
 Generation is in memory until `--write` is explicitly requested. Regenerate with:
 
 ```sh
-node studio/vendor/dyad/hologram.featured-apps.types.mjs --write
+node studio/vendor/prism/hologram.featured-apps.types.mjs --write
 ```
 
 The projected typecheck first compares the committed declaration bytes against
@@ -40,12 +40,12 @@ ambient wildcard module or second handwritten card interface was introduced.
   controls then failed with the five declaration controls green, because the
   mandatory steps and production freshness call had not yet been added.
 - All seven completed controls pass with zero skipped, cancelled or TODO cases:
-  `node --test studio/vendor/dyad/hologram.featured-apps.types.test.mjs`.
+  `node --test studio/vendor/prism/hologram.featured-apps.types.test.mjs`.
   They cover deterministic emission, each missing declaration, each stale
   declaration, source export-shape drift, broken re-exports and mandatory wiring.
 - Each of the two production `.d.mts` files was separately removed, then
   separately replaced with stale bytes. The actual
-  `node studio/vendor/dyad/hologram.typecheck.mjs` entrypoint exited 1 for all four
+  `node studio/vendor/prism/hologram.typecheck.mjs` entrypoint exited 1 for all four
   planted defects, naming the missing or stale file. Each file was restored from
   its captured bytes; `--check` and the complete seven-control suite pass after
   restoration. Fixture tests repeat these mutations without touching production.

@@ -34,7 +34,7 @@ test("typed host envelope preserves the policy refusal and never forwards privat
   assert.equal(result.ok, false); assert.equal(result.error.code, "browserTelemetryUnavailable"); assert.equal(result.error.kind, "validation"); assert.ok(!JSON.stringify(result).includes("secret"));
 });
 test("the actual browser projection and its independent SDK browser gates are wired", () => {
-  const screens = fs.readFileSync(new URL("../vendor/dyad/hologram.screens.mjs", import.meta.url), "utf8"), typecheck = fs.readFileSync(new URL("../vendor/dyad/hologram.typecheck.mjs", import.meta.url), "utf8"), vite = fs.readFileSync(new URL("../vendor/dyad/vite.shell.config.mts", import.meta.url), "utf8");
+  const screens = fs.readFileSync(new URL("../vendor/prism/hologram.screens.mjs", import.meta.url), "utf8"), typecheck = fs.readFileSync(new URL("../vendor/prism/hologram.typecheck.mjs", import.meta.url), "utf8"), vite = fs.readFileSync(new URL("../vendor/prism/vite.shell.config.mts", import.meta.url), "utf8");
   assert.match(screens, /return privacySource\(rel, out\)/); assert.match(typecheck, /screenSource\(file, text\)/); assert.match(vite, /screenSource\(file, code\)/);
   const parser = fs.readFileSync(new URL("./shell_parse.mjs", import.meta.url), "utf8"); assert.match(parser, /"privacy-policy.mjs": "mjs"/);
   const workflow = fs.readFileSync(new URL("../../.github/workflows/studio.yml", import.meta.url), "utf8"); assert.match(workflow, /node tools\/privacy_projection.mjs/); assert.match(workflow, /node tools\/privacy_browser.mjs/); assert.match(workflow, /node tools\/privacy_shell_browser.mjs/);

@@ -1,1 +1,1 @@
-import '../vendor/dyad/hologram.chat-mode-controls.test.mjs';
+import '../vendor/prism/hologram.chat-mode-controls.test.mjs';

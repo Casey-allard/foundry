@@ -34,7 +34,7 @@ export function planCanonicalEdit(input, source, { lexlean, prism }) {
     const checked = prism.checkSpec(spec);
     if (checked.ok !== true) throw invalid();
     lexlean.canonicalSource(checked.spec);
-    return Object.freeze({ text: "<dyad-spec>" + JSON.stringify(checked.spec).replaceAll("<", "\\u003c") + "</dyad-spec>", warning: checked.notes?.length ? checked.notes.join("\n").slice(0, 2000) : null });
+    return Object.freeze({ text: "<prism-spec>" + JSON.stringify(checked.spec).replaceAll("<", "\\u003c") + "</prism-spec>", warning: checked.notes?.length ? checked.notes.join("\n").slice(0, 2000) : null });
   } catch (error) {
     if (["canonicalProjectionReadOnly", "applicationStateReadOnly"].includes(error?.code)) throw error;
     throw invalid();

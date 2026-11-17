@@ -16,7 +16,7 @@ test('gallery public storage failures do not reveal database errors or private c
  for(const operation of [()=>publishGallery(db,1,source(),{card}),()=>readGallery(db,1),()=>publishGallery(Promise.reject(Error('PRIVATE')),1,source(),{card}),()=>readGallery(Promise.reject(Error('PRIVATE')),1)])await assert.rejects(operation,{code:'galleryStorageFailed',message:'galleryStorageFailed'});
 });
 test('gallery consumers and deletion use the qualified source-bound storage boundary',async()=>{
- const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8'),host=read('../shell/host.js'),renderer=read('../vendor/dyad/hologram.screens/useAppThumbnails.ts');
+ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8'),host=read('../shell/host.js'),renderer=read('../vendor/prism/hologram.screens/useAppThumbnails.ts');
  assert.ok(host.includes('publishGallery(dbReady, appId, source, {picture:'));assert.ok(host.includes('coverApp(appId, appUrl, await source)'));assert.ok(!host.includes('covers.saveCover(')&&!host.includes('covers.saveCard('));assert.ok(renderer.includes('window.__gallery.read(appId)'));assert.ok(!renderer.includes('caches.open(')&&!renderer.includes('inference.js'));assert.ok(host.includes('Object.freeze({read: appId => readGallery(dbReady, appId)})'));assert.ok(renderer.includes('URL.revokeObjectURL'));assert.ok(read('../shell/project-lifecycle.mjs').includes('refs.delete(`gallery:${appId}`)'));assert.ok(read('../../.github/workflows/studio.yml').includes('node tools/source_bound_gallery_browser.mjs'));
  const browser=read('./source_bound_gallery_browser.mjs');
  // Exercise the same view selector the actual-browser gate uses; a page-wide tile lookup or an

@@ -55,13 +55,13 @@ export const SPEC_EXAMPLE = JSON.stringify(PARKING);
 export const MODULE_EXAMPLE = draftOf(toLexLean(PARKING)).replace(/\n\ntheorem\{[\s\S]*?\n\}(?=\n)/g, "").trim() + "\n";
 export const SPEC_RULES = `# You write the app's spec as JSON, and nothing else
 Every app here is one JSON spec: its inputs, its answers, its rules and its guarantees. Forge writes the app's LexLean module, its code and its screen from the spec, the same every time, and Lean proves the guarantees. You never write code, files or dependencies: Forge does not apply them. You never write LexLean. To build or change an app, write its spec; to change only one part, write a patch. If a request decides nothing, say in one sentence what the app could decide, and write that spec.
-- Write one <dyad-spec> block holding the whole spec as one JSON object, and no other text inside it. Keys: "title"; "purpose" (one sentence); "fields" (1 to 8, in the order a request gives them; each {"name": a lower-case word, "kind": "number" with whole "min" and "max", or "choice" with "values", two to 32 lower-case words}); "outcomes" (the answer words, lower case; "invalid" is reserved); "rules" (1 to 24, in order, the first that matches decides; each {"when": [{"field", "op", "value"}], "then": an outcome}); "otherwise" (the outcome when no rule matches); "properties" (what must never or always happen, each a guarantee Lean proves for every request: {"kind": "never" or "always", "when": [...], "then": an outcome}); "examples" (a few requests with their answers: {"request": "the field values separated by spaces", "response"}).
+- Write one <prism-spec> block holding the whole spec as one JSON object, and no other text inside it. Keys: "title"; "purpose" (one sentence); "fields" (1 to 8, in the order a request gives them; each {"name": a lower-case word, "kind": "number" with whole "min" and "max", or "choice" with "values", two to 32 lower-case words}); "outcomes" (the answer words, lower case; "invalid" is reserved); "rules" (1 to 24, in order, the first that matches decides; each {"when": [{"field", "op", "value"}], "then": an outcome}); "otherwise" (the outcome when no rule matches); "properties" (what must never or always happen, each a guarantee Lean proves for every request: {"kind": "never" or "always", "when": [...], "then": an outcome}); "examples" (a few requests with their answers: {"request": "the field values separated by spaces", "response"}).
 - A condition's "op" is "is" or "is not" for a choice field, with one of its values; and "<", "<=", ">", ">=", "=" or "!=" for a number field, with a whole number or another number field as {"field": "<name>"}. All of a rule's conditions must hold. Numbers are whole, never fractions.
 - Think about which rules and guarantees the app needs, not about syntax. State the guarantees the request implies: what must never be answered, and what must always be.
-- To change one part (a word, an answer, one rule), or to set the screen's words or order, write a patch on the spec: <dyad-spec-patch>[{"op":"set","path":["rules",2,"then"],"value":"none"}]</dyad-spec-patch>. Ops are set, insert and remove; \`view\` ({"blocks":[...]}, each one of {"kind":"heading","text"}, {"kind":"text","text"}, {"kind":"input","field","label"}, {"kind":"answer","label"}, {"kind":"guarantees"}, {"kind":"rules"}, {"kind":"examples"}), \`purpose\` (one sentence) and \`meanings\` ({"<answer>": "what it tells the user"}, one key per answer; fields have no meanings) are set this way. When the user points at something on the screen, its paths are given with the request.
-- To change the rules, write the whole spec again in a new <dyad-spec> block, starting from the current spec when one is given.
+- To change one part (a word, an answer, one rule), or to set the screen's words or order, write a patch on the spec: <prism-spec-patch>[{"op":"set","path":["rules",2,"then"],"value":"none"}]</prism-spec-patch>. Ops are set, insert and remove; \`view\` ({"blocks":[...]}, each one of {"kind":"heading","text"}, {"kind":"text","text"}, {"kind":"input","field","label"}, {"kind":"answer","label"}, {"kind":"guarantees"}, {"kind":"rules"}, {"kind":"examples"}), \`purpose\` (one sentence) and \`meanings\` ({"<answer>": "what it tells the user"}, one key per answer; fields have no meanings) are set this way. When the user points at something on the screen, its paths are given with the request.
+- To change the rules, write the whole spec again in a new <prism-spec> block, starting from the current spec when one is given.
 - An app that must keep what it is given between requests (a list that grows, entries that are kept) cannot be written yet. Say so in one sentence, and write the spec of what it could decide.
-Example: <dyad-spec>${SPEC_EXAMPLE}</dyad-spec>` + PROMPT_RULES;
+Example: <prism-spec>${SPEC_EXAMPLE}</prism-spec>` + PROMPT_RULES;
 
 // ---- the one thing a model may write
 // Every model, on the device or in the cloud, writes the app's JSON spec and nothing else. LexLean a
@@ -80,7 +80,7 @@ export function specContext(specText) {
   let spec = null;
   try { spec = specText ? JSON.parse(specText) : null; } catch {}
   if (!spec) return "This app has no spec yet. Write it from my request.";
-  return "The app's current spec:\n<dyad-spec>" + JSON.stringify(spec).replaceAll("<", "\\u003c") + "</dyad-spec>";
+  return "The app's current spec:\n<prism-spec>" + JSON.stringify(spec).replaceAll("<", "\\u003c") + "</prism-spec>";
 }
 
 /** What a model is shown of the app: its current module, in the draft form it writes, or that there is none. */
@@ -136,7 +136,7 @@ export default function Index() {
 }
 
 // A small model may stop before the closing tag: the block runs to the end of the answer then.
-const TAG = /<dyad-spec>([\s\S]*?)(?:<\/dyad-spec>|$)/;
+const TAG = /<prism-spec>([\s\S]*?)(?:<\/prism-spec>|$)/;
 export function parseSpecTag(text) {
   const m = TAG.exec(text || "");
   if (!m) return null;
@@ -216,17 +216,17 @@ export function shownText(text, card = null) {
   marks.forEach((m, i) => { out = out.replace(m[0], i === marks.length - 1 ? (card ? "\n\n" + card + "\n\n" : m[1] ? `\n\n_The app, written in ${m[2]} line${m[2] === "1" ? "" : "s"}. Forge is writing its LexLean module from them._\n\n` : `\n\n_The app's LexLean module: ${m[2]} declarations._\n\n`) : ""); });
   // The spec is the app's source, not something to read in the chat: one line while it streams, and the
   // card (or one line) in its place once it is whole.
-  out = out.replace(/<dyad-spec>[\s\S]*?<\/dyad-spec>/g, card ? "\n\n" + card + "\n\n" : "\n\n_The app's spec, written as JSON._\n\n").replace(/<dyad-spec>[\s\S]*$/, "\n\n_Writing the app's spec…_\n\n");
+  out = out.replace(/<prism-spec>[\s\S]*?<\/prism-spec>/g, card ? "\n\n" + card + "\n\n" : "\n\n_The app's spec, written as JSON._\n\n").replace(/<prism-spec>[\s\S]*$/, "\n\n_Writing the app's spec…_\n\n");
   // The app's prompt parts are shown through the card's full-model line, not as JSON.
-  out = out.replace(/<dyad-spec-patch>[\s\S]*?(<\/dyad-spec-patch>|$)/g, "").replace(/<prism-prompt>[\s\S]*?(<\/prism-prompt>|$)/g, "").replace(/\n{3,}/g, "\n\n");
+  out = out.replace(/<prism-spec-patch>[\s\S]*?(<\/prism-spec-patch>|$)/g, "").replace(/<prism-prompt>[\s\S]*?(<\/prism-prompt>|$)/g, "").replace(/\n{3,}/g, "\n\n");
   // A tag still arriving (`<pri…`) is not shown until it is whole.
   const tail = /<[a-z-]*$/.exec(out);
-  return tail && ("<prism-lexlean>".startsWith(tail[0]) || "<dyad-spec-patch>".startsWith(tail[0]) || "<dyad-spec>".startsWith(tail[0]) || "<prism-prompt>".startsWith(tail[0])) ? out.slice(0, tail.index) : out;
+  return tail && ("<prism-lexlean>".startsWith(tail[0]) || "<prism-spec-patch>".startsWith(tail[0]) || "<prism-spec>".startsWith(tail[0]) || "<prism-prompt>".startsWith(tail[0])) ? out.slice(0, tail.index) : out;
 }
 // The card stands in its own paragraphs, whatever the model wrote around the tag or the module.
 export const withCard = (text, card) => {
   const t = text || "";
-  return /<prism-lexlean>|<dyad-spec>/.test(t) ? shownText(t, card) : t.replace(TAG, card ? "\n\n" + card + "\n\n" : "");
+  return /<prism-lexlean>|<prism-spec>/.test(t) ? shownText(t, card) : t.replace(TAG, card ? "\n\n" + card + "\n\n" : "");
 };
 export const isApproval = (prompt) => /^\s*\/?(yes,?\s*)?approve(d)?(\s+(the\s+)?(rules|guarantees|spec))?\s*[.!]?\s*$/i.test(prompt || "");
 // "publish" builds the proved app with the Prism SDK and puts it live; no model is asked.
@@ -849,7 +849,7 @@ export function proofMessage(spec, result) {
 export { requestLimits };
 
 // The prism/spec/1 grammar a device model is held to while it writes an app's rules: one compact spec in a
-// <dyad-spec> block, keys in a fixed order (title, purpose, fields, outcomes, rules, otherwise, properties,
+// <prism-spec> block, keys in a fixed order (title, purpose, fields, outcomes, rules, otherwise, properties,
 // examples). A condition names a declared field, with an operator of that field's kind and, for a choice,
 // one of its values; every answer is one of the declared outcomes; an example's request is the fields in
 // order. The grammar fixes form, never meaning: which fields, rules and answers the request needs is the
@@ -936,7 +936,7 @@ export function specGrammarCheck(text) {
     lit('"');
   };
   try {
-    lit('<dyad-spec>{"title":'); prose(60);
+    lit('<prism-spec>{"title":'); prose(60);
     lit(',"purpose":'); prose(200);
     lit(',"fields":['); list(field, 1, 8);
     lit(',"outcomes":['); list(() => { const w = word(); if (outcomes.includes(w)) throw FAIL; outcomes.push(w); }, 2, 16);
@@ -944,7 +944,7 @@ export function specGrammarCheck(text) {
     lit(',"otherwise":'); answer();
     lit(',"properties":['); list(() => { lit('{"kind":'); oneOf(["never", "always"]); lit(',"when":['); list(cond, 1, 8); lit(',"then":'); answer(); lit("}"); }, 1, 6, true);
     lit(',"examples":['); list(() => { lit('{"request":'); request(); lit(',"response":'); answer(); lit("}"); }, 1, 4, true);
-    lit("}</dyad-spec>");
+    lit("}</prism-spec>");
     return i === n ? "done" : "fail";
   } catch (e) {
     if (e === END) return "partial";
