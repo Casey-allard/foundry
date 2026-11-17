@@ -311,9 +311,7 @@ theorem{
     wins : Nat
   ],
   statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within gone rHi rLo lHi lLo wins) = false),
-  proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, breaksMergeNeverTakesOlder]
-  },
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, breaksMergeNeverTakesOlder]},
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
@@ -366,9 +364,7 @@ theorem{
     other : Nat
   ],
   statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aGone bOpened bSyncs bAuthentic bBound bWithin bGone aHi aLo bHi bLo wins other) = false),
-  proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, breaksMergeConverges]
-  },
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, breaksMergeConverges]},
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
@@ -409,9 +405,7 @@ theorem{
     wins : Nat
   ],
   statement: ((breaksMergeTakesOnlyWhatMayEnter opened syncs authentic bound within present gone rHi rLo lHi lLo wins) = false),
-  proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, breaksMergeTakesOnlyWhatMayEnter]
-  },
+  proof: linear_arithmetic{definitions: [Workspace::mergeCode, breaksMergeTakesOnlyWhatMayEnter]},
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
