@@ -131,12 +131,14 @@ const firstMove = () =>
 // which publish.mjs writes here.
 // It is fetched after the first move, checked against that hash as the page
 // checks the frame, and imported; a failure is tried again the next time.
+// Unpublished (a checkout, or an app that bundles its locked copy of the
+// frame), it is imported from beside this file, as panels.mjs imports Prism id.
 const PANELS = "/*PANELS*/";
 let panelsModule = null;
 let panelsSheet = null;
 const loadPanels = () =>
   (panelsModule ??= (async () => {
-    if (!/^[0-9a-f]{64}$/.test(PANELS)) throw new Error("this frame was published without its panels");
+    if (!/^[0-9a-f]{64}$/.test(PANELS)) return import("./panels.mjs");
     const bytes = await (await fetch(new URL(`${PANELS}/prism-panels.mjs`, FRAME_HOST))).arrayBuffer();
     const hex = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
     if (hex !== PANELS) throw new Error("the panels module is not the one this frame names");
@@ -187,7 +189,7 @@ const markup = (e) => `
     <span id="bar-status" class="sr" aria-live="polite"></span>
     <button id="theme" class="ghost icon" type="button" popovertarget="theme-panel" aria-label="Theme" title="Theme"><svg class="moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg><svg class="sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg><svg class="photo" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><circle cx="9" cy="10" r="1.75" /><path d="m3.5 17 5-4.5 3.5 3 3-2.5 5.5 4.5" /></svg></button>
     <button id="fullscreen" class="ghost icon" type="button" aria-label="Enter full screen" title="Full screen"><svg class="expand" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" /></svg><svg class="shrink" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" /></svg></button>
-    <button id="account" class="ghost icon" type="button" popovertarget="account-panel" aria-label="Prism id" title="Prism id"><svg class="person" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /></svg></button>
+    <button id="account" class="ghost icon" type="button" popovertarget="account-panel" aria-label="Prism ID" title="Prism ID"><svg class="person" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /></svg></button>
     </div>
   </div></div>
   <div id="trust-panel" class="trust-panel" popover aria-labelledby="trust-title">
@@ -846,6 +848,13 @@ class PrismFrame extends Element {
     return { signature: b64u(signature), delegation: saved.delegation };
   }
 
+  // This app's workspace key: 32 bytes only a device of the visitor's Prism
+  // id opens (panels.mjs, openWorkspace). { replace: true } starts a new one.
+  workspaceKey(options) {
+    if (!this.accountsReady) return Promise.reject(Object.assign(new Error("A Prism ID cannot work here"), { name: "IdentityError", code: "unsupported" }));
+    return this.accountsReady().then((accounts) => accounts.workspace(options));
+  }
+
   // The Prism id icon, after full screen: a line drawing until the id is
   // ready, filled once it is. The id is made, and this app's session signed,
   // with nothing to click and nothing in the way, by the panels module
@@ -857,7 +866,7 @@ class PrismFrame extends Element {
     const button = this.$("account");
     const panel = this.$("account-panel");
     this.accountWatch?.abort();
-    this.accountReady = null;
+    this.accountReady = this.accountsReady = null;
     let wired = false;
     if (typeof panel.showPopover !== "function" || !window.isSecureContext || !globalThis.crypto?.subtle || !globalThis.indexedDB) {
       button.hidden = true;
@@ -865,7 +874,7 @@ class PrismFrame extends Element {
     }
     const paint = () => {
       const saved = accountChannel.session;
-      const label = "Prism id";
+      const label = "Prism ID";
       button.classList.toggle("signed-in", Boolean(saved));
       button.setAttribute("aria-label", label);
       button.title = label;
@@ -891,6 +900,7 @@ class PrismFrame extends Element {
       }
       return this.accountReady;
     };
+    this.accountsReady = ready;
     const reach = () => ready().then((accounts) => accounts.reach(), () => {});
     for (const type of ["pointerenter", "focus", "touchstart"]) button.addEventListener(type, reach, { passive: true });
     // First use: the visitor's first touch, click or key anywhere makes the id.
@@ -1357,7 +1367,7 @@ class PrismFrame extends Element {
         event.preventDefault();
         if (list.hidden) render();
         select(active + (event.key === "ArrowDown" ? 1 : -1));
-      } else if (event.key === "Escape") {
+      } else if (event.key === "Tab" && !event.shiftKey) { close(); } else if (event.key === "Escape") {
         event.preventDefault();
         if (input.value !== shown) {
           input.value = shown;

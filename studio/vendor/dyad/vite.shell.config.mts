@@ -169,6 +169,26 @@ import ${JSON.stringify(contracts)};
   },
 };
 
+// The Prism frame (frame/, locked by frame.lock) as the template publishes it (frame/publish.mjs): its
+// stylesheets and the brand's tokens baked into their placeholders. It is a second entry with a fixed name,
+// assets/prism-frame.js, which the shell imports (shell/inference.js); its panels and Prism ID are chunks.
+const repo = path.resolve(__dirname, "../../..");
+const FRAME_BAKES: Record<string, [string, string][]> = {
+  "frame/frame.mjs": [['"/*CSS*/"', "frame/frame.css"], ['"/*BRAND*/"', "site/brand/hologram-warm.css"]],
+  "frame/panels.mjs": [['"/*PANELS_CSS*/"', "frame/panels.css"]],
+};
+const prismFrame: Plugin = {
+  name: "prism-frame",
+  transform(code, id) {
+    const file = path.relative(repo, id.split("?")[0]).split(path.sep).join("/");
+    for (const [mark, css] of FRAME_BAKES[file] ?? []) {
+      if (!code.includes(mark)) this.error(`${file} has no ${mark}`);
+      code = code.replace(mark, JSON.stringify(fs.readFileSync(path.join(repo, css), "utf8")));
+    }
+    return FRAME_BAKES[file] ? { code, map: null } : null;
+  },
+};
+
 // The words and theme transform must run before Tailwind's own transform sees globals.css, so it
 // comes first in the plugin order, not appended after the vendored config's plugins.
 const merged = mergeConfig(base, {
@@ -177,8 +197,9 @@ const merged = mergeConfig(base, {
     // in dist; stamp_shell.py copies only dist/assets.
     manifest: true,
     rollupOptions: {
+      input: { index: path.resolve(__dirname, "index.html"), "prism-frame": path.join(repo, "frame/frame.mjs") },
       output: {
-        entryFileNames: "assets/index.js",
+        entryFileNames: (chunk) => (chunk.name === "prism-frame" ? "assets/prism-frame.js" : "assets/index.js"),
         // The entry keeps its fixed name (the projected page names it); every other chunk is named by its
         // content, so the worker keeps it for good and a page never mixes two builds' chunks.
         chunkFileNames: "assets/[name]-[hash].js",
@@ -187,5 +208,5 @@ const merged = mergeConfig(base, {
     },
   },
 });
-merged.plugins = [hologramUi, hologramWords, ...(merged.plugins ?? [])];
+merged.plugins = [hologramUi, hologramWords, prismFrame, ...(merged.plugins ?? [])];
 export default merged;

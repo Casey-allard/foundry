@@ -416,6 +416,7 @@ model does not sanction.
 | ID | Level | Statement |
 | --- | --- | --- |
 | `FA-91` | `build` | A private workspace opens only for the Prism id that owns it, on a device with a live session and its current boundary key; a record is read only when authentic and in place and stored only sealed; the workspace kept before an id moves in once; and Foundry's Prism kernel names every refusal |
+| `FA-93` | `build` | Studio keeps a visitor's work sealed to their Prism ID: each record is sealed as it is stored and opened as it is read, only as Foundry's Prism kernel answers; the work kept before moves in once; a removed device's work is cleared; and the visitor is told each outcome in one sentence |
 | `FA-94` | `build` | Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters |
 
 ## product-model

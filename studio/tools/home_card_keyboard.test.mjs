@@ -87,9 +87,14 @@ const compiled = ts.transpileModule(`${source}\nexport { Card, Keep };`, {
 });
 assert.deepEqual(compiled.diagnostics, []);
 const module = { exports: {} };
-// The module also holds Theater (FA-92), whose hooks the card under test never calls.
-const unusedImports = new Set(["@tanstack/react-router", "jotai", "@/atoms/chatAtoms", "@/hooks/useLoadApps", "@/hooks/useOpenApp",
-  "@/hooks/useRunApp", "@/hooks/useAppRun", "@/hooks/useAppThumbnails", "@/components/ui/button", "@/lib/utils", "@/lib/sortApps", "../../hologram.featured-apps.mjs"]);
+const unusedImports = new Set([
+  "@tanstack/react-router",
+  "@/hooks/useLoadApps",
+  "@/hooks/useOpenApp",
+  "@/hooks/useAppThumbnails",
+  "@/lib/sortApps",
+  "../../hologram.featured-apps.mjs",
+]);
 vm.runInNewContext(
   compiled.outputText,
   {

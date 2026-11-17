@@ -45,7 +45,8 @@ async function report(journey, name, value, unit) {
 // ---- the JS each route needs: the entry's static closure plus the route chunk's, gzip level 9.
 if (!fs.existsSync(viteManifest)) { console.error(`no ${path.relative(studio, viteManifest)}: build the renderer first`); process.exit(2); }
 const m = JSON.parse(fs.readFileSync(viteManifest, "utf8"));
-const entryKey = Object.keys(m).find((k) => m[k].isEntry);
+// The entry the projected page names; the Prism frame is a second entry, which the shell imports itself.
+const entryKey = Object.keys(m).find((k) => m[k].isEntry && m[k].file === "assets/index.js");
 const gz = new Map();
 const gzipOf = (file) => {
   if (!gz.has(file)) {

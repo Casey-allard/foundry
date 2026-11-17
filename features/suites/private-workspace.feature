@@ -8,6 +8,16 @@ Feature: private-workspace
     And every other request is refused by name, a removed device first, and a wrong version, a trailing word or an unknown kind is malformedWorkspaceRequest
     And each answer is a theorem Lean proves by evaluation and an acceptance vector the compiled guest replays
 
+  @FA-93 @build
+  Scenario: Studio keeps a visitor's work sealed to their Prism ID: each record is sealed as it is stored and opened as it is read, only as Foundry's Prism kernel answers; the work kept before moves in once; a removed device's work is cleared; and the visitor is told each outcome in one sentence
+    Given Studio's device store, the workspace key the Prism frame keeps for this origin, and the kernel guest Studio pins
+    When Studio opens over work kept before the workspace, reads and stores records, meets a record altered, copied or planted in the clear, and opens on a device removed from the visitor's Prism ID
+    Then the work kept before is sealed in place in one transaction, opens as it was written, and the visitor is told so once
+    And every record stored afterwards is sealed with seal_bytes, except the grants and published .holo bytes the service worker reads
+    And an altered or planted record is refused as recordTampered and a copied one as recordMisplaced, and neither is returned
+    And on a removed device everything kept where work belongs is cleared before a new key is made, so nothing left behind enters the new workspace
+    And the sentence the visitor reads for each answer is a statement of the experience module
+
   @FA-94 @build
   Scenario: Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters
     Given the Workspace module in Foundry's Prism kernel, reached by the workspace request prefix with kind 5

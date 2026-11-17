@@ -39,7 +39,7 @@ try {
   await Promise.all([call(page,'update-chat',{chatId,title:'',chatMode:'ask'}),call(peer,'update-chat',{chatId,modelSelection})]);
   const row=await get(page,'chats',chatId);assert.equal(row.title,'');assert.equal(row.chatMode,'ask');assert.deepEqual(row.modelSelection,modelSelection);
   await Promise.all([call(page,'update-chat',{chatId,title:'Concurrent'}),peer.evaluate(async chatId=>{
-    const {updateStoredChat}=await import('./project-lifecycle.mjs');const {db:open}=await import('./inference.js');
+    const {updateStoredChat}=await import('./project-lifecycle.mjs');const {workspace:open}=await import('./inference.js');
     const db=await open();
     await updateStoredChat(db,chatId,{messages:[{id:1,role:'user',content:'preserved transcript',approvalState:null,commitHash:null,createdAt:new Date().toISOString()}]});
   },chatId)]);
