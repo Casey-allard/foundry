@@ -79,9 +79,9 @@ try {
   assert.equal(canonicalSource(after).source,editModule.source);
   const head=await get(page,'refs',appId+':main');const bad=await apply('<prism-lexlean>invalid</prism-lexlean>');assert.equal(bad.changed,0);assert.equal(await get(page,'refs',appId+':main'),head);
   await page.goto(base+'chat?id='+made.chatId+'&appId='+appId);
-  await page.waitForFunction(()=>window.__ownerVerificationHeld&&window.__ownerBridgeRequested);
-  assert.equal(await page.evaluate(()=>window.__ownerRepliesBeforeReady),0);
-  await page.evaluate(()=>window.__releaseOwnerVerification());
+  // The workspace opens only on the kernel's word (FA-93), so while verification is held nothing reaches the bridge.
+  await page.waitForFunction(()=>window.__ownerVerificationHeld);await page.waitForTimeout(1500);assert.equal(await page.evaluate(()=>!!window.__ownerBridgeRequested),false);
+  await page.evaluate(()=>window.__releaseOwnerVerification());await page.waitForFunction(()=>window.__ownerBridgeRequested);assert.equal(await page.evaluate(()=>window.__ownerRepliesBeforeReady),0);
   await page.evaluate(()=>window.__forgeKernel.ask('drafting check')); 
   await page.evaluate(async appId=>{await window.__live.showLive(appId);await window.__live.refreshLive(appId);},appId);
   await page.getByTestId('preview-iframe-element').waitFor();
