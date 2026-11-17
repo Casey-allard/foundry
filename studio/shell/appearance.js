@@ -254,9 +254,9 @@ function routed() {
 }
 for (const name of ["pushState", "replaceState"]) {
   const move = history[name];
-  history[name] = function (...args) { const r = move.apply(this, args); routed(); return r; };
+  history[name] = function (...args) { const r = move.apply(this, args); routed(); watchHero(); return r; };
 }
-addEventListener("popstate", routed);
+addEventListener("popstate", () => { routed(); watchHero(); });
 
 // When the renderer's own settings switch its theme class, the palette follows (and Immersive, which is a
 // dark look, steps aside for Light).
@@ -308,18 +308,18 @@ function fitHero(room) {
   const scale = Math.min(Math.max(Math.min(room.clientWidth / HERO_ROOM.width, room.clientHeight / HERO_ROOM.height), 1), 2.618);
   root.style.setProperty("--hero-scale", scale.toFixed(3));
 }
-if (typeof ResizeObserver === "function" && typeof requestAnimationFrame === "function") {
-  let watched = null, pending = false;
-  const sizes = new ResizeObserver(() => { if (watched) fitHero(watched); });
-  const find = () => {
-    pending = false;
-    const room = document.querySelector('[data-slot="home-page"]');
-    if (room === watched) return;
-    if (watched) sizes.unobserve(watched);
-    watched = room;
-    if (room) { sizes.observe(room); fitHero(room); }
-  };
-  // Home comes and goes without a page load; the room is found again whenever the page's tree changes.
-  new MutationObserver(() => { if (!pending) { pending = true; requestAnimationFrame(find); } }).observe(root, { childList: true, subtree: true });
-  find();
+// Home is looked for only when the route changes, and only on Home, every 34 ms for up to two seconds while its page mounts:
+// other screens (the build screen above all, whose page changes on every edit) pay nothing for it.
+let heroRoom = null;
+const heroSizes = typeof ResizeObserver === "function" ? new ResizeObserver(() => { if (heroRoom) fitHero(heroRoom); }) : null;
+function watchHero(frames = 55) {
+  if (!heroSizes) return;
+  const room = onBuild() ? null : document.querySelector('[data-slot="home-page"]');
+  if (room !== heroRoom) {
+    if (heroRoom) heroSizes.unobserve(heroRoom);
+    heroRoom = room;
+    if (room) { heroSizes.observe(room); fitHero(room); }
+  }
+  if (!room && !onBuild() && frames > 0) setTimeout(() => watchHero(frames - 1), 34);
 }
+watchHero();

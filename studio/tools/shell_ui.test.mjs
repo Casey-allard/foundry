@@ -149,6 +149,9 @@ test("studio/experience: centred popups, golden measures, tools on Settings, a q
   const look = read("../shell/appearance.js");
   assert.ok(look.includes("const HERO_ROOM = { width: 1060, height: 791 };") && look.includes("Math.min(Math.max(Math.min(room.clientWidth / HERO_ROOM.width, room.clientHeight / HERO_ROOM.height), 1), 2.618)"), "the hero's scale is not the room's smaller proportion, from 1 to the ratio squared");
   assert.ok(spec.includes("grows as one piece, by the smaller of the room's two proportions"), "the spec no longer says how the hero grows");
+  // The build screen changes its page on every edit: the hero is looked for on a route change, never by watching the page.
+  assert.equal(/observe\(root, \{ childList: true, subtree: true \}\)/.test(look), false, "the whole page is watched for the hero, which slows every edit on the build screen");
+  assert.ok(look.includes("routed(); watchHero();"), "the hero is not looked for when the route changes");
   assert.ok(css.includes("flex-wrap: nowrap !important"), "the ideas still wrap into a block");
   // On a phone home is one screen: the floor is hidden there and only there, and the page cannot scroll.
   const phoneHome = /@media \(max-width: 767px\) \{\s*\[data-slot="home-featured"\] \{ display: none !important; \}\s*#layout-main-content-container:has\(\[data-slot="home-page"\]\) \{ overflow: hidden !important; \}/;
