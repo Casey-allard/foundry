@@ -1,6 +1,6 @@
 // Chat and Plan show the build screen with its preview collapsed, and suggestions above the composer:
-// the decisions (vendor/dyad/hologram.plain-chat-data.mjs) and the patches that apply them
-// (vendor/dyad/hologram.plain-chat-patches.mjs). The browser half is tools/plain_chat_layout_browser.mjs.
+// the decisions (vendor/prism/hologram.plain-chat-data.mjs) and the patches that apply them
+// (vendor/prism/hologram.plain-chat-patches.mjs). The browser half is tools/plain_chat_layout_browser.mjs.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { test } from "node:test";
@@ -17,13 +17,13 @@ import {
   rememberChatMode,
   rememberedChatMode,
   showPlainChatSuggestions,
-} from "../vendor/dyad/hologram.plain-chat-data.mjs";
-import { PLAIN_CHAT_PATCHES } from "../vendor/dyad/hologram.plain-chat-patches.mjs";
-import { screenSource } from "../vendor/dyad/hologram.screens.mjs";
+} from "../vendor/prism/hologram.plain-chat-data.mjs";
+import { PLAIN_CHAT_PATCHES } from "../vendor/prism/hologram.plain-chat-patches.mjs";
+import { screenSource } from "../vendor/prism/hologram.screens.mjs";
 
-const dyad = (p) => fileURLToPath(new URL("../vendor/dyad/" + p, import.meta.url));
-const read = (p) => fs.readFileSync(dyad(p), "utf8");
-const built = (p) => screenSource(dyad(p), read(p));
+const prism = (p) => fileURLToPath(new URL("../vendor/prism/" + p, import.meta.url));
+const read = (p) => fs.readFileSync(prism(p), "utf8");
+const built = (p) => screenSource(prism(p), read(p));
 
 test("the layout is chosen by mode: exactly the catalog's read-only modes show the chat alone", () => {
   for (const { id } of chatModeCatalog.modes) {

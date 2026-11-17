@@ -14,7 +14,7 @@ enable switch or displayed telemetry identifier. Host reads strip legacy IDs
 and normalize consent; writes persist that policy and refuse opt-in attempts
 before storage. The renderer envelope preserves the typed private refusal.
 Upstream vendored source is untouched; owned transformations are recorded in
-`vendor/dyad/VENDORED.md` and shared by the build and typecheck.
+`vendor/prism/VENDORED.md` and shared by the build and typecheck.
 
 Six Node controls exercise fresh/legacy settings, input preservation, typed
 refusal, actual host read/write behavior, no writes on refusal, error redaction

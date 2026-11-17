@@ -117,15 +117,15 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: studio/vendor/dyad/package-lock.json
+          cache-dependency-path: studio/vendor/prism/package-lock.json
       - name: Install locked renderer contracts for boundary verification
-        run: npm ci --prefix vendor/dyad --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix vendor/prism --ignore-scripts --no-audit --no-fund
       - name: Reproduce the imported chat schemas from locked sources
         run: node tools/chat_contracts_projection.mjs --check
       - name: Install the locked browser compiler archive
         run: npm ci --prefix runtime --ignore-scripts --no-audit --no-fund
       - name: Build the renderer and stage its complete closure before projection
-        run: (cd vendor/dyad && node node_modules/vite/bin/vite.js build --config vite.shell.config.mts --base /foundry/ --outDir dist --emptyOutDir) && python3 scripts/stamp_shell.py
+        run: (cd vendor/prism && node node_modules/vite/bin/vite.js build --config vite.shell.config.mts --base /foundry/ --outDir dist --emptyOutDir) && python3 scripts/stamp_shell.py
       - name: The lane, byte compared against the committed artifacts
         run: ./scripts/lane.sh
       - name: Independently verify staged editor bytes against the locked npm archive
@@ -138,10 +138,10 @@ jobs:
         run: python3 tools/corpus.py
       - name: Verify source-derived featured app declarations and negative controls
         if: ${{ !cancelled() && steps.shell_closure.conclusion == 'success' && steps.corpus.conclusion == 'success' }}
-        run: node --test vendor/dyad/hologram.featured-apps.types.test.mjs
+        run: node --test vendor/prism/hologram.featured-apps.types.test.mjs
       - name: Typecheck every projected renderer screen against the locked compiler
         if: ${{ !cancelled() && steps.shell_closure.conclusion == 'success' && steps.corpus.conclusion == 'success' }}
-        run: node vendor/dyad/hologram.typecheck.mjs
+        run: node vendor/prism/hologram.typecheck.mjs
       - name: Check the declared host scope and real renderer error recovery
         if: ${{ !cancelled() && steps.shell_closure.conclusion == 'success' && steps.corpus.conclusion == 'success' }}
         run: |

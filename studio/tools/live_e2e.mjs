@@ -97,7 +97,7 @@ const ORDER = ["name", "title", "purpose", "view", "fields", "outcomes", "meanin
 const ordered = Object.fromEntries(ORDER.filter((k) => spec[k] !== undefined).map((k) => [k, spec[k]]));
 const answer = lex
   ? "Here is the module.\n<prism-lexlean>\n" + lexlean.toLexLean(spec).replace(/\n\ntheorem\{[\s\S]*?\n\}(?=\n)/g, "") + "</prism-lexlean>\nThe screen is drawn from it."
-  : "Here are the rules for your app.\n<dyad-spec>" + JSON.stringify(ordered) + "</dyad-spec>\nThe screen is drawn from them.";
+  : "Here are the rules for your app.\n<prism-spec>" + JSON.stringify(ordered) + "</prism-spec>\nThe screen is drawn from them.";
 const stream = await page.evaluate(async ({ appId, answer, lex }) => {
   const live = await import(new URL("live/project.mjs", location.href.replace(/chat.*$/, "")).href);
   const lexlean = await import(new URL("live/lexlean.mjs", location.href.replace(/chat.*$/, "")).href);
@@ -109,7 +109,7 @@ const stream = await page.evaluate(async ({ appId, answer, lex }) => {
   await new Promise((r) => setTimeout(r, 300));
   for (let i = 4; i <= answer.length + 4; i += 4) {
     const full = answer.slice(0, i);
-    if (full.includes(lex ? "<prism-lexlean>" : "<dyad-spec>")) {
+    if (full.includes(lex ? "<prism-lexlean>" : "<prism-spec>")) {
       // as the host does: a LexLean turn opens the frame on its tag
       if (lex && !shown) { shown = true; window.__live.showLive(appId); }
       const raw = lex ? (lexlean.partialFromTurn(full) || {}).spec : live.partialSpec(full);

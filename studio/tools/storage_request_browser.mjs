@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import http from "node:http";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 const source = fs.readFileSync(new URL("../shell/storage-request.mjs", import.meta.url));
 const shell = new URL("../shell/", import.meta.url);
 const types = { js: "text/javascript", mjs: "text/javascript", json: "application/json", wasm: "application/wasm" };

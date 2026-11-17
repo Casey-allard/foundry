@@ -1,11 +1,11 @@
 // Typed adapter for FoundrySpecification.hostResponseBoundary. The schema belongs
 // to the imported renderer contract; this adapter never invents a successful value.
-const marker = "dyad-ipc-envelope-v1";
-const success = (value) => ({ __dyadIpcEnvelope: marker, ok: true, value });
+const marker = "prism-ipc-envelope-v1";
+const success = (value) => ({ __prismIpcEnvelope: marker, ok: true, value });
 const refusal = (code, channel, kind, message) => ({
-  __dyadIpcEnvelope: marker,
+  __prismIpcEnvelope: marker,
   ok: false,
-  error: { name: "DyadError", kind, code, message: `${message}: ${channel}` },
+  error: { name: "PrismError", kind, code, message: `${message}: ${channel}` },
 });
 
 export function refuseCommandBinding(channel, code) {

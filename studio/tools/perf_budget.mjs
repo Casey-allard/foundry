@@ -32,7 +32,7 @@ async function budgetOf(journey) {
   while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); if ((await kernel.ask(`budget ${journey} ${mid}`)) === "within") lo = mid; else hi = mid - 1; }
   return lo;
 }
-const viteManifest = path.join(studio, "vendor", "dyad", "dist", ".vite", "manifest.json");
+const viteManifest = path.join(studio, "vendor", "prism", "dist", ".vite", "manifest.json");
 const failures = [];
 async function report(journey, name, value, unit) {
   const answer = await kernel.ask(`budget ${journey} ${value}`);
@@ -82,7 +82,7 @@ for (const [journey, route] of Object.entries(routes)) {
 // ---- the mobile journeys
 if (process.argv.includes("--browser")) {
   process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
-  const pw = await import("../vendor/dyad/node_modules/playwright-core/index.mjs");
+  const pw = await import("../vendor/prism/node_modules/playwright-core/index.mjs");
   const { chromium } = pw.default ?? pw;
   const port = await serve();
   const BASE = `http://localhost:${port}/foundry/`;

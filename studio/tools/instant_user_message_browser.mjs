@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 import { DEVICE_MODEL, deviceAsked, deviceHold, deviceRelease, deviceSeam } from "./device_fixture.mjs";
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
 for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "provenance.json"]) assert.ok(fs.existsSync(path.join(root, name)), `Build and project the actual shell first: ${name}`);

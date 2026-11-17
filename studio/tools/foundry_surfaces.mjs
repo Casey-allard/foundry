@@ -1,7 +1,7 @@
 // What each of Foundry's screens asks of the back end, read from the screen's own code.
 //
 // A renderer screen reaches the host only through the typed IPC client (`ipc.<domain>.<method>`,
-// vendor/dyad/src/ipc/types). Each method is a contract with one channel, and the command registry
+// vendor/prism/src/ipc/types). Each method is a contract with one channel, and the command registry
 // (CommandRegistry.commandRegistryJson, projected to shell/command-registry-data.mjs) names the
 // back-end feature that owns every channel the host answers. So the back-end features a screen needs
 // are read, not asserted: walk the screen's imports, collect the IPC calls on the way, resolve each to
@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const studio = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const src = path.join(studio, "vendor/dyad/src");
+const src = path.join(studio, "vendor/prism/src");
 const EXTS = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
 
 class SurfaceError extends Error {}
@@ -102,7 +102,7 @@ function channels() {
 /**
  * The registry features a screen reaches, by feature id, with the channels that reach each, and the
  * channels it reaches that the registry does not name (the host answers them itself). `entries`
- * are paths under vendor/dyad/src; `exclude` are entries whose calls belong to another surface (the
+ * are paths under vendor/prism/src; `exclude` are entries whose calls belong to another surface (the
  * shell around every screen), so each call is counted where it is made.
  */
 export function surfaceCommands(entries, registry, { exclude = [] } = {}) {
@@ -112,7 +112,7 @@ export function surfaceCommands(entries, registry, { exclude = [] } = {}) {
   const reached = new Map();
   const direct = [];
   const unresolved = [];
-  for (const e of entries) if (!fs.existsSync(path.join(src, e))) refuse(`the screen entry vendor/dyad/src/${e} does not exist`);
+  for (const e of entries) if (!fs.existsSync(path.join(src, e))) refuse(`the screen entry vendor/prism/src/${e} does not exist`);
   for (const call of new Set([...files(entries)].flatMap((f) => fileInfo(f).calls))) {
     if (shared.has(call)) continue;
     const channel = channels().get(call);

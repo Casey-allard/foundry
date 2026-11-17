@@ -19,7 +19,7 @@ URL = "https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.52.2.tgz"
 REQUIRED = {"LICENSE", "vs/loader.js", "vs/editor/editor.main.js", "vs/editor/editor.main.css", "vs/base/worker/workerMain.js", "vs/language/json/jsonWorker.js", "vs/language/typescript/tsWorker.js"}
 
 EDITOR = {"name": "monaco-editor", "version": VERSION, "url": URL,
-          "lock": "vendor/dyad/package-lock.json", "destination": "editor",
+          "lock": "vendor/prism/package-lock.json", "destination": "editor",
           "profile": "foundry/editor-assets/1", "required": REQUIRED,
           "prefix": "package/min/vs/", "strip": "package/min/",
           "selected": {"package/LICENSE", "package/ThirdPartyNotices.txt"}}

@@ -76,14 +76,14 @@ test('decision to stateful conversion removes obsolete source and proof authorit
 });
 test('stateful to decision conversion removes stateful source standing and cached live owner',async()=>{
  const source=snapshot([['prism/App.lex.tex',module],['prism/app.json','{"phase":"proved"}'],['prism/Inactive.lex.tex','keep']],{phase:'proved',sourceKappa:oid});
- const h=transitionHarness(source),result=await h.rulesAfterTurn(7,`<dyad-spec>${JSON.stringify(spec)}</dyad-spec>`,[],{source});
+ const h=transitionHarness(source),result=await h.rulesAfterTurn(7,`<prism-spec>${JSON.stringify(spec)}</prism-spec>`,[],{source});
  const files=new Map(result.source.files);
  assert.equal(files.has('prism/App.lex.tex'),false);assert.equal(files.has('prism/app.json'),false);assert.equal(files.has(decisionPath),true);
  assert.equal(files.get('prism/Inactive.lex.tex'),'keep');assert.equal(h.options.appUpdate.state,null);assert.equal(h.options.appUpdate.expected,source.applicationState);assert.equal(h.options.rulesUpdate.state.phase,'checked');assert.equal(h.log.forgot,1);
- const invalid=transitionHarness(source),refused=await invalid.rulesAfterTurn(7,'<dyad-spec>{"invalid":true}</dyad-spec>',[],{source});
+ const invalid=transitionHarness(source),refused=await invalid.rulesAfterTurn(7,'<prism-spec>{"invalid":true}</prism-spec>',[],{source});
  assert.equal(refused.changed,0);assert.equal(invalid.patch,undefined);assert.equal(refused.source,source);
  const same=transitionHarness(snapshot([['prism/spec.json',JSON.stringify(spec)],[decisionPath,canonical.source]]));
- await same.rulesAfterTurn(7,`<dyad-spec>${JSON.stringify({...spec,title:'Updated'})}</dyad-spec>`);
+ await same.rulesAfterTurn(7,`<prism-spec>${JSON.stringify({...spec,title:'Updated'})}</prism-spec>`);
  assert.equal(same.log.forgot,0,'ordinary decision editing retains live undo/redo owner');
 });
 test('direct replacement of a stateful module uses the canonical decision adapter',()=>{

@@ -15,7 +15,7 @@ test('unknown modes fail with a fixed typed error',()=>{
 test('read-only instructions preserve mode and context without build instructions',()=>{
  for(const mode of ['ask','plan']){const p=chatExecutionPolicy(mode,null);const prompt=chatExecutionPrompt(p,'BUILD-INSTRUCTIONS');assert.ok(prompt.includes(mode));assert.ok(prompt.includes('Do not modify'));assert.ok(!prompt.includes('BUILD-INSTRUCTIONS'));}
  assert.equal(chatExecutionPrompt(chatExecutionPolicy('build',null),'BUILD-INSTRUCTIONS'),'BUILD-INSTRUCTIONS');
- assert.equal(readOnlyChatText('<dyad-write>&x</dyad-write>'),'&lt;dyad-write&gt;&amp;x&lt;/dyad-write&gt;');
+ assert.equal(readOnlyChatText('<prism-write>&x</prism-write>'),'&lt;prism-write&gt;&amp;x&lt;/prism-write&gt;');
 });
 test('host effects and acceptance gates bind to the modeled policy',()=>{
  const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8'),host=read('studio/shell/host.js');

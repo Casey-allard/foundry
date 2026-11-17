@@ -4,9 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 import { DEVICE_MODEL, deviceAsked, deviceHold, deviceRelease, deviceSeam } from "./device_fixture.mjs";
-assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/dyad/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
+assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/prism/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
 for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "provenance.json"]) assert.ok(fs.existsSync(path.join(root, name)), `Build and project the actual shell first: ${name}`);
 const types = { ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".html": "text/html" };
@@ -36,7 +36,7 @@ try {
   const get=(tab,store,key)=>tab.evaluate(({store,key})=>window.__host.get(store,key),{store,key});
   const made=await call(page,'create-app',{name:'readonly-mode',initialChatMode:'build'}),chatId=made.chatId,appId=made.app.id;
   await call(page,'set-user-settings',{selectedModel:DEVICE_MODEL});
-  await page.evaluate(({appId,spec})=>window.__prism.rulesAfterTurn(appId,'<dyad-spec>'+JSON.stringify(spec)+'</dyad-spec>'),{appId,spec:fixture('rsvp')});
+  await page.evaluate(({appId,spec})=>window.__prism.rulesAfterTurn(appId,'<prism-spec>'+JSON.stringify(spec)+'</prism-spec>'),{appId,spec:fixture('rsvp')});
   const snapshot=()=>page.evaluate(async appId=>{
     const {captureProjectSource}=await import('./project-edit.mjs'),{workspace:db}=await import('./inference.js');
     const source=await captureProjectSource(await db(),appId);
