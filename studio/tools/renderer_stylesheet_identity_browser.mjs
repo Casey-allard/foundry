@@ -49,8 +49,11 @@ try {
   await tab.setViewportSize({ width: 1280, height: 900 });
   assert.equal(await tab.locator('link[rel=stylesheet][href="/foundry/assets/index.css"]').count(),1);
   assert.equal(stylesheetRequests,1,'home must reuse initial renderer stylesheet');
-  await tab.getByRole('link',{name:'Settings',exact:true}).click();
+  // Settings is no longer a sidebar row (the gear opens it over the page), so the route is reached the way the
+  // renderer moves between screens: a history entry its router follows, with no page load.
+  await tab.evaluate(()=>{history.pushState({},'',location.pathname.replace(/\/?$/,'/')+'settings');dispatchEvent(new PopStateEvent('popstate',{state:{}}));});
   await tab.waitForURL('**/settings');
+  await tab.locator('#general-settings').waitFor();
   assert.equal(await tab.locator('body').evaluate(el=>getComputedStyle(el).fontFamily.includes('Geist')),true);
   assert.equal(stylesheetRequests,1,'settings must retain the initial stylesheet');
   assert.deepEqual(errors,[]);console.log(JSON.stringify({actualRenderer:true,home:true,headlineSizes,settings:true,stylesheetRequests,pageExceptions:0}));

@@ -63,7 +63,7 @@ definition{
   name: homeIsAWorkspace,
   parameters: [],
   result: String,
-  body: "Home is a workspace, not a page. Its line, Build your ideas with Prism, is one row at every size, the sentence in the page's own face and the name in a serif italic, so the line reads as a sentence and the name as a signature. The hero fills the first screen at every size, and on a desktop the floor of apps already made peeks 89 pixels above the bottom edge, so one short scroll brings the whole row and its way into the gallery into view. On a phone home is one screen that never scrolls: the floor gives way to the Apps tab, which already lists every app. The hero sits at the golden section of the room above the floor, its question over a room at most 987 pixels wide; the box it is asked in is that room's golden section, 610 pixels, centred, with three chips centred under it on one line: two ideas, a fresh two on every visit, and Surprise me, which writes another into the box. On a tall window the room under the hero is capped at 233 pixels, so it settles toward the middle instead of leaving a void. The floor is one row on a panel that rises from the bottom edge, inset from the sides, on the popover glass under a hairline, with a card 233 by 144 for each app and its name under it. The floor is looked at four ways, on one track at its left: Search, Featured, My apps and Bookmarked, the chosen one lit, with the way to all of them at its right. Featured is the same four Prism apps for every visitor, whether or not they have made anything; My apps is what this browser holds; Bookmarked is what the visitor starred, kept in this browser alone and never sent anywhere. A card is its cover, a word on the cover saying whether it is published, then its name and who made it under its name. The cards share the floor's width in even columns, four on a wide screen and two on a narrow one, so the row fills the floor at any size. Each app's cover is drawn on the card, white light entering and leaving as a spectrum turned to that app's own hue, so nothing is fetched to show it."
+  body: "Home is a workspace, not a page. Its line, Build your ideas with Prism, is one row at every size, the sentence in the page's own face and the name in a serif italic, so the line reads as a sentence and the name as a signature. The hero fills the first screen at every size, and on a desktop the floor of apps already made peeks 89 pixels above the bottom edge, so one short scroll brings the whole row and its way into the gallery into view. On a phone home is one screen that never scrolls: the floor gives way to the Apps tab, which already lists every app. The hero sits at the golden section of the room above the floor, its question over a room at most 987 pixels wide; the box it is asked in is that room's golden section, 610 pixels, centred, with three chips centred under it on one line: two ideas, a fresh two on every visit, and Surprise me, which writes another into the box. At every height the hero keeps the golden section. In a room larger than the 1060 by 791 pixels its measures were set for, the hero grows as one piece, by the smaller of the room's two proportions and at most by the ratio squared, so it looks the same on a laptop and on a large screen; in a smaller room it keeps its measures. The floor is one row on a panel that rises from the bottom edge, inset from the sides, on the popover glass under a hairline, with a card 233 by 144 for each app and its name under it. The floor is looked at four ways, on one track at its left: Search, Featured, My apps and Bookmarked, the chosen one lit, with the way to all of them at its right. Featured is the same four Prism apps for every visitor, whether or not they have made anything; My apps is what this browser holds; Bookmarked is what the visitor starred, kept in this browser alone and never sent anywhere. A card is its cover, a word on the cover saying whether it is published, then its name and who made it under its name. The cards share the floor's width in even columns, four on a wide screen and two on a narrow one, so the row fills the floor at any size. Each app's cover is drawn on the card, white light entering and leaving as a spectrum turned to that app's own hue, so nothing is fetched to show it."
 }
 
 definition{
@@ -134,6 +134,34 @@ definition{
   parameters: [],
   result: String,
   body: "A visitor's work is sealed to their Prism ID with no step of theirs, and Foundry speaks only when something changed, in one sentence that says why and what follows. After the one move: Your work is now sealed to your Prism ID. Only your devices can open it. On a removed device: This device was removed from your Prism ID, so the work it kept stays closed. You start fresh here. When the browser is full: Your browser's storage is full, so this was not saved. Remove an app you no longer need, then try again. When a record was altered: Some of your work was changed outside Foundry, so it was left closed. While the newest key has not arrived: This device is waiting for your Prism ID's newest key. Open Foundry on one of your other devices, then try again. Otherwise: Foundry could not reach your Prism ID, so your work stays closed for now. The Prism ID panel says it in one line: Your ID and your work, sealed on your devices."
+}
+
+definition{
+  name: workingLook,
+  parameters: [],
+  result: String,
+  body: "Home greets a new visitor with Earth from orbit. Every other screen is a place to read and work, so it opens Dark, on a solid surface, until the visitor chooses a look on any of them; that choice is kept for all of them, and Home keeps its own."
+}
+
+definition{
+  name: accountBar,
+  parameters: [],
+  result: String,
+  body: "The foot of the sidebar is one row under a hairline, as a desktop app keeps it: the visitor's Prism ID at the left, a round mark with the name and a small chevron right beside it, then open space, and a gear at the right that opens Settings. Collapsed, the mark sits over the gear and no word is shown."
+}
+
+definition{
+  name: accountMenu,
+  parameters: [],
+  result: String,
+  body: "The Prism ID at the foot opens a menu above it, as wide as the sidebar: first one line on why there is no password, then Devices and recovery, which opens the Prism ID panel, Settings and Help, each with its own mark. Every item opens something real; none is a promise. Escape, a click outside or a choice closes it."
+}
+
+definition{
+  name: settingsOverlay,
+  parameters: [],
+  result: String,
+  body: "Settings opens over the page, centred, 890 pixels wide and 550 tall, which is 890 over the ratio, and never more than 90 percent of the screen across or 85 percent down. At the left, 233 pixels wide, the title, a search over every setting and the sections, each with its own mark; at the right, one section at a time, flat, as titled rows. Control or Command with comma opens it from anywhere. On a phone it fills the screen and the sections run in one row above."
 }
 \end{semanticmodule}
 \end{lexlean}

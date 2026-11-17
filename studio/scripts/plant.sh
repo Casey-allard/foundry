@@ -33,6 +33,9 @@
 #   ./scripts/plant.sh repair    # never ask the model to repair a module that does not read: the LexLean gate must refuse
 #   ./scripts/plant.sh parens    # count no parentheses before parsing: the LexLean gate must refuse the vague error
 #   ./scripts/plant.sh look      # let the build screen fall back to the home look: the Build look check must refuse
+#   ./scripts/plant.sh working   # let only the build screen open Dark, the other screens borrow Home's: the Build look check must refuse
+#   ./scripts/plant.sh hero      # cap the room under Home's hero again, so it sinks on a tall screen: the Shell UI check must refuse
+#   ./scripts/plant.sh account   # push the account chevron to the far end of the foot: the Shell UI check must refuse
 #   ./scripts/plant.sh published # make the published card light the rule after the one that decides: the Published gate must refuse
 # `hole` runs the Contract gate, which bundles the vendored contracts with the renderer's own esbuild,
 # so run it where those dependencies were installed for this platform -- otherwise esbuild refuses to
@@ -211,6 +214,27 @@ EOF
     perl -pi -e 's/readJson\(BUILD_KEY\) \|\| \{ palette: "dark", immersive: false \}/readJson(BUILD_KEY) || home/' shell/appearance.js
     grep -q 'readJson(BUILD_KEY) || home;' shell/appearance.js || { echo "anchor not found"; exit 1; }
     expect_fail node tools/build_look.mjs ;;
+  working)
+    # Only the build screen opens Dark again; Apps, Library and Theater borrow Home's photo or Light.
+    cp shell/appearance.js /tmp/plant-appearance.js
+    perl -pi -e 's{^const onBuild = \(\) => \{.*$}{const onBuild = () => location.pathname.endsWith("/chat");}' shell/appearance.js
+    grep -q 'endsWith("/chat")' shell/appearance.js || { echo "anchor not found"; exit 1; }
+    expect_fail node tools/build_look.mjs
+    cp /tmp/plant-appearance.js shell/appearance.js ;;
+  hero)
+    # The room under the hero capped again: on a tall screen the hero sinks below the golden section.
+    cp shell/appearance.css /tmp/plant-appearance.css
+    sed -i 's/\[data-slot="home-stage"\]::after { content: ""; flex: 1.618 1 0; }$/[data-slot="home-stage"]::after { content: ""; flex: 1.618 1 0; max-height: 233px; }/' shell/appearance.css
+    grep -q 'max-height: 233px' shell/appearance.css || { echo "anchor not found"; exit 1; }
+    expect_fail node --test tools/shell_ui.test.mjs
+    cp /tmp/plant-appearance.css shell/appearance.css ;;
+  account)
+    # The chevron leaves the name for the far end of the foot, as the stretched rows did.
+    cp vendor/dyad/hologram.screens/AppSidebar.tsx /tmp/plant-sidebar.tsx
+    sed -i 's/-ml-\[3px\] size-\[13px\]/ml-auto size-4/' vendor/dyad/hologram.screens/AppSidebar.tsx
+    grep -q 'ml-auto size-4 shrink-0 text-muted-foreground' vendor/dyad/hologram.screens/AppSidebar.tsx || { echo "anchor not found"; exit 1; }
+    expect_fail node --test tools/shell_ui.test.mjs
+    cp /tmp/plant-sidebar.tsx vendor/dyad/hologram.screens/AppSidebar.tsx ;;
   published)
     # The page lights the wrong rule: the preview, drawn by React from the view, would not light it.
     cp shell/live/card-runtime.mjs /tmp/plant-card-runtime.mjs
@@ -237,7 +261,7 @@ EOF
     python3 -c 'import hashlib, json; p = "shell/manifest.json"; m = json.load(open(p)); b = open("shell/.nojekyll", "rb").read(); m["files"].insert(0, {"path": ".nojekyll", "sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)}); json.dump(m, open(p, "w"))'
     expect_fail python3 tools/corpus_inference.py
     cp /tmp/plant-manifest.json shell/manifest.json ;;
-  *) echo "usage: $0 words|grant|bytes|shell|publish|evidence|composer|brand|token|hand|parse|hole|live|shadcn|kitfile|rolled|rewrite|passage|table|edit|lexlean|lexread|repair|parens|proof|look|unapplied|heavy|tap|inpbudget|published|dotfile" >&2; exit 2 ;;
+  *) echo "usage: $0 words|grant|bytes|shell|publish|evidence|composer|brand|token|hand|parse|hole|live|shadcn|kitfile|rolled|rewrite|passage|table|edit|lexlean|lexread|repair|parens|proof|look|working|hero|account|unapplied|heavy|tap|inpbudget|published|dotfile" >&2; exit 2 ;;
 esac
 restore
 echo "restored"

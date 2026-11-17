@@ -1,5 +1,5 @@
-// The build screen's look: the renderer's chat route (chat beside the live preview) opens Dark until a look
-// is chosen there, keeps that choice, and every other screen keeps the home look. Both places that decide
+// The working look: every screen but Home (the apps, the library, the build screen) opens Dark until a look
+// is chosen on one of them, keeps that choice, and Home keeps the home look, Earth from orbit for a new visitor. Both places that decide
 // the look are run here, as the browser runs them, against a small stand-in page:
 //   the pre paint script in shell/index.html (a direct load or refresh, before any module), and
 //   shell/appearance.js (moving between screens with pushState and popstate, and choosing a look).
@@ -31,14 +31,14 @@ function world(path, stored) {
   const history = { pushState(_s, _t, url) { to(url); }, replaceState(_s, _t, url) { to(url); } };
   const g = {
     localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) },
-    location, history, JSON, URLSearchParams, setTimeout, clearTimeout,
+    location, history, JSON, URL, URLSearchParams, setTimeout, clearTimeout,
     addEventListener: (type, fn) => (listeners[type] ||= []).push(fn),
     MutationObserver: class { observe() {} },
     fetch: () => Promise.reject(new Error("offline")),
     document: {
       documentElement: root,
       getElementById: (id) => (elements[id] ||= element()),
-      querySelector: () => null,
+      querySelector: (sel) => (sel === 'link[href="appearance.css"]' ? { href: "http://forge.test/foundry/appearance.css" } : null),
       querySelectorAll: (sel) => (sel === "#popover .mode" ? modes : []),
       addEventListener() {},
     },
@@ -61,7 +61,7 @@ const want = (name, got, expected) => {
   if (!ok) failed++;
   console.log(`${ok ? "ok    " : "WRONG "}${name.padEnd(58)} ${JSON.stringify(got)}${ok ? "" : "  wanted " + JSON.stringify(expected)}`);
 };
-const HOME = "/foundry/", CHAT = "/foundry/chat", DETAILS = "/foundry/app-details";
+const HOME = "/foundry/", BARE = "/foundry", CHAT = "/foundry/chat", DETAILS = "/foundry/app-details", APPS = "/foundry/apps";
 const light = { look: 3, palette: "light", immersive: false };
 const immersive = { look: 3, palette: "dark", immersive: true, wallpaper: "wallpapers/alps.jpg" };
 
@@ -69,6 +69,9 @@ const immersive = { look: 3, palette: "dark", immersive: true, wallpaper: "wallp
 for (const [name, path, stored, expected] of [
   ["first run, home: Immersive", HOME, {}, { palette: "dark", immersive: "on" }],
   ["first run, build screen: Dark", CHAT, {}, { palette: "dark", immersive: "off" }],
+  ["first run, apps: Dark", APPS, {}, { palette: "dark", immersive: "off" }],
+  ["first run, home without its slash: Immersive", BARE, {}, { palette: "dark", immersive: "on" }],
+  ["home Immersive, apps not chosen: Dark", APPS, { "holo.theme.v1": immersive }, { palette: "dark", immersive: "off" }],
   ["home Light, build screen not chosen: Dark", CHAT, { "holo.theme.v1": light }, { palette: "dark", immersive: "off" }],
   ["home Immersive, build screen not chosen: Dark", CHAT, { "holo.theme.v1": immersive }, { palette: "dark", immersive: "off" }],
   ["build screen chose Light: Light", CHAT, { "holo.theme.v1": immersive, "holo.theme.build.v1": { palette: "light", immersive: false } }, { palette: "light", immersive: "off" }],
@@ -86,15 +89,17 @@ for (const [name, path, stored, expected] of [
   vm.runInContext(appearance, w.g);
   want("home: Light", w.look(), { palette: "light", immersive: "off" });
   w.go(DETAILS);
-  want("pushState to another screen: home look", w.look(), { palette: "light" });
+  want("pushState to another screen: Dark, nothing stored", { ...w.look(), build: w.build() }, { palette: "dark", immersive: "off", build: null });
   w.go(CHAT + "?id=1&appId=1");
   want("pushState to the build screen: Dark, nothing stored", { ...w.look(), build: w.build() }, { palette: "dark", immersive: "off", build: null });
-  w.back(DETAILS);
-  want("back (popstate) from the build screen: home look", w.look(), { palette: "light", immersive: "off" });
+  w.back(HOME);
+  want("back (popstate) to home: home look", w.look(), { palette: "light", immersive: "off" });
   w.back(CHAT);
   want("forward (popstate) to the build screen: Dark", w.look(), { palette: "dark", immersive: "off" });
   w.choose("immersive");
   want("Immersive chosen on the build screen", { ...w.look(), build: w.build() }, { palette: "dark", immersive: "on", build: '{"palette":"dark","immersive":true}' });
+  w.go(APPS);
+  want("apps share the working look: Immersive", w.look(), { palette: "dark", immersive: "on" });
   w.go(HOME);
   want("home again: its Light, untouched", w.look(), { palette: "light", immersive: "off" });
   w.choose("dark");
@@ -106,4 +111,4 @@ for (const [name, path, stored, expected] of [
 }
 
 if (failed) { console.error(`build look: ${failed} wrong`); process.exit(1); }
-console.log("build look: the build screen opens Dark, keeps its own choice, and leaves the home look alone");
+console.log("build look: every screen but Home opens Dark, keeps one shared choice, and leaves the home look alone");
