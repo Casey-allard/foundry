@@ -1858,7 +1858,7 @@ function dispatch(channel, args) {
   let captured;try{captured=structuredClone(args);}catch{captured=null;}
   return invokeBoundCommand(commandRegistry, channel, args, handlers.get(channel), (name, values, handler) => invokeHost(name, values, handler, output, output || input ? { schema: input } : null)).then(async envelope=>{
     const binding=commandRegistry.entries.find(c=>c.channel===channel),feature=commandRegistry.features.find(f=>f.id===binding?.feature);
-    if(envelope.ok&&feature?.effects.includes("storage")&&!/^(get-|list-|read-|count-|check-|window-infrastructure:|distributed-machine:(subscribe|unsubscribe))/.test(channel)){
+    if(envelope.ok&&feature?.effects.includes("storage")&&!/^([a-z-]+:)?(get|list|read|count|check)(-|$)|^(window-infrastructure:|distributed-machine:(subscribe|unsubscribe))/.test(channel)){
       const value=captured?.[0],appId=value?.appId??value?.encodedKey?.appId??envelope.value?.app?.id,chatId=value?.chatId??value?.encodedKey?.chatId??envelope.value?.chatId;
       const scopes=windowRecoveryScopes();if(Number.isSafeInteger(appId)&&appId>0)scopes.push({family:"app",appId});if(Number.isSafeInteger(chatId)&&chatId>0)scopes.push({family:"chat",chatId});await windowCoordination.invalidate(scopes).catch(()=>{});
     }return envelope;

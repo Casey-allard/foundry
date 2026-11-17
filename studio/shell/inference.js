@@ -14,17 +14,22 @@ export function coreReady() {
   if (coreLoading) return coreLoading;
   coreLoading = (async () => {
     const { instance } = await WebAssembly.instantiateStreaming(fetch(new URL("core.wasm", BASE)), {});
-    const { memory, holo_alloc, holo_free, holo_run } = instance.exports;
+    const { memory, holo_alloc, holo_free, holo_run, holo_seal, holo_open } = instance.exports;
+    // Bytes in, bytes out through one export: a JSON request, or a key then a record to seal or open (FA-93);
+    // null when a record does not open.
+    const call = (fn, key, bytes) => {
+      const n = key.length + bytes.length, ptr = holo_alloc(n);
+      new Uint8Array(memory.buffer, ptr, n).set(key); new Uint8Array(memory.buffer, ptr + key.length, bytes.length).set(bytes);
+      const packed = fn(ptr, n), outPtr = Number(packed >> 32n), outLen = Number(packed & 0xffffffffn), out = packed < 0n ? null : new Uint8Array(memory.buffer, outPtr, outLen).slice();
+      holo_free(ptr, n); if (out) holo_free(outPtr, outLen);
+      return out;
+    };
+    const none = new Uint8Array(0);
     core = {
+      seal: (key, bytes) => call(holo_seal, key, bytes),
+      open: (key, bytes) => call(holo_open, key, bytes),
       run(request) {
-        const bytes = enc.encode(JSON.stringify(request));
-        const ptr = holo_alloc(bytes.length);
-        new Uint8Array(memory.buffer, ptr, bytes.length).set(bytes);
-        const packed = holo_run(ptr, bytes.length);
-        const outPtr = Number(packed >> 32n), outLen = Number(packed & 0xffffffffn);
-        const text = new TextDecoder().decode(new Uint8Array(memory.buffer, outPtr, outLen));
-        holo_free(outPtr, outLen); holo_free(ptr, bytes.length);
-        const out = JSON.parse(text);
+        const out = JSON.parse(new TextDecoder().decode(call(holo_run, none, enc.encode(JSON.stringify(request)))));
         if (out.error) throw new Error(out.error);
         return out;
       },
@@ -85,7 +90,8 @@ export const prismFrame = (globalThis.__prismFrame ??= () => (globalThis.__prism
 // case once, as the workspace opens. Left plain: what the service worker reads (the grants and published
 // .holo bytes, public and addressed by their content) and the audit it writes.
 const SEALED = new Set(["settings", "apps", "chats", "files", "objects", "refs", "versions"]);
-const plainPlace = (store, key) => !SEALED.has(store) || (store === "refs" && /^(capabilities|holo):/.test(key));
+// A gallery card is made to be published, and its picture is a Blob, which cannot be read inside a transaction.
+const plainPlace = (store, key) => !SEALED.has(store) || (store === "refs" && /^(capabilities|holo|gallery):/.test(key));
 const isSealed = (value) => value?.sealedWork instanceof Uint8Array;
 const word = (n) => [0, 8, 16, 24].map((shift) => ((n >>> shift) & 255).toString(16).padStart(2, "0")).join("");
 export const workspaceRequest = (...words) => "workspace " + [1, ...words].map(word).join("");
@@ -98,10 +104,14 @@ const refusal = (code) => Object.assign(new Error(code), { code });
 // including what was told before it mounted.
 export const tell = (answer) => { (globalThis.__workspaceTold ??= []).push(answer); window.dispatchEvent(new CustomEvent("foundry:workspace", { detail: answer })); };
 const base64 = (bytes) => { let text = ""; for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode(...bytes.subarray(i, i + 32768)); return btoa(text); };
-const encode = (value) => enc.encode(JSON.stringify(value, function (name, v) { const raw = this[name]; return raw instanceof Uint8Array ? { $bytes: base64(raw) } : raw instanceof Date ? { $date: v } : v; }));
+// Values as JSON, as IndexedDB would keep them: bytes, dates and a key whose value is undefined are tagged, then
+// restored by assignment, so the key stays (a reviver returning undefined would drop it).
+const encode = (value) => enc.encode(JSON.stringify(value, function (name, v) { const raw = this[name]; return raw instanceof Uint8Array ? { $bytes: base64(raw) } : raw instanceof Date ? { $date: v } : raw === undefined ? { $undefined: 1 } : v; }));
 const unbase64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
-const decode = (bytes) => JSON.parse(new TextDecoder().decode(bytes), (name, v) => (v?.$bytes !== undefined ? unbase64(v.$bytes) : v?.$date !== undefined ? new Date(v.$date) : v));
-const wrap = (target, own) => new Proxy(target, { get: (t, p) => (p in own ? own[p] : typeof t[p] === "function" ? t[p].bind(t) : t[p]), set: (t, p, v) => ((t[p] = v), true) });
+const tag = (v) => (v && typeof v === "object" && Object.keys(v).length === 1 ? Object.keys(v)[0] : "");
+const restore = (v) => tag(v) === "$bytes" ? unbase64(v.$bytes) : tag(v) === "$date" ? new Date(v.$date) : tag(v) === "$undefined" ? undefined : v && typeof v === "object" ? (Object.keys(v).forEach((k) => (v[k] = restore(v[k]))), v) : v;
+const decode = (bytes) => restore(JSON.parse(new TextDecoder().decode(bytes)));
+const wrap = (target, own) => new Proxy(target, { get: (t, p) => (p in own ? own[p] : typeof t[p] === "function" ? t[p].bind(t) : t[p]), set: (t, p, v) => ((p in own ? (own[p] = v) : (t[p] = v)), true) });
 let workspaceOpen = null;
 export const workspace = () => (workspaceOpen ??= openWorkspace());
 async function openWorkspace() {
@@ -113,7 +123,7 @@ async function openWorkspace() {
   let opened = await decide(0, ...openFacts(code));
   // A published .holo is public, and holo.js keeps its bytes plain beside its ref: the one plain record a
   // sealed store may hold.
-  const holos = new Set((await readKeys(handle, "refs")).filter((k) => typeof k === "string" && k.startsWith("holo:")).map((k) => k.slice(5)));
+  const holos = new Set((await read(handle, "refs", "getAllKeys")).filter((k) => typeof k === "string" && k.startsWith("holo:")).map((k) => k.slice(5)));
   const published = (store, key, value) => store === "objects" && value instanceof Uint8Array && holos.has(key);
   // A removed device's work is sealed under a key it no longer holds: it is cleared, with anything else kept
   // where work belongs, so nothing left behind enters the new workspace, and the device starts again.
@@ -129,8 +139,7 @@ async function openWorkspace() {
   const reads = {}, stores = {};
   for (const a of [0, 1]) { stores[a] = await decide(2, 1, 1, a); for (const b of [0, 1]) reads[`${a}${b}`] = await decide(1, 1, a, b); }
   const estimate = await navigator.storage?.estimate?.().catch(() => null);
-  let usage = estimate?.usage ?? 0;
-  const quota = estimate?.quota ?? Infinity;
+  let usage = estimate?.usage ?? 0, quota = estimate?.quota ?? Infinity;
   navigator.storage?.persist?.().catch(() => {});
   const place = (store, key) => JSON.stringify([store, key]);
   const seal = (store, key, value) => {
@@ -139,26 +148,22 @@ async function openWorkspace() {
     const answer = stores[+(usage + bytes.length < quota)];
     if (answer !== "ok") { tell(answer); throw refusal(answer); }
     usage += bytes.length;
-    return { sealedWork: unbase64(verified.run({ op: "seal", key: base64(secret), bytes: base64(bytes) }).sealed) };
+    return { sealedWork: verified.seal(secret, bytes) };
   };
   const open = (store, key, value) => {
     if (value === undefined || plainPlace(store, key) || published(store, key, value)) return value;
     let authentic = 0, bound = 0, kept;
-    try { const [where, inner] = decode(unbase64(verified.run({ op: "open", key: base64(secret), sealed: base64(value.sealedWork) }).bytes)); [authentic, bound, kept] = [1, +(where === place(store, key)), inner]; } catch {}
+    try { const [where, inner] = decode(verified.open(secret, value.sealedWork)); [authentic, bound, kept] = [1, +(where === place(store, key)), inner]; } catch {}
     const answer = reads[`${authentic}${bound}`];
-    if (answer === "ok") return kept;
-    tell(answer);
+    return answer === "ok" ? kept : void tell(answer);
   };
   // The one move: every record kept before the workspace is sealed in place, in one transaction, so its plain
   // copy is gone exactly when the sealed copy commits. A published .holo's own bytes stay as they are.
-  const moved = (await readOne(handle, "refs", "workspace:moved")) !== undefined;
+  const moved = (await read(handle, "refs", "get", "workspace:moved")) !== undefined;
   if ((await decide(3, 1, +moved)) === "ok") {
     let count = 0;
-    await everyRecord(handle, "readwrite", (store, cursor) => {
-      if (isSealed(cursor.value) || plainPlace(store, cursor.key) || (store === "objects" && holos.has(cursor.key))) return;
-      cursor.update(seal(store, cursor.key, cursor.value));
-      count += 1;
-    }, (tx) => tx.objectStore("refs").put(seal("refs", "workspace:moved", true), "workspace:moved"));
+    const visit = (store, cursor) => isSealed(cursor.value) || plainPlace(store, cursor.key) || (store === "objects" && holos.has(cursor.key)) || (cursor.update(seal(store, cursor.key, cursor.value)), count++);
+    await everyRecord(handle, "readwrite", visit, (tx) => tx.objectStore("refs").put(seal("refs", "workspace:moved", true), "workspace:moved"));
     if (count) tell("workspaceMoved");
   }
   const request = (req, read) => wrap(req, { get result() { return read(req.result); } });
@@ -184,5 +189,4 @@ function everyRecord(handle, mode, visit, last) {
     tx.onerror = tx.onabort = () => fail(tx.error ?? refusal("storageTransactionFailed"));
   });
 }
-const readOne = (handle, store, key) => new Promise((done, fail) => { const r = handle.transaction(store).objectStore(store).get(key); r.onsuccess = () => done(r.result); r.onerror = () => fail(r.error); });
-const readKeys = (handle, store) => new Promise((done, fail) => { const r = handle.transaction(store).objectStore(store).getAllKeys(); r.onsuccess = () => done(r.result); r.onerror = () => fail(r.error); });
+const read = (handle, store, how, key) => new Promise((done, fail) => { const r = handle.transaction(store).objectStore(store)[how](key); r.onsuccess = () => done(r.result); r.onerror = () => fail(r.error); });

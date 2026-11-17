@@ -79,7 +79,8 @@ try {
   assert.equal(canonicalSource(after).source,editModule.source);
   const head=await get(page,'refs',appId+':main');const bad=await apply('<prism-lexlean>invalid</prism-lexlean>');assert.equal(bad.changed,0);assert.equal(await get(page,'refs',appId+':main'),head);
   await page.goto(base+'chat?id='+made.chatId+'&appId='+appId);
-  await page.waitForFunction(()=>window.__ownerVerificationHeld&&window.__ownerBridgeRequested);
+  // The page opens the sealed workspace (FA-93) before the bridge is asked, which takes longer on a CI runner.
+  await page.waitForFunction(()=>window.__ownerVerificationHeld&&window.__ownerBridgeRequested,null,{timeout:120000});
   assert.equal(await page.evaluate(()=>window.__ownerRepliesBeforeReady),0);
   await page.evaluate(()=>window.__releaseOwnerVerification());
   await page.evaluate(()=>window.__forgeKernel.ask('drafting check')); 

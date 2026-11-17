@@ -38,7 +38,8 @@ try {
   const set=async selectedThemeId=>call(page,'set-user-settings',{selectedThemeId});
   const create=(tab,name)=>call(tab,'create-app',{name,initialChatMode:'build'});
   const refuse=async name=>{const result=await page.evaluate(async name=>{try{await window.electron.ipcRenderer.invoke('create-app',{name});return null;}catch(e){return e.code;}},name);assert.equal(result,'projectStorageFailed');};
-  const snapshot=()=>page.evaluate(async()=>Object.fromEntries(await Promise.all(['apps','chats','files','objects','refs','versions'].map(async s=>[s,await window.__host.all(s)]))));
+  // Project storage only: the window journal counts the tab's own bookkeeping, which runs beside every step.
+  const snapshot=()=>page.evaluate(async()=>Object.fromEntries(await Promise.all(['apps','chats','files','objects','refs','versions'].map(async s=>[s,(await window.__host.all(s)).filter(v=>v?.profile!=='foundry/windows/1')]))));
   await set('default');const builtin=await create(page,'initial-builtin');assert.equal(builtin.app.themeId,'default');
   await set('');const empty=await create(page,'initial-empty');assert.equal(empty.app.themeId,null);
   const theme=await call(page,'create-custom-theme',{name:'Initial',prompt:'INITIAL-THEME'});

@@ -16,7 +16,6 @@
 //!              document, the source manifest and the provenance; bytes travel as base64) and
 //!              validate-application (PrismPM's strict Holo/1 profile check)
 //!   Forge:     view
-//!   Sealing:   seal, open (the visitor's work, FA-93: hologram-space's PayloadCipher seam)
 //! Errors: {"error":"…"}.
 
 use crate::holo::archive::{compose_application, validate_application, ApplicationArchiveInput, ArchiveProvenance};
@@ -215,22 +214,6 @@ fn run(input: &[u8]) -> Value {
             json!({ "kappa": headOf(&refs, text(&value["branch"])) })
         }
         "view" => view_json(),
-        // Sealing: nonce ‖ ciphertext ‖ tag, the nonce convergent (seal_private), so one place's same value
-        // seals the same; anything that does not authenticate is recordTampered.
-        "seal" => match (bytes_of(&value["key"]), bytes_of(&value["bytes"])) {
-            (Ok(key), Ok(plain)) if key.len() == 32 => {
-                let (nonce, sealed) = seal_private(&ChaCha, &key, &plain);
-                json!({ "sealed": b64_encode(&[&nonce[..], &sealed].concat()) })
-            }
-            _ => json!({ "error": "seal takes a 32-byte key and base64 bytes" }),
-        },
-        "open" => match (bytes_of(&value["key"]), bytes_of(&value["sealed"])) {
-            (Ok(key), Ok(sealed)) if sealed.len() >= 12 => match ChaCha.open(&key, &sealed[..12], &sealed[12..]) {
-                Some(plain) => json!({ "bytes": b64_encode(&plain) }),
-                None => json!({ "error": "recordTampered" }),
-            },
-            _ => json!({ "error": "recordTampered" }),
-        },
         // Publish: the words and bytes the model owns, then PrismPM's own composer and validator.
         "publish-preimage" => json!({ "bytes": publishPreimage(text(&value["application"]), text(&value["version"]), text(&value["closure"]), text(&value["attestation"])) }),
         "source-manifest" => json!({ "bytes": sourceManifest(text(&value["leanManifest"]), text(&value["coverage"]), text(&value["kernel"]), text(&value["modelId"]), text(&value["semanticId"]), text(&value["sourceId"])) }),
@@ -410,15 +393,41 @@ pub extern "C" fn holo_free(pointer: i32, len: i32) {
     }
 }
 
-/// Run one request. Returns `(pointer << 32) | len` of a UTF-8 JSON response the host must free.
-#[no_mangle]
-pub extern "C" fn holo_run(pointer: i32, len: i32) -> i64 {
+/// The `len` bytes the host wrote at a pointer from `holo_alloc`.
+fn input<'a>(pointer: i32, len: i32) -> &'a [u8] {
     // SAFETY: the host wrote `len` bytes at a pointer from `holo_alloc`.
-    let input = unsafe { std::slice::from_raw_parts(pointer as *const u8, len.max(0) as usize) };
-    let output = run(input).to_string().into_bytes();
+    unsafe { std::slice::from_raw_parts(pointer as *const u8, len.max(0) as usize) }
+}
+
+/// `(pointer << 32) | len` of bytes the host must free, or -1 for none.
+fn hand_out(output: Option<Vec<u8>>) -> i64 {
+    let Some(output) = output else { return -1 };
     let out_len = output.len() as i64;
     let mut output = output.into_boxed_slice();
     let out_pointer = output.as_mut_ptr() as i64;
     std::mem::forget(output);
     (out_pointer << 32) | out_len
+}
+
+/// Run one request; the response is UTF-8 JSON.
+#[no_mangle]
+pub extern "C" fn holo_run(pointer: i32, len: i32) -> i64 {
+    hand_out(Some(run(input(pointer, len)).to_string().into_bytes()))
+}
+
+/// Seal a record of the visitor's work (FA-93): the input is the 32-byte key, then the plaintext; the output
+/// is nonce ‖ ciphertext ‖ tag, its nonce convergent (seal_private). Bytes in and out, with no JSON or base64
+/// between, since every record the workspace stores and reads passes here.
+#[no_mangle]
+pub extern "C" fn holo_seal(pointer: i32, len: i32) -> i64 {
+    let input = input(pointer, len);
+    hand_out((input.len() >= 32).then(|| seal_private(&ChaCha, &input[..32], &input[32..])).map(|(n, s)| [&n[..], &s].concat()))
+}
+
+/// Open one: the input is the key, then nonce ‖ ciphertext ‖ tag; the output is the plaintext, or none when it
+/// does not authenticate.
+#[no_mangle]
+pub extern "C" fn holo_open(pointer: i32, len: i32) -> i64 {
+    let input = input(pointer, len);
+    hand_out((input.len() >= 44).then(|| ChaCha.open(&input[..32], &input[32..44], &input[44..])).flatten())
 }
