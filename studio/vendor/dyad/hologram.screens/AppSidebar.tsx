@@ -392,7 +392,8 @@ export function AppSidebar() {
         </DialogContent>
       </Dialog>
     </Sidebar>
-    <SettingsOverlay open={settingsOpen} onOpenChange={setSettingsOpen} />
+    {/* Mounted only while open: on the build screen, whose page changes on every edit, it costs nothing. */}
+    {settingsOpen && <SettingsOverlay open onOpenChange={setSettingsOpen} />}
     </>
   );
 }
@@ -425,8 +426,8 @@ function SettingsOverlay({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const flash = useRef<HTMLElement | null>(null);
   // A link inside Settings leads to another page: the overlay steps aside for it.
   const href = useLocation({ select: (l) => l.href });
-  useEffect(() => { onOpenChange(false); }, [href]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (open) setQuery(""); }, [open]);
+  const openedAt = useRef(href);
+  useEffect(() => { if (href !== openedAt.current) onOpenChange(false); }, [href]); // eslint-disable-line react-hooks/exhaustive-deps
   // The sections are the cards the settings page draws, each with its id and its title, in order.
   useEffect(() => {
     if (!pane) return;
@@ -521,7 +522,7 @@ function SettingsOverlay({ open, onOpenChange }: { open: boolean; onOpenChange: 
           <div ref={setPane} data-settings-pane=""
             className="min-h-0 flex-1 overflow-y-auto px-[34px] py-[21px] max-md:px-[13px] [&>div]:overflow-visible [&>div]:p-0 [&>div>div>p:first-child]:hidden [&_[data-slot=card]]:gap-[21px] [&_[data-slot=card]]:rounded-none [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:bg-transparent [&_[data-slot=card]]:py-0 [&_[data-slot=card]]:shadow-none [&_[data-slot=card-content]]:px-0 [&_[data-slot=card-header]]:border-b [&_[data-slot=card-header]]:px-0 [&_[data-slot=card-header]]:pr-[34px] [&_[data-slot=card-header]]:pb-[13px] [&_[data-slot=card-title]]:text-base [&_[data-found]]:rounded-md [&_[data-found]]:ring-2 [&_[data-found]]:ring-ring [&_[data-found]]:ring-offset-[5px] [&_[data-found]]:ring-offset-background">
             <Suspense fallback={<div className="flex flex-col gap-[13px]"><Skeleton className="h-[21px] w-[144px]" /><Skeleton className="h-[55px] w-full" /><Skeleton className="h-[55px] w-full" /></div>}>
-              {open && <SettingsPage />}
+              <SettingsPage />
             </Suspense>
           </div>
         </div>

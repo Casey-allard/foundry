@@ -70,6 +70,7 @@ test("studio/experience: one account row at the foot, its menu, and Settings ove
   assert.ok(/e\.key === "," && \(e\.metaKey \|\| e\.ctrlKey\)/.test(sidebar), "no Control or Command with comma");
   // The overlay lives outside the Sidebar: on a phone the Sheet unmounts when closed and would take it along.
   assert.ok(sidebar.indexOf("<SettingsOverlay") > sidebar.indexOf("</Sidebar>"), "the overlay is inside the sidebar");
+  assert.ok(sidebar.includes("{settingsOpen && <SettingsOverlay open onOpenChange={setSettingsOpen} />}"), "the overlay stays mounted on every screen while closed");
 });
 
 test("studio/experience: centred popups, golden measures, tools on Settings, a quiet Home", () => {
