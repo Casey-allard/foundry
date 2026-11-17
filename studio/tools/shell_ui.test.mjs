@@ -51,10 +51,32 @@ test("studio/experience: the workspace speaks the experience module's sentences 
   for (const words of said) assert.ok(spec.includes(words), words);
 });
 
+test("studio/experience: one account row at the foot, its menu, and Settings over the page", () => {
+  const spec = read("../experience/src/FoundryExperience.lex.tex"), sidebar = read("../vendor/prism/hologram.screens/AppSidebar.tsx");
+  for (const said of ["one row under a hairline", "a small chevron right beside it, then open space", "Every item opens something real; none is a promise", "890 pixels wide and 550 tall", "Control or Command with comma opens it from anywhere", "the sections run in one row above", "opens Dark, on a solid surface"]) assert.ok(spec.includes(said), said);
+  const foot = sidebar.slice(sidebar.indexOf("<SidebarFooter"), sidebar.indexOf("</SidebarFooter>"));
+  assert.ok(foot.includes('data-slot="account-bar"') && foot.includes('data-slot="account-trigger"') && foot.includes('data-slot="settings-trigger"'), "the foot is not one account row");
+  // The chevron sits beside the name, and the open space is between the account and the gear.
+  assert.ok(!/data-slot="account-trigger"[^>]*flex-1/.test(foot), "the account button stretches, pushing the chevron away from the name");
+  assert.ok(!foot.includes("ml-auto size-"), "the chevron is pushed to the far end");
+  assert.ok(/<\/DropdownMenu>\s*<span aria-hidden="true" className="flex-1/.test(foot), "no open space before the gear");
+  // No stacked rows of links at the foot: Settings, Help and Prism ID live in the menu.
+  assert.equal(/<Link to="\/settings">/.test(foot), false, "Settings is a stacked row again");
+  for (const item of ["onSelect={openPrismId}", "onSelect={openSettings}", "onSelect={() => setHelpDialog({ open: true })}", "Devices and recovery"]) assert.ok(foot.includes(item), item);
+  // Settings over the page: centred kit Dialog, golden measures, opaque, upstream's own page and index.
+  const overlay = sidebar.slice(sidebar.indexOf("function SettingsOverlay"), sidebar.indexOf("// The user's apps"));
+  for (const token of ["h-[min(550px,85vh)] w-[min(890px,90vw)]", "w-[233px]", "bg-[color-mix(in_srgb,var(--popover)_97%,transparent)]!", 'lazy(() => import("@/pages/settings"))', "SETTINGS_SEARCH_INDEX", '[data-slot="card"][id]', "max-md:h-dvh"]) assert.ok(sidebar.includes(token), token);
+  assert.ok(overlay.includes("display:none!important"), "the docked tools leak into every section");
+  assert.ok(/e\.key === "," && \(e\.metaKey \|\| e\.ctrlKey\)/.test(sidebar), "no Control or Command with comma");
+  // The overlay lives outside the Sidebar: on a phone the Sheet unmounts when closed and would take it along.
+  assert.ok(sidebar.indexOf("<SettingsOverlay") > sidebar.indexOf("</Sidebar>"), "the overlay is inside the sidebar");
+  assert.ok(sidebar.includes("{settingsOpen && <SettingsOverlay open onOpenChange={setSettingsOpen} />}"), "the overlay stays mounted on every screen while closed");
+});
+
 test("studio/experience: centred popups, golden measures, tools on Settings, a quiet Home", () => {
   // The preferences are a LexLean module of their own, outside the kernel's proof inputs.
   const spec = read("../experience/src/FoundryExperience.lex.tex");
-  for (const name of ["oneLook", "popupsCentred", "goldenRatio", "questionAsNotification", "whyHowWhat", "sidebarIsNavigation", "toolsOnSettings", "homeAsksOneThing", "homeIsAWorkspace", "composerRow", "featuredCovers", "modelMenu", "appsOnDevice", "theaterInSidebar", "theaterStage", "theaterDetails", "theaterUpNext", "theaterKeys"]) assert.ok(spec.includes("name: " + name + ","), name);
+  for (const name of ["oneLook", "popupsCentred", "goldenRatio", "questionAsNotification", "whyHowWhat", "sidebarIsNavigation", "toolsOnSettings", "homeAsksOneThing", "homeIsAWorkspace", "composerRow", "featuredCovers", "modelMenu", "appsOnDevice", "theaterInSidebar", "theaterStage", "theaterDetails", "theaterUpNext", "theaterKeys", "workingLook", "accountBar", "accountMenu", "settingsOverlay"]) assert.ok(spec.includes("name: " + name + ","), name);
   assert.equal(read("../../app/src/FoundrySpecification.lex.tex").includes("foundrySurfaceExperienceBoundary"), false, "a look-and-feel preference is back in the kernel's specification");
   for (const input of fs.readdirSync(new URL("../../app/src/", import.meta.url)).filter((n) => n.endsWith(".lex.tex"))) assert.equal(read("../../app/src/" + input).includes("FoundryExperience"), false, input + " reads the look-and-feel module, which makes it a kernel proof input");
   assert.ok(read("../../.github/workflows/studio.yml").includes("key: experience-check-v1-${{ hashFiles('studio/experience/**', 'prismpm.lock') }}"));
@@ -121,7 +143,16 @@ test("studio/experience: centred popups, golden measures, tools on Settings, a q
   assert.ok(read("../vendor/prism/hologram.screens.mjs").includes('"src/components/FeaturedAppShowcase.tsx": "hologram.screens/FeaturedAppShowcase.tsx"'));
   // A card without a cover is still a card: the tile and its initial are drawn, and a real cover fills it.
   assert.ok(css.includes('[data-slot="home-featured"] [role="region"] button img { object-fit: cover !important;'));
-  assert.ok(css.includes("max-height: 233px"), "the room under the hero is not capped on a tall window");
+  // The hero keeps the golden section at every height, and grows as one piece in a larger room.
+  assert.equal(css.includes("max-height: 233px"), false, "the room under the hero is capped again, so the hero sinks on a tall window");
+  assert.ok(css.includes('[data-slot="home-stage"] > div { zoom: var(--hero-scale, 1); }'), "the hero no longer grows with the room");
+  assert.ok(css.includes("max-width: min(92%, calc(987px * var(--hero-scale, 1)))"), "the room's width no longer grows with the hero");
+  const look = read("../shell/appearance.js");
+  assert.ok(look.includes("const HERO_ROOM = { width: 1060, height: 791 };") && look.includes("Math.min(Math.max(Math.min(room.clientWidth / HERO_ROOM.width, room.clientHeight / HERO_ROOM.height), 1), 2.618)"), "the hero's scale is not the room's smaller proportion, from 1 to the ratio squared");
+  assert.ok(spec.includes("grows as one piece, by the smaller of the room's two proportions"), "the spec no longer says how the hero grows");
+  // The build screen changes its page on every edit: the hero is looked for on a route change, never by watching the page.
+  assert.equal(/observe\(root, \{ childList: true, subtree: true \}\)/.test(look), false, "the whole page is watched for the hero, which slows every edit on the build screen");
+  assert.ok(look.includes("routed(); watchHero();"), "the hero is not looked for when the route changes");
   assert.ok(css.includes("flex-wrap: nowrap !important"), "the ideas still wrap into a block");
   // On a phone home is one screen: the floor is hidden there and only there, and the page cannot scroll.
   const phoneHome = /@media \(max-width: 767px\) \{\s*\[data-slot="home-featured"\] \{ display: none !important; \}\s*#layout-main-content-container:has\(\[data-slot="home-page"\]\) \{ overflow: hidden !important; \}/;

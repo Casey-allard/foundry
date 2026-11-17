@@ -63,8 +63,11 @@ fn page() -> String {
   var root = document.documentElement, s = null;
   try {{ s = JSON.parse(localStorage.getItem("holo.theme.v1") || "null"); }} catch (e) {{}}
   if (!s || s.look !== 3) {{ s = {{ look: 3, palette: "dark", immersive: true, wallpaper: "https://uor-foundation.github.io/template/frame/backdrops/Q1p7bh3SHj8.jpg", photo: {{"id":"Q1p7bh3SHj8","image":"https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixid=M3w4OTc5NTl8MHwxfHNlYXJjaHw1fHxzcGFjZXxlbnwxfDB8fHwxNzk0MDU1OTU2fDA&ixlib=rb-4.1.0","alt":"City lights across Earth at night, from orbit","name":"NASA","user":"nasa"}} }}; try {{ localStorage.setItem("holo.theme.v1", JSON.stringify(s)); }} catch (e) {{}} }}
-  // The build screen (the chat route) keeps its own look, Dark until one is chosen there (appearance.js).
-  if (/\/chat\/?$/.test(location.pathname)) {{ var b = null; try {{ b = JSON.parse(localStorage.getItem("holo.theme.build.v1") || "null"); }} catch (e) {{}} s = {{ palette: b && b.palette === "light" ? "light" : "dark", immersive: !!(b && b.immersive), wallpaper: s.wallpaper }}; }}
+  // Home keeps the home look; every other screen keeps one shared look, Dark until one is chosen there
+  // (appearance.js). Home is the shell's own folder, read from the stylesheet link above.
+  var l = document.querySelector('link[href="appearance.css"]'), base = "/", p = location.pathname;
+  try {{ if (l) base = new URL(".", l.href).pathname; }} catch (e) {{}}
+  if (!(p === base || p + "/" === base || p === base + "index.html")) {{ var b = null; try {{ b = JSON.parse(localStorage.getItem("holo.theme.build.v1") || "null"); }} catch (e) {{}} s = {{ palette: b && b.palette === "light" ? "light" : "dark", immersive: !!(b && b.immersive), wallpaper: s.wallpaper }}; }}
   var palette = s.palette === "light" ? "light" : "dark";
   root.setAttribute("data-holo-palette", palette);
   root.setAttribute("data-holo-immersive", s.immersive ? "on" : "off");

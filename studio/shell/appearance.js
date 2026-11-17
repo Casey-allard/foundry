@@ -95,11 +95,15 @@ function sharpenNow() {
   }, () => {});
 }
 
-// The build screen (the renderer's chat route: chat beside the live preview) keeps its own look, Dark until
-// one is chosen there, kept under BUILD_KEY; every other screen keeps the home look under KEY. The photo,
-// wallpaper and recent picks are one set, shared by both. The pre paint script in index.html reads the same.
+// Home keeps the home look under KEY: a new visitor sees Earth from orbit there. Every other screen (apps,
+// library, theater, the build screen, settings) is a place to read and work, so it keeps one shared look of its
+// own, Dark until one is chosen on any of them, under BUILD_KEY (its name is kept, so a look chosen on the build
+// screen before carries over). The photo, wallpaper and recent picks are one set, shared by both. Home is the
+// shell's own folder, read from the stylesheet link that precedes every script; the pre paint script in
+// index.html decides the same way.
 const BUILD_KEY = "holo.theme.build.v1";
-const onBuild = () => /\/chat\/?$/.test(location.pathname);
+const shellBase = (() => { const l = document.querySelector('link[href="appearance.css"]'); try { return l ? new URL(".", l.href).pathname : "/"; } catch (e) { return "/"; } })();
+const onBuild = () => { const p = location.pathname; return !(p === shellBase || p + "/" === shellBase || p === shellBase + "index.html"); };
 function readJson(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; } }
 function readTheme() {
   const home = readJson(KEY) || {};
@@ -241,7 +245,7 @@ let resized = null;
 addEventListener("resize", () => { clearTimeout(resized); resized = setTimeout(sharpen, 400); });
 
 // The renderer moves between screens without loading a page (pushState, replaceState, back and forward), so
-// the look follows the route: entering or leaving the build screen shows that screen's look.
+// the look follows the route: leaving Home or coming back to it shows that screen's look.
 let wasBuild = onBuild();
 function routed() {
   if (onBuild() === wasBuild) return;
@@ -250,9 +254,9 @@ function routed() {
 }
 for (const name of ["pushState", "replaceState"]) {
   const move = history[name];
-  history[name] = function (...args) { const r = move.apply(this, args); routed(); return r; };
+  history[name] = function (...args) { const r = move.apply(this, args); routed(); watchHero(); return r; };
 }
-addEventListener("popstate", routed);
+addEventListener("popstate", () => { routed(); watchHero(); });
 
 // When the renderer's own settings switch its theme class, the palette follows (and Immersive, which is a
 // dark look, steps aside for Light).
@@ -293,3 +297,29 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
   $("appearance").after(full);
   root.classList.add("has-fullscreen");
 }
+
+// Home's hero keeps its proportions on every screen. Its measures (the headline, the 610 px box, the chips,
+// their spaces) were set for a room of 1060 by 791 px above the floor, 791 being 1280 over the ratio; in a larger
+// room the hero grows with it as one piece, by the smaller of the two proportions so it never crowds either edge,
+// up to the ratio squared. In a smaller room it keeps those measures, which are already set for it. The scale is
+// one number on <html>, which appearance.css applies to the hero alone (zoom), so nothing else moves.
+const HERO_ROOM = { width: 1060, height: 791 };
+function fitHero(room) {
+  const scale = Math.min(Math.max(Math.min(room.clientWidth / HERO_ROOM.width, room.clientHeight / HERO_ROOM.height), 1), 2.618);
+  root.style.setProperty("--hero-scale", scale.toFixed(3));
+}
+// Home is looked for only when the route changes, and only on Home, every 34 ms for up to two seconds while its page mounts:
+// other screens (the build screen above all, whose page changes on every edit) pay nothing for it.
+let heroRoom = null;
+const heroSizes = typeof ResizeObserver === "function" ? new ResizeObserver(() => { if (heroRoom) fitHero(heroRoom); }) : null;
+function watchHero(frames = 55) {
+  if (!heroSizes) return;
+  const room = onBuild() ? null : document.querySelector('[data-slot="home-page"]');
+  if (room !== heroRoom) {
+    if (heroRoom) heroSizes.unobserve(heroRoom);
+    heroRoom = room;
+    if (room) { heroSizes.observe(room); fitHero(room); }
+  }
+  if (!room && !onBuild() && frames > 0) setTimeout(() => watchHero(frames - 1), 34);
+}
+watchHero();

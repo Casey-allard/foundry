@@ -515,15 +515,15 @@ p:has(> [data-slot="home-wide"]) { display: none !important; }
   [data-slot="home-stage"] { flex: 1 1 auto !important; min-height: 0; padding: 21px 16px !important; justify-content: flex-start !important; }
 }
 /* A workspace, not a page: the hero sits at the golden section of the room above the floor (the space over
-   it is to the space under it as 1 to phi), on a phone as on a desktop. The room is 987 px wide at most (a
-   Fibonacci number, 610 x phi) and the composer is its golden section, 610, centred, with the ideas under
-   it on the same measure. */
+   it is to the space under it as 1 to phi), on a phone as on a desktop, at every height. The room is 987 px
+   wide at most (a Fibonacci number, 610 x phi) and the composer is its golden section, 610, centred, with
+   the ideas under it on the same measure. In a room larger than the one these were set for, the hero grows
+   as one piece (--hero-scale, from appearance.js), so it looks the same on a laptop and on a large screen. */
 @media (min-width: 768px) {
-  [data-slot="home-stage"] { max-width: min(92vw, 987px) !important; justify-content: flex-start !important; }
+  [data-slot="home-stage"] { max-width: min(92%, calc(987px * var(--hero-scale, 1))) !important; justify-content: flex-start !important; }
+  [data-slot="home-stage"] > div { zoom: var(--hero-scale, 1); }
   [data-slot="home-stage"]::before { content: ""; flex: 1 1 0; }
-  /* On a tall window the room under the hero is capped at 233 px, so the hero settles toward the middle
-     instead of leaving a void: short windows keep the golden section, tall ones stay composed. */
-  [data-slot="home-stage"]::after { content: ""; flex: 1.618 1 0; max-height: 233px; }
+  [data-slot="home-stage"]::after { content: ""; flex: 1.618 1 0; }
   /* The work surface is 987 wide; the input is its golden section, 610, centred, with the ideas under it on
      the same measure. */
   [data-testid="home-chat-input-container"] { max-width: 610px !important; margin-inline: auto !important; border-radius: 21px !important; }
