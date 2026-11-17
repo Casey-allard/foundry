@@ -89,11 +89,11 @@ assert.deepEqual(compiled.diagnostics, []);
 const module = { exports: {} };
 const unusedImports = new Set([
   "@tanstack/react-router",
-  "@/hooks/useLoadApps",
-  "@/hooks/useOpenApp",
-  "@/hooks/useAppThumbnails",
-  "@/lib/sortApps",
+  "@/hooks/useLoadApps", "@/hooks/useOpenApp",
+  "@/hooks/useAppThumbnails", "@/lib/sortApps",
   "../../hologram.featured-apps.mjs",
+  // Theater's: the row plays and edits apps, which Card and Keep never reach.
+  ...["jotai", "@/atoms/chatAtoms", "@/hooks/useRunApp", "@/hooks/useAppRun", "@/components/ui/button", "@/lib/utils"],
 ]);
 vm.runInNewContext(
   compiled.outputText,
