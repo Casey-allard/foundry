@@ -5,8 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
-assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/dyad/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
+assert.equal(JSON.parse(fs.readFileSync(new URL("../vendor/prism/node_modules/monaco-editor/package.json", import.meta.url), "utf8")).version, "0.52.2");
 const readFixture=p=>{const v=JSON.parse(fs.readFileSync(new URL(p,import.meta.url)));return v.spec??v;};
 const rsvp=readFixture('./fixtures/live/rsvp.json'),parking=readFixture('./fixtures/specs/parking-fee.json');
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
@@ -39,7 +39,7 @@ try {
   const get=(tab,store,key)=>tab.evaluate(({store,key})=>window.__host.get(store,key),{store,key});
   const made=await call(page,'create-app',{name:'module-presentation',initialChatMode:'build'}),appId=made.app.id;
   const apply=text=>page.evaluate(({appId,text})=>window.__prism.rulesAfterTurn(appId,text),{appId,text});
-  await apply('<dyad-spec>'+JSON.stringify(rsvp)+'</dyad-spec>');
+  await apply('<prism-spec>'+JSON.stringify(rsvp)+'</prism-spec>');
   const oldPath='prism/'+canonicalSource(rsvp).name+'.lex.tex';assert.ok(await get(page,'files',appId+':'+oldPath));
   const incoming=canonicalSource(parking),result=await apply('<prism-lexlean>'+incoming.source+'</prism-lexlean>');
   assert.ok(result.changed>0);assert.match(result.card,/view and descriptions were reset/);
@@ -50,7 +50,7 @@ try {
   assert.equal((await page.evaluate(appId=>window.__prism.rulesOf(appId),appId)).issues.length,0);
   // Compatible logic replacement keeps the actual checked presentation.
   const custom={...current,purpose:'A custom parking explanation',view:{blocks:[{kind:'heading',text:'Your parking quote'},{kind:'input',field:'hours'},{kind:'input',field:'vehicle'},{kind:'answer'}]},meanings:Object.fromEntries(current.outcomes.map(x=>[x,'Meaning of '+x]))};
-  await apply('<dyad-spec>'+JSON.stringify(custom)+'</dyad-spec>');
+  await apply('<prism-spec>'+JSON.stringify(custom)+'</prism-spec>');
   const edited=structuredClone(parking);edited.rules[0].then=edited.outcomes.find(x=>x!==edited.rules[0].then);
   const editModule=canonicalSource(edited),same=await apply('<prism-lexlean>'+editModule.source+'</prism-lexlean>');
   assert.ok(!same.card.includes('view and descriptions were reset'));

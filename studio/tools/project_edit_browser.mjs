@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import http from "node:http";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 const host = fs.readFileSync(new URL("../shell/host.js", import.meta.url), "utf8");
 const helloStart = host.indexOf('window.addEventListener("message", (e) => {\n  const m = e.data;'), helloEnd = host.indexOf('new MutationObserver', helloStart);
 const identityStart = host.indexOf('const isLiveFrame ='), identityEnd = host.indexOf('\n', identityStart);

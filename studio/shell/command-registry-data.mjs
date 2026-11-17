@@ -2839,7 +2839,7 @@ export const commandRegistryData = {
       "output": "imported-renderer"
     },
     {
-      "channel": "restart-dyad",
+      "channel": "restart-prism",
       "feature": "unavailable",
       "version": 1,
       "owner": "FoundrySpecification.capabilityAvailabilityBoundary",

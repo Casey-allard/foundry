@@ -9,7 +9,7 @@ for (const name of ["schema", "valid", "corrupt", "limits", "staging"]) test(`lo
 });
 test("actual loader staging cache and independent browser gates share the declared closure", () => {
   const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
-  const loader = read("../vendor/dyad/hologram.editor.ts"), build = read("../vendor/dyad/vite.shell.config.mts");
+  const loader = read("../vendor/prism/hologram.editor.ts"), build = read("../vendor/prism/vite.shell.config.mts");
   assert.match(loader, /loader.config\(\{ paths: \{ vs: new URL\("editor\/vs", applicationBase\).href \} \}\)/);
   assert.match(loader, /new URL\(import.meta.env.BASE_URL, window.location.origin\)/);
   assert.match(build, /import \$\{JSON.stringify\(editor\)\};/);

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../vendor/dyad/node_modules/playwright-core/index.mjs";
+import { chromium } from "../vendor/prism/node_modules/playwright-core/index.mjs";
 import { featuredApps, featuredOnHome } from "../shell/featured-apps.mjs";
 
 const root = fileURLToPath(new URL("../shell/", import.meta.url));
@@ -15,12 +15,12 @@ for (const name of ["core.wasm", "assets/index.js", "manifest.json", "sw.js", "p
   );
 }
 const lock = JSON.parse(
-  fs.readFileSync(new URL("../vendor/dyad/package-lock.json", import.meta.url), "utf8"),
+  fs.readFileSync(new URL("../vendor/prism/package-lock.json", import.meta.url), "utf8"),
 );
 assert.equal(
   JSON.parse(
     fs.readFileSync(
-      new URL("../vendor/dyad/node_modules/playwright-core/package.json", import.meta.url),
+      new URL("../vendor/prism/node_modules/playwright-core/package.json", import.meta.url),
       "utf8",
     ),
   ).version,

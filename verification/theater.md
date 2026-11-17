@@ -7,7 +7,7 @@ Why: Prism apps are made to be used, and Home shows only four of them at a time.
 use them one after another, the way a stream plays one video after another, without leaving the page.
 
 How: Theater is a route of the renderer (`/theater`, declared by a patch to `src/router.ts` in
-`studio/vendor/dyad/hologram.screens.mjs`) whose screen, `TheaterPage`, lives in the floor's own module,
+`studio/vendor/prism/hologram.screens.mjs`) whose screen, `TheaterPage`, lives in the floor's own module,
 `hologram.screens/FeaturedAppShowcase.tsx`. It plays from that module's catalogue, drawn covers and bookmarks,
 so a star on Home is the same star in Theater. A visitor's app is started through the run state the build
 preview uses and shown at the address that state answers, under exactly the preview's sandbox; Theater adds

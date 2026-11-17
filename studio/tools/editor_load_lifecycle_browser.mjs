@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import {fileURLToPath} from 'node:url';
-import {build} from '../vendor/dyad/node_modules/esbuild/lib/main.js';
-import {chromium} from '../vendor/dyad/node_modules/playwright-core/index.mjs';
-import {screenSource} from '../vendor/dyad/hologram.screens.mjs';
-import {editorLoaderSource} from '../vendor/dyad/hologram.editor-loader.mjs';
-const vendor=fileURLToPath(new URL('../vendor/dyad/',import.meta.url)),shell=fileURLToPath(new URL('../shell/',import.meta.url));
+import {build} from '../vendor/prism/node_modules/esbuild/lib/main.js';
+import {chromium} from '../vendor/prism/node_modules/playwright-core/index.mjs';
+import {screenSource} from '../vendor/prism/hologram.screens.mjs';
+import {editorLoaderSource} from '../vendor/prism/hologram.editor-loader.mjs';
+const vendor=fileURLToPath(new URL('../vendor/prism/',import.meta.url)),shell=fileURLToPath(new URL('../shell/',import.meta.url));
 assert.equal(JSON.parse(fs.readFileSync(path.join(vendor,'node_modules/monaco-editor/package.json'))).version,'0.52.2');
 assert.ok(fs.existsSync(path.join(shell,'editor/vs/loader.js')),'Stage the verified editor first');
 const file=path.join(vendor,'src/components/chat/monaco.ts');
@@ -38,12 +38,12 @@ try{
    if(scenario==='themeFailure'){
     const monaco=await rawInit(),define=monaco.editor.defineTheme;monaco.editor.defineTheme=()=>{throw Error('private theme fixture');};
     const error=await loader.init().catch(e=>e);monaco.editor.defineTheme=define;const restored=await loader.init();
-    const node=document.createElement('div');node.style.cssText='width:200px;height:100px';document.body.append(node);window.editor=restored.editor.create(node,{value:'ready',language:'plaintext',theme:'dyad-dark'});
+    const node=document.createElement('div');node.style.cssText='width:200px;height:100px';document.body.append(node);window.editor=restored.editor.create(node,{value:'ready',language:'plaintext',theme:'prism-dark'});
     return {code:error.code,message:error.message,background:getComputedStyle(node.querySelector('.monaco-editor')).backgroundColor};
    }
    const first=loader.init(),observed=first.catch(e=>e);first.cancel();const second=loader.init();const third=loader.init();const [cancelled,monaco,other]=await Promise.all([observed,second,third]);
    const cached=loader.init(),cachedResult=cached.catch(e=>e);cached.cancel();const replacement=await loader.init();
-   const node=document.createElement('div');node.style.cssText='width:200px;height:100px';document.body.append(node);window.editor=monaco.editor.create(node,{value:'ready',language:'plaintext',theme:'dyad-dark'});
+   const node=document.createElement('div');node.style.cssText='width:200px;height:100px';document.body.append(node);window.editor=monaco.editor.create(node,{value:'ready',language:'plaintext',theme:'prism-dark'});
    return {cancelled:cancelled.type,cachedCancelled:(await cachedResult).type,same:monaco===other&&monaco===replacement,background:getComputedStyle(node.querySelector('.monaco-editor')).backgroundColor};
   },scenario);
   if(scenario==='cancel')assert.deepEqual(result,{cancelled:'cancelation',cachedCancelled:'cancelation',same:true,background:'rgb(19, 19, 22)'});

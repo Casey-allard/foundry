@@ -45,7 +45,7 @@ test("the look comes from the brand's tokens: no colour of its own, in any theme
 });
 
 test("studio/experience: the workspace speaks the experience module's sentences (FA-93)", () => {
-  const spec = read("../experience/src/FoundryExperience.lex.tex"), sidebar = read("../vendor/dyad/hologram.screens/AppSidebar.tsx");
+  const spec = read("../experience/src/FoundryExperience.lex.tex"), sidebar = read("../vendor/prism/hologram.screens/AppSidebar.tsx");
   const said = new Set([...sidebar.slice(sidebar.indexOf("const WORKSPACE_SAID"), sidebar.indexOf("function sayWorkspace")).matchAll(/[:=] "([^"]+)"/g)].map((m) => m[1]));
   assert.equal(said.size, 6, "the sidebar says other than the six sentences");
   for (const words of said) assert.ok(spec.includes(words), words);
@@ -76,29 +76,29 @@ test("studio/experience: centred popups, golden measures, tools on Settings, a q
   assert.ok(css.includes('[data-testid="home-chat-input-container"] { max-width: 610px !important; margin-inline: auto !important;'));
   assert.ok(css.includes("justify-content: safe center !important;"), "the ideas are not centred");
   // Three ideas, and no fourth chip asking for another three.
-  const screens = read("../vendor/dyad/hologram.screens.mjs");
+  const screens = read("../vendor/prism/hologram.screens.mjs");
   assert.ok(screens.includes('{t("moreIdeas")}'), "the chip the shell removes is no longer named");
   assert.ok(screens.includes("return shuffled.slice(0, 2);"), "the row offers other than two ideas");
   assert.ok(screens.includes('Build your ideas with <span data-slot="home-name">Prism</span>'), "the hero line changed");
   assert.match(css, /\[data-slot="home-name"\] \{\s*font-family: Georgia[^}]*font-style: italic;/);
   assert.equal(screens.split('data-slot="home-surprise"').length, 2, "Surprise me is written once, in the row");
   assert.ok(css.includes('[data-slot="home-suggestions"] > *:not([data-slot="home-surprise"]) { display: none !important; }'), "a phone keeps the ideas beside Surprise me");
-  assert.equal(read("../vendor/dyad/src/pages/home.tsx").includes("getRandomPrompts())}"), true);
+  assert.equal(read("../vendor/prism/src/pages/home.tsx").includes("getRandomPrompts())}"), true);
   assert.ok(screens.includes('to: `import { Sparkles, Zap } from "lucide-react";`'), "the removed chip's icon is still imported");
   // The model sits beside attach, the three ways to ask beside send, and the toggle is drawn from tokens.
   assert.ok(css.includes('[data-testid="model-picker"] { grid-column: 2; justify-self: start; }'));
   assert.ok(css.includes('[data-slot="chat-mode"] { grid-row: var(--controls); grid-column: 3; justify-self: end;'));
-  const selector = read("../vendor/dyad/hologram.ChatModeSelector.tsx");
+  const selector = read("../vendor/prism/hologram.ChatModeSelector.tsx");
   assert.ok(selector.includes('data-slot="chat-mode-toggle"') && selector.includes("DropdownMenuTrigger"));
   assert.ok(selector.includes('aria-hidden="true"') && selector.includes("tabIndex={-1}"), "the toggle is a second voice beside the select");
   assert.ok(selector.includes("chatModeCatalog.modes.map"), "the toggle names its own modes instead of the catalogue's");
   // The two controls are one pair: the same pill, the same two-line rows.
-  const model = read("../vendor/dyad/hologram.ModelPicker.tsx");
+  const model = read("../vendor/prism/hologram.ModelPicker.tsx");
   const pill = 'className="inline-flex h-8 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border border-border/70';
   assert.ok(selector.includes(pill) && model.includes(pill.replace("h-8 cursor-pointer", "h-8 max-w-[240px] cursor-pointer")));
   assert.ok(selector.includes('className="w-72 p-1.5"') && model.includes('className="w-72 p-1.5"'));
   // Before the first app, the floor holds the gallery's templates rather than nothing.
-  const floor = read("../vendor/dyad/hologram.screens/FeaturedAppShowcase.tsx");
+  const floor = read("../vendor/prism/hologram.screens/FeaturedAppShowcase.tsx");
   assert.ok(floor.includes("featuredApps") && floor.includes("Browse all"));
   // Six preset apps, each with a sentence, a hue and a link to fill in; the covers are drawn, never fetched.
   const preset = read("../shell/featured-apps.mjs");
@@ -118,7 +118,7 @@ test("studio/experience: centred popups, golden measures, tools on Settings, a q
   assert.ok(css.includes('[data-slot="home-featured-keep"][data-chosen] { opacity: 1;'), "a kept card does not stay lit");
   assert.equal(/https?:\/\//.test(floor), false, "the floor fetches something");
   assert.ok(floor.includes("<svg viewBox=\"0 0 288 144\""), "a cover is no longer drawn here");
-  assert.ok(read("../vendor/dyad/hologram.screens.mjs").includes('"src/components/FeaturedAppShowcase.tsx": "hologram.screens/FeaturedAppShowcase.tsx"'));
+  assert.ok(read("../vendor/prism/hologram.screens.mjs").includes('"src/components/FeaturedAppShowcase.tsx": "hologram.screens/FeaturedAppShowcase.tsx"'));
   // A card without a cover is still a card: the tile and its initial are drawn, and a real cover fills it.
   assert.ok(css.includes('[data-slot="home-featured"] [role="region"] button img { object-fit: cover !important;'));
   assert.ok(css.includes("max-height: 233px"), "the room under the hero is not capped on a tall window");
@@ -128,7 +128,7 @@ test("studio/experience: centred popups, golden measures, tools on Settings, a q
   assert.match(css, phoneHome, "home shows the floor or scrolls on a phone");
   assert.equal(/\[data-slot="home-featured"\]\s*\{[^}]*display:\s*none/.test(css.replace(phoneHome, "")), false, "the floor is hidden on a wide screen");
   assert.ok(css.includes("min-width: 768px") && css.includes("max-width: 767px"), "the home rules answer only one width");
-  const mode = read('../vendor/dyad/hologram.ChatModeSelector.tsx');
+  const mode = read('../vendor/prism/hologram.ChatModeSelector.tsx');
   assert.ok(mode.includes('tabIndex={-1}') && mode.includes('pointer-events-none absolute left-0 top-0 h-px w-px opacity-0'));
 });
 

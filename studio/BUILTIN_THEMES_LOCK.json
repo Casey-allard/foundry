@@ -1,13 +1,13 @@
 {
   "profile": "foundry/imported-builtin-themes/1",
   "compiler": "0.25.9",
-  "generatorSha256": "1e7666f1dd39641c7fa176ca3678b9db873722422e973911e3b4831d0b6d56cd",
-  "packageLockSha256": "8cf7dcd27fd83fd4871f455a1becb280d1c0eab105c3f3f669d091537d712ed8",
+  "generatorSha256": "71497ee0f24632cff88f24675e8360b1cc9ef76e83a6fe30fe6038a600ff882c",
+  "packageLockSha256": "3f61dda872ff814cad85bbcde71f01f686d9abc4646eb784f149cbca42a07b8d",
   "licenseSha256": "eb194f9b70920f23323e2f993330f92d175e361fd11efb526626f71f9be8f8b2",
   "inputs": [
     {
       "path": "src/shared/themes.ts",
-      "sha256": "9ae67fb72889845f3aa881ad8f994b6c450b33a1a61812e89a66e696bc615868"
+      "sha256": "95ee9a7fbd399ffca8fc022bb882ed3bd10dcf867f3cc5a414c8d588b54f1927"
     }
   ],
   "output": {

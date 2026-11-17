@@ -1,1 +1,1 @@
-import '../vendor/dyad/hologram.preview-auto-start.test.mjs';
+import '../vendor/prism/hologram.preview-auto-start.test.mjs';

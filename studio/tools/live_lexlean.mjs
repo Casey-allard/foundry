@@ -163,13 +163,13 @@ claim("turn: the module being written projects as a draft", !!lex.partialFromTur
 // to the example's own module, since stored modules and stateful apps are LexLean
 const SPEC_RULES = prism.SPEC_RULES || "";
 const example = prism.MODULE_EXAMPLE ? ["", prism.MODULE_EXAMPLE] : null;
-const jsonExample = /Example: <dyad-spec>([\s\S]*?)<\/dyad-spec>/.exec(SPEC_RULES);
+const jsonExample = /Example: <prism-spec>([\s\S]*?)<\/prism-spec>/.exec(SPEC_RULES);
 let jsonExampleChecks = false;
 try { const c = prism.checkSpec(JSON.parse(jsonExample[1])); jsonExampleChecks = c.ok === true && lex.canonicalSource(c.spec).source === lex.specFromTurn("<prism-lexlean>" + prism.MODULE_EXAMPLE + "</prism-lexlean>").source; } catch (e) {}
 let exampleReads = false;
 try { exampleReads = !!example && lex.readDraftLexLean(example[1]).rules.length > 0 && !/theorem\{/.test(example[1]); } catch (e) {}
-claim("prompt: the model is asked for one JSON spec, never LexLean, and the prompt's example checks and renders the example module", /You write the app's spec as JSON, and nothing else/.test(SPEC_RULES) && /You never write LexLean/.test(SPEC_RULES) && SPEC_RULES.includes("<dyad-spec>{") && !/Write one <prism-lexlean> block holding the module/.test(SPEC_RULES) && jsonExampleChecks && exampleReads);
-claim("boundary: the turn applied is the reader's reading, LexLean a model writes is dropped, closed or open, and no model is told a second notation", prism.wroteLexLean("a <prism-lexlean>x") && !prism.wroteLexLean("<dyad-spec>{}</dyad-spec>") && prism.withoutLexLean("a<prism-lexlean>m</prism-lexlean>b<prism-lexlean>open") === "ab" && !SPEC_RULES.includes("app notation") && !SPEC_RULES.includes("<prism-lexlean>") && hostSource.includes("const turn = full;") && hostSource.includes('ask("read " + [...new Set(asks)].join(", "))') && hostSource.includes("appAfterTurn(appId, turn,") && !hostSource.includes("lexlean.partialFromTurn(full)"));
+claim("prompt: the model is asked for one JSON spec, never LexLean, and the prompt's example checks and renders the example module", /You write the app's spec as JSON, and nothing else/.test(SPEC_RULES) && /You never write LexLean/.test(SPEC_RULES) && SPEC_RULES.includes("<prism-spec>{") && !/Write one <prism-lexlean> block holding the module/.test(SPEC_RULES) && jsonExampleChecks && exampleReads);
+claim("boundary: the turn applied is the reader's reading, LexLean a model writes is dropped, closed or open, and no model is told a second notation", prism.wroteLexLean("a <prism-lexlean>x") && !prism.wroteLexLean("<prism-spec>{}</prism-spec>") && prism.withoutLexLean("a<prism-lexlean>m</prism-lexlean>b<prism-lexlean>open") === "ab" && !SPEC_RULES.includes("app notation") && !SPEC_RULES.includes("<prism-lexlean>") && hostSource.includes("const turn = full;") && hostSource.includes('ask("read " + [...new Set(asks)].join(", "))') && hostSource.includes("appAfterTurn(appId, turn,") && !hostSource.includes("lexlean.partialFromTurn(full)"));
 const bare = source.replace(/\n\ntheorem\{[\s\S]*?\n\}(?=\n)/g, "");
 let bareSpec = null;
 try { bareSpec = lex.readLexLean(bare); } catch (e) {}
@@ -204,12 +204,12 @@ claim("only the module: a turn sends the person's words to the reader, and appli
 // left as it is. The host streams and saves only what is shown.
 {
   const mod = "<prism-lexlean>\n" + (prism.MODULE_EXAMPLE || "").trim() + "\n</prism-lexlean>";
-  const answer = "Here it is.\n" + mod + "\n<dyad-spec-patch>[]</dyad-spec-patch>\nIt decides the fee.";
+  const answer = "Here it is.\n" + mod + "\n<prism-spec-patch>[]</prism-spec-patch>\nIt decides the fee.";
   const half = prism.shownText(answer.slice(0, answer.indexOf("name: rule2")));
   const done = prism.withCard(answer, "**Rules** · checked");
   const think = prism.shownText("<think>I will write one <prism-lexlean> block");
-  claim("chat: the module streams as a count of its declarations, and the card takes its place", /Writing the app's LexLean module: \d+ declarations so far/.test(half) && !/definition\{|\\begin\{lexlean\}/.test(half + done) && done.includes("**Rules** · checked") && done.includes("It decides the fee.") && !done.includes("dyad-spec-patch") && think === "<think>I will write one <prism-lexlean> block" && prism.shownText("Here.\n<pri") === "Here.\n", half.trim().split("\n").pop());
-  claim("chat: the host streams and saves only what is shown", hostSource.includes("const shown = execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full));") && readOnlyChatText("<dyad-write>&") === "&lt;dyad-write&gt;&amp;" && hostSource.includes("messages[messages.length - 1].content = shown;") && hostSource.includes("content: (execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full))) + (updatedFiles"));
+  claim("chat: the module streams as a count of its declarations, and the card takes its place", /Writing the app's LexLean module: \d+ declarations so far/.test(half) && !/definition\{|\\begin\{lexlean\}/.test(half + done) && done.includes("**Rules** · checked") && done.includes("It decides the fee.") && !done.includes("prism-spec-patch") && think === "<think>I will write one <prism-lexlean> block" && prism.shownText("Here.\n<pri") === "Here.\n", half.trim().split("\n").pop());
+  claim("chat: the host streams and saves only what is shown", hostSource.includes("const shown = execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full));") && readOnlyChatText("<prism-write>&") === "&lt;prism-write&gt;&amp;" && hostSource.includes("messages[messages.length - 1].content = shown;") && hostSource.includes("content: (execution.sourceEffects ? prism.shownText(full) : readOnlyChatText(prism.withoutThinking(full))) + (updatedFiles"));
   // A meaning keyed by the answer's LexLean name is that answer's meaning; an agent's patch with one refused
   // op still applies the rest, and names what it refused.
   const graded = prism.checkSpec({ ...lex.specFromTurn(mod).spec, meanings: { answerFree: "No charge" } });

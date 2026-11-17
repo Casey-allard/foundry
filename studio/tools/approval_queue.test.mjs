@@ -73,13 +73,13 @@ test("the chat counts an app's lines while a model writes the app notation, and 
 });
 
 // The spec grammar a device rules turn is held to (prism.js specGrammarCheck).
-const good = '<dyad-spec>{"title":"Parking fee tier","purpose":"Decide the fee tier from hours parked and vehicle.","fields":[{"name":"hours","kind":"number","min":0,"max":24},{"name":"vehicle","kind":"choice","values":["car","motorcycle","truck"]}],"outcomes":["free","standard","premium"],"rules":[{"when":[{"field":"hours","op":"=","value":0}],"then":"free"},{"when":[{"field":"vehicle","op":"is not","value":"truck"},{"field":"hours","op":">","value":12}],"then":"premium"}],"otherwise":"standard","properties":[{"kind":"never","when":[{"field":"hours","op":"=","value":0}],"then":"premium"}],"examples":[{"request":"0 truck","response":"free"},{"request":"13 car","response":"premium"}]}</dyad-spec>';
+const good = '<prism-spec>{"title":"Parking fee tier","purpose":"Decide the fee tier from hours parked and vehicle.","fields":[{"name":"hours","kind":"number","min":0,"max":24},{"name":"vehicle","kind":"choice","values":["car","motorcycle","truck"]}],"outcomes":["free","standard","premium"],"rules":[{"when":[{"field":"hours","op":"=","value":0}],"then":"free"},{"when":[{"field":"vehicle","op":"is not","value":"truck"},{"field":"hours","op":">","value":12}],"then":"premium"}],"otherwise":"standard","properties":[{"kind":"never","when":[{"field":"hours","op":"=","value":0}],"then":"premium"}],"examples":[{"request":"0 truck","response":"free"},{"request":"13 car","response":"premium"}]}</prism-spec>';
 test("a whole spec is done and every prefix of it is partial", () => {
 assert.equal(specGrammarCheck(good), "done");
 for (let k = 0; k < good.length; k++) assert.equal(specGrammarCheck(good.slice(0, k)), "partial", "prefix " + k);
 const cut = (s, from, to, by) => s.slice(0, s.indexOf(from)) + by + s.slice(s.indexOf(to));
 assert.equal(specGrammarCheck(cut(good, ',"properties":', ',"examples":', ',"properties":[]')), "done");
-assert.equal(specGrammarCheck(cut(good, ',"examples":', "}</dyad-spec>", ',"examples":[]')), "done");
+assert.equal(specGrammarCheck(cut(good, ',"examples":', "}</prism-spec>", ',"examples":[]')), "done");
 });
 test("form the checker would refuse cannot be written", () => {
 const bad = [

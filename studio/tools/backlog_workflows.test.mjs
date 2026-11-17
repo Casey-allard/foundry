@@ -39,8 +39,8 @@ test("Forge reuse and performance include every imported stateful engine source"
 
 test("integrated performance uses the locked installed browser and portable script invocation", () => {
   const perf = workflow("forge-perf.yml");
-  assert.ok(perf.includes('node vendor/dyad/node_modules/playwright-core/cli.js install --with-deps chromium'));
-  assert.ok(perf.includes('export PLAYWRIGHT_MODULE="${GITHUB_WORKSPACE}/studio/vendor/dyad/node_modules/playwright-core/index.mjs"'));
+  assert.ok(perf.includes('node vendor/prism/node_modules/playwright-core/cli.js install --with-deps chromium'));
+  assert.ok(perf.includes('export PLAYWRIGHT_MODULE="${GITHUB_WORKSPACE}/studio/vendor/prism/node_modules/playwright-core/index.mjs"'));
   assert.ok(perf.includes('bash scripts/live_e2e_all.sh shell "$RUNNER_TEMP/live-e2e"'));
   assert.ok(!perf.includes('npm root --global'), "unlocked browser fallback");
 });
