@@ -459,7 +459,10 @@ pub mod prism {
             .keys()
             .filter(|path| !ceiling.files.contains_key(*path))
             .collect();
-        if !added.is_empty() {
+        // A moved or renamed file is not a new one, so only more files than the parent had is
+        // refused. Git's rename detection cannot decide it: a rename that rewrites a short file's
+        // every line shares no content with the original. Lines added in a move still count below.
+        if current.files.len() > ceiling.files.len() {
             let shown: Vec<&str> = added.iter().take(20).map(|p| p.as_str()).collect();
             out.push(format!(
                 "{} new non-Prism file(s): {}{}. Author the behavior in LexLean (`*.lex.tex`) so PrismPM builds it.",
@@ -756,6 +759,8 @@ pub mod prism {
             let after = measure(&[("studio/a.mjs", "a()\nb()\nd()\n")]);
             assert!(refusals(&before, &after).is_empty());
             assert!(refusals(&before, &measure(&[])).is_empty());
+            // A file moved to a path the parent lacked, its lines unchanged, is not new.
+            assert!(refusals(&before, &measure(&[("b/a.mjs", "a()\nb()\n")])).is_empty());
         }
 
         #[test]
