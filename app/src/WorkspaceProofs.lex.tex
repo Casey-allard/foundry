@@ -292,7 +292,7 @@ definition{
     wins : Nat
   ],
   result: Bool,
-  body: ((((prim multiply rHi 4294967296 : Nat) + rLo) <? ((prim multiply lHi 4294967296 : Nat) + lLo)) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
+  body: ((rHi <? lHi) || ((rHi =? lHi) && (rLo <? lLo))) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
 }
 
 theorem{
@@ -312,7 +312,7 @@ theorem{
   ],
   statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within gone rHi rLo lHi lLo wins) = false),
   proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeNeverTakesOlder]
+    definitions: [Workspace::mergeCode, breaksMergeNeverTakesOlder]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
@@ -367,7 +367,7 @@ theorem{
   ],
   statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aGone bOpened bSyncs bAuthentic bBound bWithin bGone aHi aLo bHi bLo wins other) = false),
   proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeConverges]
+    definitions: [Workspace::mergeCode, breaksMergeConverges]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
@@ -410,7 +410,7 @@ theorem{
   ],
   statement: ((breaksMergeTakesOnlyWhatMayEnter opened syncs authentic bound within present gone rHi rLo lHi lLo wins) = false),
   proof: linear_arithmetic{
-    definitions: [Workspace::mergeCode, Workspace::mergeTakes, breaksMergeTakesOnlyWhatMayEnter]
+    definitions: [Workspace::mergeCode, breaksMergeTakesOnlyWhatMayEnter]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
