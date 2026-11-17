@@ -284,6 +284,7 @@ definition{
     authentic : Nat,
     bound : Nat,
     within : Nat,
+    present : Nat,
     gone : Nat,
     rHi : Nat,
     rLo : Nat,
@@ -292,7 +293,7 @@ definition{
     wins : Nat
   ],
   result: Bool,
-  body: (((rHi <? lHi) || ((rHi =? lHi) && (rLo <? lLo))) && ((Workspace::mergeCode opened syncs authentic bound within 1 gone rHi rLo lHi lLo wins) =? 13))
+  body: ((((rHi <? lHi) || ((rHi =? lHi) && (rLo <? lLo))) && (present =? 1)) && ((Workspace::mergeCode opened syncs authentic bound within present gone rHi rLo lHi lLo wins) =? 13))
 }
 
 theorem{
@@ -303,6 +304,7 @@ theorem{
     authentic : Nat,
     bound : Nat,
     within : Nat,
+    present : Nat,
     gone : Nat,
     rHi : Nat,
     rLo : Nat,
@@ -310,9 +312,9 @@ theorem{
     lLo : Nat,
     wins : Nat
   ],
-  statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within gone rHi rLo lHi lLo wins) = false),
+  statement: ((breaksMergeNeverTakesOlder opened syncs authentic bound within present gone rHi rLo lHi lLo wins) = false),
   proof: linear_arithmetic{definitions: [Workspace::mergeCode, breaksMergeNeverTakesOlder]},
-  axioms: [Classical.choice, Quot.sound, propext]
+  axioms: [Quot.sound, propext]
 }
 
 definition{
@@ -323,12 +325,14 @@ definition{
     aAuthentic : Nat,
     aBound : Nat,
     aWithin : Nat,
+    aPresent : Nat,
     aGone : Nat,
     bOpened : Nat,
     bSyncs : Nat,
     bAuthentic : Nat,
     bBound : Nat,
     bWithin : Nat,
+    bPresent : Nat,
     bGone : Nat,
     aHi : Nat,
     aLo : Nat,
@@ -338,7 +342,7 @@ definition{
     other : Nat
   ],
   result: Bool,
-  body: ((((wins + other) =? 1) && ((Workspace::mergeCode aOpened aSyncs aAuthentic aBound aWithin 1 aGone bHi bLo aHi aLo wins) =? 13)) && ((Workspace::mergeCode bOpened bSyncs bAuthentic bBound bWithin 1 bGone aHi aLo bHi bLo other) =? 13))
+  body: (((((wins + other) =? 1) && ((aPresent =? 1) && (bPresent =? 1))) && ((Workspace::mergeCode aOpened aSyncs aAuthentic aBound aWithin aPresent aGone bHi bLo aHi aLo wins) =? 13)) && ((Workspace::mergeCode bOpened bSyncs bAuthentic bBound bWithin bPresent bGone aHi aLo bHi bLo other) =? 13))
 }
 
 theorem{
@@ -349,12 +353,14 @@ theorem{
     aAuthentic : Nat,
     aBound : Nat,
     aWithin : Nat,
+    aPresent : Nat,
     aGone : Nat,
     bOpened : Nat,
     bSyncs : Nat,
     bAuthentic : Nat,
     bBound : Nat,
     bWithin : Nat,
+    bPresent : Nat,
     bGone : Nat,
     aHi : Nat,
     aLo : Nat,
@@ -363,9 +369,9 @@ theorem{
     wins : Nat,
     other : Nat
   ],
-  statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aGone bOpened bSyncs bAuthentic bBound bWithin bGone aHi aLo bHi bLo wins other) = false),
+  statement: ((breaksMergeConverges aOpened aSyncs aAuthentic aBound aWithin aPresent aGone bOpened bSyncs bAuthentic bBound bWithin bPresent bGone aHi aLo bHi bLo wins other) = false),
   proof: linear_arithmetic{definitions: [Workspace::mergeCode, breaksMergeConverges]},
-  axioms: [Classical.choice, Quot.sound, propext]
+  axioms: [Quot.sound, propext]
 }
 
 definition{
