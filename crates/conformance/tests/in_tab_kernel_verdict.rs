@@ -5,11 +5,7 @@ use std::process::Command;
 /// `FA-86`: A proof verdict is decided by the Prism guest from addresses the tab derived and the result of a kernel run in the tab, never from a server reply
 #[test]
 fn in_tab_kernel_verdict_fa_86() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("repository root")
-        .to_path_buf();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("node")
         .args(["--test", "--test-reporter=tap"])
         .arg(root.join("studio/tools/in_tab_kernel_verdict.test.mjs"))
@@ -91,4 +87,32 @@ fn private_workspace_fa_93() {
                 .any(|l| l.starts_with("ok ") && l.ends_with(name)),
         "{report}"
     );
+}
+
+/// `FA-94`: Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters
+#[test]
+fn private_workspace_fa_94() {
+    // Lean proves the three merge theorems and every merge word by evaluation (`just app`), and the kernel
+    // gate replays each word as an acceptance vector; this holds them to each other and to dispatch.
+    let workspace = include_str!("../../../app/src/Workspace.lex.tex");
+    let proofs = include_str!("../../../app/src/WorkspaceProofs.lex.tex");
+    let kernel = include_str!("../../../app/src/ForgeKernel.lex.tex");
+    assert!(
+        workspace.contains("name: mergeCode,")
+            && workspace.contains("=? 5) && ((prim length words : Nat) =? 14)")
+    );
+    for theorem in [
+        "mergeNeverTakesOlderHolds",
+        "mergeConvergesHolds",
+        "mergeTakesOnlyWhatMayEnterHolds",
+    ] {
+        assert!(proofs.contains(&format!("name: {theorem},")), "{theorem}");
+    }
+    let words = proofs.matches("name: workspaceWords_merge").count();
+    // "workspace 0100000005000000": version 1, kind 5.
+    let vectors = kernel
+        .matches("request := 0x776f726b73706163652030313030303030303035303030303030")
+        .count();
+    assert_eq!(words, vectors);
+    assert!(words >= 13);
 }

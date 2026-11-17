@@ -18,3 +18,12 @@ Feature: private-workspace
     And on a removed device everything kept where work belongs is cleared before a new key is made, so nothing left behind enters the new workspace
     And the sentence the visitor reads for each answer is a statement of the experience module
 
+  @FA-94 @build
+  Scenario: Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters
+    Given the Workspace module in Foundry's Prism kernel, reached by the workspace request prefix with kind 5
+    When it is asked whether to take a record another device sent or keep its own, with whether the place syncs, the sealed bytes are authentic and in place, the record fits, this device holds the place, the sent record is a deletion, both times and who wins a tie
+    Then it answers take only for a newer copy, an absent place, or a tie the sender wins, and keep otherwise
+    And two devices exchanging one place never both take, whatever else holds, so they converge on one copy
+    And it never takes an unauthentic, misplaced or device-local record, nor one over quota unless it is a deletion, and names each refusal
+    And each answer is a theorem Lean proves by evaluation and an acceptance vector the compiled guest replays
+

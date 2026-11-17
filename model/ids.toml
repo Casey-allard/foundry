@@ -879,3 +879,9 @@ id = "FA-93"
 level = "build"
 suite = "private-workspace"
 statement = "Studio keeps a visitor's work sealed to their Prism ID: each record is sealed as it is stored and opened as it is read, only as Foundry's Prism kernel answers; the work kept before moves in once; a removed device's work is cleared; and the visitor is told each outcome in one sentence"
+
+[[id]]
+id = "FA-94"
+level = "build"
+suite = "private-workspace"
+statement = "Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters"

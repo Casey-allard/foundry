@@ -4,11 +4,7 @@ use std::process::Command;
 
 #[test]
 fn application_shape_authority_fa_84() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("repository root")
-        .to_path_buf();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("node")
         .args(["--test", "--test-reporter=tap"])
         .arg(root.join("studio/tools/application_shape_authority.test.mjs"))

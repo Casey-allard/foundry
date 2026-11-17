@@ -5,7 +5,7 @@ import {test} from 'node:test';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 test('combined canonical dispatcher retains every application protocol and experience family',()=>{
  const model=read('app/src/ForgeKernel.lex.tex');for(const name of ['dispatchPreview','dispatchQueue','dispatchRouting','dispatchInteraction','dispatchEvent','dispatchWork','dispatchComposition','budgetWithin','layoutTabs','motionAllows','targetOk','recentYes','thinkAllows','IdeaReader::readIdea'])assert.ok(model.includes(name));
- assert.ok(model.includes('acceptanceVectors := (verdictAcceptance)'));assert.ok(model.includes('responseMaximum := (4096 : UInt32)'));assert.equal((model.match(/request :=/g)||[]).length,355);assert.ok(model.includes('(acceptanceExperience)'));
+ assert.ok(model.includes('acceptanceVectors := (verdictAcceptance)'));assert.ok(model.includes('responseMaximum := (4096 : UInt32)'));assert.equal((model.match(/request :=/g)||[]).length,368);assert.ok(model.includes('(acceptanceExperience)'));
 });
 test('integration retains every feature registration and the main experience proof obligations',()=>{
  const ids=read('model/ids.toml');const retired=new Set([4,11,16,34,45,47]);for(let n=1;n<=59;n++)assert.equal(ids.includes('id = "FA-'+String(n).padStart(2,'0')+'"'),!retired.has(n));

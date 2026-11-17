@@ -4,11 +4,7 @@ use std::process::Command;
 
 #[test]
 fn atomic_project_lifecycle_fa_25() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("repository root")
-        .to_path_buf();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("node")
         .args(["--test", "--test-reporter=tap"])
         .arg(root.join("studio/tools/atomic_project_lifecycle.test.mjs"))

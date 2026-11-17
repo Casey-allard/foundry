@@ -8,11 +8,7 @@ use std::process::Command;
 /// (`studio/tools/covers_browser.mjs`), where the renderer's locked html-to-image is installed.
 #[test]
 fn app_covers_ac_01() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("repository root")
-        .to_path_buf();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("node")
         .args(["--test", "--test-reporter=tap"])
         .arg(root.join("studio/tools/covers.test.mjs"))

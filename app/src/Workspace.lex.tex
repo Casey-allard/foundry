@@ -41,17 +41,37 @@ definition{
 }
 
 definition{
+  name: mergeCode,
+  parameters: [
+    opened : Nat,
+    syncs : Nat,
+    authentic : Nat,
+    bound : Nat,
+    within : Nat,
+    present : Nat,
+    gone : Nat,
+    rHi : Nat,
+    rLo : Nat,
+    lHi : Nat,
+    lLo : Nat,
+    wins : Nat
+  ],
+  result: Nat,
+  body: (if (not (opened =? 1)) then 5 else (if (not (syncs =? 1)) then 12 else (if (not (authentic =? 1)) then 6 else (if (not (bound =? 1)) then 7 else (if ((not (present =? 1)) || ((lHi <? rHi) || ((lHi =? rHi) && ((lLo <? rLo) || ((lLo =? rLo) && (wins =? 1)))))) then (if ((gone =? 1) || (within =? 1)) then 13 else 9) else 14)))))
+}
+
+definition{
   name: workspaceEncode,
   parameters: [code : Nat],
   result: Bytes,
-  body: (if (code =? 0) then 0x6f6b else (if (code =? 1) then 0x776f726b737061636544657669636552656d6f766564 else (if (code =? 2) then 0x776f726b737061636553657373696f6e45787069726564 else (if (code =? 3) then 0x776f726b73706163654e6f744f776e6572 else (if (code =? 4) then 0x776f726b73706163654b65795374616c65 else (if (code =? 5) then 0x776f726b7370616365436c6f736564 else (if (code =? 6) then 0x7265636f726454616d7065726564 else (if (code =? 7) then 0x7265636f72644d6973706c61636564 else (if (code =? 8) then 0x7265636f7264556e7365616c6564 else (if (code =? 9) then 0x776f726b737061636551756f74614578636565646564 else (if (code =? 10) then 0x776f726b7370616365416c72656164794d6f766564 else (if (code =? 11) then 0x7365616c6564436f70794e6f74436f6d6d6974746564 else 0x6d616c666f726d6564576f726b737061636552657175657374))))))))))))
+  body: (if (code =? 0) then 0x6f6b else (if (code =? 1) then 0x776f726b737061636544657669636552656d6f766564 else (if (code =? 2) then 0x776f726b737061636553657373696f6e45787069726564 else (if (code =? 3) then 0x776f726b73706163654e6f744f776e6572 else (if (code =? 4) then 0x776f726b73706163654b65795374616c65 else (if (code =? 5) then 0x776f726b7370616365436c6f736564 else (if (code =? 6) then 0x7265636f726454616d7065726564 else (if (code =? 7) then 0x7265636f72644d6973706c61636564 else (if (code =? 8) then 0x7265636f7264556e7365616c6564 else (if (code =? 9) then 0x776f726b737061636551756f74614578636565646564 else (if (code =? 10) then 0x776f726b7370616365416c72656164794d6f766564 else (if (code =? 11) then 0x7365616c6564436f70794e6f74436f6d6d6974746564 else (if (code =? 12) then 0x7265636f72644c6f63616c4f6e6c79 else (if (code =? 13) then 0x74616b65 else (if (code =? 14) then 0x6b656570 else 0x6d616c666f726d6564576f726b737061636552657175657374)))))))))))))))
 }
 
 definition{
   name: workspaceAnswer,
   parameters: [words : (List Nat)],
   result: Bytes,
-  body: (if ((WorkProtocol::word words 0) =? 1) then (if (((WorkProtocol::word words 1) =? 0) && ((prim length words : Nat) =? 6)) then (workspaceEncode (openCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4) (WorkProtocol::word words 5))) else (if (((WorkProtocol::word words 1) =? 1) && ((prim length words : Nat) =? 5)) then (workspaceEncode (readCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4))) else (if (((WorkProtocol::word words 1) =? 2) && ((prim length words : Nat) =? 5)) then (workspaceEncode (storeCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4))) else (if (((WorkProtocol::word words 1) =? 3) && ((prim length words : Nat) =? 4)) then (workspaceEncode (moveCode (WorkProtocol::word words 2) (WorkProtocol::word words 3))) else (if (((WorkProtocol::word words 1) =? 4) && ((prim length words : Nat) =? 4)) then (workspaceEncode (removeCode (WorkProtocol::word words 2) (WorkProtocol::word words 3))) else 0x6d616c666f726d6564576f726b737061636552657175657374))))) else 0x6d616c666f726d6564576f726b737061636552657175657374)
+  body: (if ((WorkProtocol::word words 0) =? 1) then (if (((WorkProtocol::word words 1) =? 0) && ((prim length words : Nat) =? 6)) then (workspaceEncode (openCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4) (WorkProtocol::word words 5))) else (if (((WorkProtocol::word words 1) =? 1) && ((prim length words : Nat) =? 5)) then (workspaceEncode (readCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4))) else (if (((WorkProtocol::word words 1) =? 2) && ((prim length words : Nat) =? 5)) then (workspaceEncode (storeCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4))) else (if (((WorkProtocol::word words 1) =? 3) && ((prim length words : Nat) =? 4)) then (workspaceEncode (moveCode (WorkProtocol::word words 2) (WorkProtocol::word words 3))) else (if (((WorkProtocol::word words 1) =? 4) && ((prim length words : Nat) =? 4)) then (workspaceEncode (removeCode (WorkProtocol::word words 2) (WorkProtocol::word words 3))) else (if (((WorkProtocol::word words 1) =? 5) && ((prim length words : Nat) =? 14)) then (workspaceEncode (mergeCode (WorkProtocol::word words 2) (WorkProtocol::word words 3) (WorkProtocol::word words 4) (WorkProtocol::word words 5) (WorkProtocol::word words 6) (WorkProtocol::word words 7) (WorkProtocol::word words 8) (WorkProtocol::word words 9) (WorkProtocol::word words 10) (WorkProtocol::word words 11) (WorkProtocol::word words 12) (WorkProtocol::word words 13))) else 0x6d616c666f726d6564576f726b737061636552657175657374)))))) else 0x6d616c666f726d6564576f726b737061636552657175657374)
 }
 
 definition{
@@ -66,7 +86,7 @@ definition{
   name: workspaceWireBoundary,
   parameters: [],
   result: String,
-  body: "Requests use workspace-space then lowercase little-endian uint32 hex words: version 1; the kind (0 open, 1 read a record, 2 store a record, 3 move the workspace kept before an id, 4 remove its plain copy); then one word per fact, 1 for yes and any other value for no. Open: this device was removed, the session is live, the id owns the workspace, the device holds the current boundary key. Read: the workspace is open, the sealed bytes are authentic, the record is the one its place names. Store: open, sealed, within quota. Move: open, already moved. Remove: open, the sealed copy is committed. The answer is ok or the first refusal: workspaceDeviceRemoved, workspaceSessionExpired, workspaceNotOwner, workspaceKeyStale, workspaceClosed, recordTampered, recordMisplaced, recordUnsealed, workspaceQuotaExceeded, workspaceAlreadyMoved, sealedCopyNotCommitted. Any other shape is malformedWorkspaceRequest, and more than 128 bytes is workspaceRequestTooLarge."
+  body: "Requests use workspace-space then lowercase little-endian uint32 hex words: version 1; the kind (0 open, 1 read a record, 2 store a record, 3 move the workspace kept before an id, 4 remove its plain copy, 5 merge a record another device of the id sent); then one word per fact, 1 for yes and any other value for no. Open: this device was removed, the session is live, the id owns the workspace, the device holds the current boundary key. Read: the workspace is open, the sealed bytes are authentic, the record is the one its place names. Store: open, sealed, within quota. Move: open, already moved. Remove: open, the sealed copy is committed. Merge: open, the place syncs, the sealed bytes are authentic, the record is the one its place names, within quota, this device holds the place, the sent record is a deletion, then the sent and the held times as high and low words, and whether the sender wins a tie; it answers take or keep. The answer is ok or the first refusal: workspaceDeviceRemoved, workspaceSessionExpired, workspaceNotOwner, workspaceKeyStale, workspaceClosed, recordTampered, recordMisplaced, recordUnsealed, workspaceQuotaExceeded, workspaceAlreadyMoved, sealedCopyNotCommitted, recordLocalOnly. Any other shape is malformedWorkspaceRequest, and more than 128 bytes is workspaceRequestTooLarge."
 }
 \end{semanticmodule}
 \end{lexlean}
