@@ -158,6 +158,21 @@ export const commandRegistryData = {
       "quality": "Independent journey and release obligations apply; this inventory grants no effects."
     },
     {
+      "id": "inprism-terminal",
+      "version": 1,
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "effects": [
+        "storage",
+        "network",
+        "execution"
+      ],
+      "targets": [
+        "browser"
+      ],
+      "assurance": "boundary-inventory",
+      "quality": "Verified in-Prism Worker lexlean-sh session lifecycle and shared /workspace diff sync under Foundry R4 storage boundaries."
+    },
+    {
       "id": "interaction",
       "version": 1,
       "owner": "InteractionProtocol.interactionWireBoundary",
@@ -3210,61 +3225,61 @@ export const commandRegistryData = {
     },
     {
       "channel": "terminal:close",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },
     {
       "channel": "terminal:kill",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },
     {
       "channel": "terminal:open",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },
     {
       "channel": "terminal:resize",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },
     {
       "channel": "terminal:serialize",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },
     {
       "channel": "terminal:write",
-      "feature": "unavailable",
+      "feature": "inprism-terminal",
       "version": 1,
-      "owner": "FoundrySpecification.capabilityAvailabilityBoundary",
-      "adapter": "studio/shell/host-boundary.mjs",
-      "availability": "unavailable",
+      "owner": "FoundrySpecification.r4TerminalBoundary",
+      "adapter": "studio/shell/host.js",
+      "availability": "adapter",
       "input": "imported-renderer",
       "output": "imported-renderer"
     },

@@ -618,13 +618,16 @@
       "ids": [
         "FA-81",
         "FA-87",
-        "FA-95"
+        "FA-95",
+        "FA-96"
       ],
       "calls": [
         "PrismR4::r4Judge",
         "FoundrySpecification::chatProviderRoutingBoundary"
       ],
-      "registry": [],
+      "registry": [
+        "inprism-terminal"
+      ],
       "components": [
         "studio",
         "device"

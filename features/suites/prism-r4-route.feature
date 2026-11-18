@@ -16,3 +16,10 @@ Feature: prism-r4-route
     Then the bundled archive verifies locally under studio/core without remote fetch and is cached lazily without affecting initial Home LCP
     And unpinned or unrequested weights kappas are refused by R4 REQ-002 or REQ-005 while matching Qwen3 or explicit offlineQ31 kappas answer
     And consent dialogs focus refusal first, show why then how then what, and record decisions in IndexedDB refs and audit
+
+  @FA-96 @build
+  Scenario: In-Prism chat authoring streams verified LexLean-R4 tokens, applies consent-gated model weights and workspace patches under R4 rules, and wires Foundry's native terminal to lexlean-sh over shared /workspace
+    Given the verified LexLean-R4 worker configured with Foundry's esbuild assets and consent-gated Qwen3 or pinned offline Q31 weights
+    When an in-Prism chat turn streams tokens and <prism-write> tags, cancels mid-stream, syncs /workspace diffs, or opens TerminalPanel over terminal:*
+    Then off-origin Qwen3 shard hydration requires native consent and refuses under REQ-005 when declined while verified in-Prism answers apply canonical <prism-write> patches and !inprism retains empty writes
+    And TerminalPanel routes terminal:open, terminal:write, terminal:resize, terminal:serialize, terminal:close, and terminal:kill to lexlean-sh with monotonic terminal:data offsets and bidirectional /workspace sync

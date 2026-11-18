@@ -31,7 +31,7 @@ test("the host binds generation source signal and committed results", () => {
   const host = fs.readFileSync(new URL("../shell/host.js", import.meta.url), "utf8");
   assert.ok(host.includes("applyPrismTags(appId, tags, { signal: abort.signal, source: projectSource, onCommit })"));
   // Code a model writes is never applied; the rules are read against the applied source.
-  assert.ok(host.includes("const tags = { ...wrote, writes: [], deletes: [], renames: [], deps: [] };"));
+  assert.ok(host.includes("const tags = inprism ? wrote : { ...wrote, writes: [], deletes: [], renames: [], deps: [] };"));
   // What is applied is the reader's turn as read: its lines are the app's notation.
   assert.ok(host.includes("const turn = full;"));
   assert.ok(host.includes("rulesAfterTurn(appId, turn, [], { signal: abort.signal, source: applied.source, onCommit })"));

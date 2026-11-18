@@ -22,12 +22,20 @@ fn run_node_tap(rel: &str, n: &str) {
 /// `FA-87`: A chat turn is answered only by Foundry's own model in Prism, and Prism R4 refuses every route to another model before the request leaves the tab
 #[test]
 fn prism_r4_route_fa_87() {
-    run_node_tap("studio/tools/prism_r4_route.test.mjs", "8");
+    run_node_tap("studio/tools/prism_r4_route.test.mjs", "17");
 }
 
 /// `FA-95`: LexLean-R4 bundles a content-addressed archive verified locally under dual weights pins, lazy shell caching, and queued consent dialogs persisted to refs and audit
 #[test]
 fn prism_r4_route_fa_95() {
-    run_node_tap("studio/tools/prism_r4_route.test.mjs", "8");
+    run_node_tap("studio/tools/prism_r4_route.test.mjs", "17");
     run_node_tap("studio/tools/shell_ui.test.mjs", "9");
+}
+
+/// `FA-96`: In-Prism chat authoring streams verified LexLean-R4 tokens, applies consent-gated model weights and workspace patches under R4 rules, and wires Foundry's native terminal to lexlean-sh over shared /workspace
+#[test]
+fn prism_r4_route_fa_96() {
+    run_node_tap("studio/tools/prism_r4_route.test.mjs", "17");
+    run_node_tap("studio/tools/generation_patch.test.mjs", "6");
+    run_node_tap("studio/tools/command_ownership_registry.test.mjs", "6");
 }

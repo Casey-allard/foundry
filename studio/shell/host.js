@@ -1,19 +1,4 @@
-import {chatModelRoute,LOCAL_MODEL,INPRISM_MODEL} from './chat-model-route.mjs';
-import {createThemeLibrary} from "./theme-library.mjs"; import {themesData} from "./builtin-themes.mjs"; import {changeUserSettings} from "./settings-transactions.mjs"; import {createPromptLibrary} from "./prompt-library.mjs";
-import {readWorkingTree} from "./working-tree.mjs"; import {createWindowDelivery} from "./window-delivery.mjs"; import {createWindowCoordinator,windowJournalStore,windowRecoveryScopes} from "./window-coordination.mjs";
-import {VisibleEntitySchema,ChatTabOwnershipSchema,WindowInterestSchema,QueryInvalidationScopeSchema,QueryInvalidationBatchSchema} from "./chat-contracts.mjs";
-import {prepareMessageRestoration} from "./message-restoration.mjs"; import {prepareSnapshot} from "./snapshot-restore.mjs"; import {createVersionPreviewController} from "./version-preview-controller.mjs";
-import {previewProjectStore,previewFailure} from "./version-preview-store.mjs"; import {previewWithGuest} from "./version-preview-codec.mjs"; import {versionAddress,listStoredVersions,setStoredVersionMetadata,verifiedVersionChanges,resolveStoredVersion} from "./version-history.mjs";
-import {createChatQueueController} from "./chat-queue-controller.mjs"; import {readStoredChatQueue,commitStoredChatQueue,bindQueuePayload,chatQueueFailure} from "./chat-queue-store.mjs";
-import {VersionPreviewIntentEventSchema,VersionPreviewRemoteSnapshotSchema,ChatStreamIntentEventSchema,SerializableChatTurnIntentSchema,serializeImmutableChatTurnPayload} from "./chat-contracts.mjs";
-import {queueWithGuest} from "./chat-queue-codec.mjs"; import {createDiscovery} from "./application-discovery.mjs"; import {mountApplicationDiscovery} from "./discovery-ui.mjs";
-import {routeWithGuest} from './routing-codec.mjs'; import {runBuildWork,buildWorkStore} from './build-work.mjs'; import {withPortableBuildPermission, portablePermissionFailure} from "./portable-build-permission.mjs";
-import {commandRegistry, invokeBoundCommand} from "./command-registry.mjs"; import {interactionPreset, interactionModule, validateInteractionDocument, interactionFailure} from "./interaction-application.mjs";
-import {runStoredInteraction} from "./interaction-state.mjs"; import {mountInteractionApplications, openInteractionApplication} from "./interaction-ui.mjs"; import { admitEventWithGuest } from "./event-codec.mjs";
-import { loadBrowserCompiler } from "./browser-compiler.mjs"; import { browserSettings, assertBrowserSettingsPatch } from "./privacy-policy.mjs"; import { prepareProjectImport } from "./project-import.mjs";
-import { withBuildModules } from "./build-modules.mjs"; import { captureBuildSource, assertBuildSourceCurrent, requiresRulePublication } from "./build-source.mjs"; import { applyStoredProjectPatch, assertGenerationActive } from "./generation-patch.mjs";
-import { editStoredProject, captureProjectSource, commitPreparedProject } from "./project-edit.mjs"; import {modulePresentation} from "./module-presentation.mjs"; import { loadProjectScaffold, prepareExistingProject, prepareNewProject, createStoredProject, createStoredChat } from "./project-creation.mjs";
-import { storageRequest } from "./storage-request.mjs"; import { executeWorkWithGuest } from "./work-codec.mjs";
+import {chatModelRoute,LOCAL_MODEL,INPRISM_MODEL} from './chat-model-route.mjs'; import {createThemeLibrary} from "./theme-library.mjs"; import {themesData} from "./builtin-themes.mjs"; import {changeUserSettings} from "./settings-transactions.mjs"; import {createPromptLibrary} from "./prompt-library.mjs"; import {readWorkingTree} from "./working-tree.mjs"; import {createWindowDelivery} from "./window-delivery.mjs"; import {createWindowCoordinator,windowJournalStore,windowRecoveryScopes} from "./window-coordination.mjs"; import {VisibleEntitySchema,ChatTabOwnershipSchema,WindowInterestSchema,QueryInvalidationScopeSchema,QueryInvalidationBatchSchema,VersionPreviewIntentEventSchema,VersionPreviewRemoteSnapshotSchema,ChatStreamIntentEventSchema,SerializableChatTurnIntentSchema,serializeImmutableChatTurnPayload} from "./chat-contracts.mjs"; import {prepareMessageRestoration} from "./message-restoration.mjs"; import {prepareSnapshot} from "./snapshot-restore.mjs"; import {createVersionPreviewController} from "./version-preview-controller.mjs"; import {previewProjectStore,previewFailure} from "./version-preview-store.mjs"; import {previewWithGuest} from "./version-preview-codec.mjs"; import {versionAddress,listStoredVersions,setStoredVersionMetadata,verifiedVersionChanges,resolveStoredVersion} from "./version-history.mjs"; import {createChatQueueController} from "./chat-queue-controller.mjs"; import {readStoredChatQueue,commitStoredChatQueue,bindQueuePayload,chatQueueFailure} from "./chat-queue-store.mjs"; import {queueWithGuest} from "./chat-queue-codec.mjs"; import {createDiscovery} from "./application-discovery.mjs"; import {mountApplicationDiscovery} from "./discovery-ui.mjs"; import {routeWithGuest} from './routing-codec.mjs'; import {runBuildWork,buildWorkStore} from './build-work.mjs'; import {withPortableBuildPermission, portablePermissionFailure} from "./portable-build-permission.mjs"; import {commandRegistry, invokeBoundCommand} from "./command-registry.mjs"; import {interactionPreset, interactionModule, validateInteractionDocument, interactionFailure} from "./interaction-application.mjs"; import {runStoredInteraction} from "./interaction-state.mjs"; import {mountInteractionApplications, openInteractionApplication} from "./interaction-ui.mjs"; import { admitEventWithGuest } from "./event-codec.mjs"; import { loadBrowserCompiler } from "./browser-compiler.mjs"; import { browserSettings, assertBrowserSettingsPatch } from "./privacy-policy.mjs"; import { prepareProjectImport } from "./project-import.mjs"; import { withBuildModules } from "./build-modules.mjs"; import { captureBuildSource, assertBuildSourceCurrent, requiresRulePublication } from "./build-source.mjs"; import { applyStoredProjectPatch, assertGenerationActive } from "./generation-patch.mjs"; import { editStoredProject, captureProjectSource, commitPreparedProject } from "./project-edit.mjs"; import {modulePresentation} from "./module-presentation.mjs"; import { loadProjectScaffold, prepareExistingProject, prepareNewProject, createStoredProject, createStoredChat } from "./project-creation.mjs"; import { storageRequest } from "./storage-request.mjs"; import { executeWorkWithGuest } from "./work-codec.mjs";
 // The browser host: the surface src/preload.ts exposes as window.electron, implemented on the page
 // with no server. Rules come from the generated core (core.wasm: preimage, restore, network, view);
 // addresses are BLAKE3 over the bytes the core spells; records live in IndexedDB. Adapters only:
@@ -22,125 +7,45 @@ import { storageRequest } from "./storage-request.mjs"; import { executeWorkWith
 // Slices 1 and 2: settings, apps and their files, versions as kappa snapshots, chats as records,
 // the preview worker, and the app run machine (build in the tab, serve at the version's address).
 // The chat stream is the next slice.
-
-import { packBytes, unpackBytes, RepresentationError } from "./exact-representation.mjs"; import { admitWithGuest } from "./composition-codec.mjs"; import { readBoundRules, readBoundRulesSnapshot, saveBoundRules, sameRuleReservation } from "./rules-source.mjs";
-import {browserChatMode,assertBrowserChatModes,browserChatModeSettings} from "./browser-chat-modes.mjs"; import {chatExecutionPolicy,chatExecutionPrompt,readOnlyChatText} from "./chat-execution.mjs"; import {updateChatPreferences} from "./chat-preferences.mjs";
-import { renameStoredProject, restoreStoredProject, deleteStoredProject, deleteStoredChat, updateStoredChat } from "./project-lifecycle.mjs"; import { invokeHost, unwrapHost } from "./host-boundary.mjs";
-import * as inference from "./inference.js"; import { r4Decide, r4InprismFacts, r4Refusal, r4Request, r4Spec, r4StudioPin } from "./r4.mjs"; import { viewReady } from "./inference.js";
-import { inspect, install, installed, stored, encodeView, b64, unb64, sha256 } from "./holo.js"; import { admitPublication } from "./publication-identity.mjs"; import * as prism from "./prism.js"; import * as live from "./live/project.mjs"; import * as lexlean from "./live/lexlean.mjs";
-import { canonicalEditPath, planCanonicalEdit } from "./canonical-edits.mjs"; import {applicationShape, activeApplicationModule, retiredApplicationPaths, boundApplicationState, shapeFailure} from './application-shape.mjs';
-import { executeInteraction } from "./interaction-codec.mjs"; import { copyEventCommand, readEventJournal, updateEventJournal } from "./event-delivery.mjs"; import { authorizePreview, commitPreviewPermission, previewPermissionFailure, mountPreviewPermissions, authorizeR4WeightsDownload, authorizeSpiralCoreInternet, commitR4Consent } from "./preview-permissions.mjs";
-import { copyGenerationInput, assertCanonicalGeneration } from "./canonical-generation.mjs"; import * as appShape from "./live/app.mjs"; import { frameHtml, FONTS } from "./live/frame-html.mjs"; import { applyOps, createEditor, PatchError } from "./live/edit.mjs";
-import * as covers from "./covers.mjs"; import { createProbe, K } from "./telemetry/probe.mjs"; import {publishGallery, readGallery, galleryFailure} from "./gallery-store.mjs";
-
-const BASE = new URL("./", import.meta.url); // the shell's directory, wherever it is served
-const listeners = new Map();
-const handlers = new Map();
-const seen = new Map();
-let relayWindowEvent=()=>{};
-const emitLocal = (channel, payload) => { const set = listeners.get(channel); if (set) for (const fn of set) { try { fn(payload); } catch (e) { console.error(e); } } };
-const emit = (channel,payload)=>{emitLocal(channel,payload);relayWindowEvent(channel,payload);};
-
+import { packBytes, unpackBytes, RepresentationError } from "./exact-representation.mjs"; import { admitWithGuest } from "./composition-codec.mjs"; import { readBoundRules, readBoundRulesSnapshot, saveBoundRules, sameRuleReservation } from "./rules-source.mjs"; import {browserChatMode,assertBrowserChatModes,browserChatModeSettings} from "./browser-chat-modes.mjs"; import {chatExecutionPolicy,chatExecutionPrompt,readOnlyChatText} from "./chat-execution.mjs"; import {updateChatPreferences} from "./chat-preferences.mjs"; import { renameStoredProject, restoreStoredProject, deleteStoredProject, deleteStoredChat, updateStoredChat } from "./project-lifecycle.mjs"; import { invokeHost, unwrapHost } from "./host-boundary.mjs"; import * as inference from "./inference.js"; import { r4Decide, r4InprismFacts, r4Refusal, r4Request, r4Spec, r4StudioPin } from "./r4.mjs"; import { viewReady } from "./inference.js"; import { inspect, install, installed, stored, encodeView, b64, unb64, sha256 } from "./holo.js"; import { admitPublication } from "./publication-identity.mjs"; import * as prism from "./prism.js"; import * as live from "./live/project.mjs"; import * as lexlean from "./live/lexlean.mjs"; import { canonicalEditPath, planCanonicalEdit } from "./canonical-edits.mjs"; import {applicationShape, activeApplicationModule, retiredApplicationPaths, boundApplicationState, shapeFailure} from './application-shape.mjs'; import { executeInteraction } from "./interaction-codec.mjs"; import { copyEventCommand, readEventJournal, updateEventJournal } from "./event-delivery.mjs"; import { authorizePreview, commitPreviewPermission, previewPermissionFailure, mountPreviewPermissions, authorizeR4WeightsDownload, authorizeSpiralCoreInternet, commitR4Consent } from "./preview-permissions.mjs"; import { copyGenerationInput, assertCanonicalGeneration } from "./canonical-generation.mjs"; import * as appShape from "./live/app.mjs"; import { frameHtml, FONTS } from "./live/frame-html.mjs"; import { applyOps, createEditor, PatchError } from "./live/edit.mjs"; import * as covers from "./covers.mjs"; import { createProbe, K } from "./telemetry/probe.mjs"; import {publishGallery, readGallery, galleryFailure} from "./gallery-store.mjs";
+const BASE = new URL("./", import.meta.url), listeners = new Map(), handlers = new Map(), seen = new Map(); let relayWindowEvent=()=>{}, core = null;
+const emitLocal = (channel, payload) => { const set = listeners.get(channel); if (set) for (const fn of set) { try { fn(payload); } catch (e) { console.error(e); } } }, emit = (channel,payload)=>{emitLocal(channel,payload);relayWindowEvent(channel,payload);};
 // ---- the generated core, the addresses and the store come from the shared inference module: one
 // core.wasm, one BLAKE3, one database ("hologram-forge" v2) for the builder's records and the seals.
-const enc = new TextEncoder(), dec = new TextDecoder();
-let core = null;
-const coreReady = inference.coreReady().then((c) => (core = c));
-const kappa = inference.kappa;
-const dbReady = inference.workspace();
+const enc = new TextEncoder(), dec = new TextDecoder(), coreReady = inference.coreReady().then((c) => (core = c)), kappa = inference.kappa, dbReady = inference.workspace();
 // The Prism R4 decision is read once, while the studio starts, so a first turn does not wait to fetch it.
 r4Spec().catch(() => {});
 async function tx(store, mode, fn) { return storageRequest(await dbReady, store, mode, fn); }
-const get = (store, key) => tx(store, "readonly", (s) => s.get(key));
-const put = (store, key, value) => tx(store, "readwrite", (s) => s.put(value, key));
-const del = (store, key) => tx(store, "readwrite", (s) => s.delete(key));
-const all = (store) => tx(store, "readonly", (s) => s.getAll());
-const keys = (store) => tx(store, "readonly", (s) => s.getAllKeys());
+const get = (store, key) => tx(store, "readonly", (s) => s.get(key)), put = (store, key, value) => tx(store, "readwrite", (s) => s.put(value, key)), del = (store, key) => tx(store, "readwrite", (s) => s.delete(key)), all = (store) => tx(store, "readonly", (s) => s.getAll()), keys = (store) => tx(store, "readonly", (s) => s.getAllKeys());
 // An app's files are the keys "<id>:<path>": read by key range instead of walking every app's keys.
 const appRange = (appId) => IDBKeyRange.bound(appId + ":", appId + ":￿");
 
-const themeLibrary=createThemeLibrary(dbReady,themesData);
-handlers.set("get-themes", () => themeLibrary("catalog"));
-handlers.set("get-custom-themes", () => themeLibrary("list"));
-handlers.set("create-custom-theme", input => themeLibrary("create",input));
-handlers.set("update-custom-theme", input => themeLibrary("update",input));
-handlers.set("delete-custom-theme", input => themeLibrary("delete",input));
-handlers.set("set-app-theme", input => themeLibrary("select",input));
-handlers.set("get-app-theme", input => themeLibrary("selected",input));
-const promptLibrary=createPromptLibrary(dbReady);
-handlers.set("prompts:list", () => promptLibrary("list"));
-handlers.set("prompts:create", input => promptLibrary("create",input));
-handlers.set("prompts:update", input => promptLibrary("update",input));
-handlers.set("prompts:delete", input => promptLibrary("delete",input));
+const themeLibrary=createThemeLibrary(dbReady,themesData), promptLibrary=createPromptLibrary(dbReady);
+handlers.set("get-themes", () => themeLibrary("catalog")); handlers.set("get-custom-themes", () => themeLibrary("list")); handlers.set("create-custom-theme", input => themeLibrary("create",input)); handlers.set("update-custom-theme", input => themeLibrary("update",input)); handlers.set("delete-custom-theme", input => themeLibrary("delete",input)); handlers.set("set-app-theme", input => themeLibrary("select",input)); handlers.set("get-app-theme", input => themeLibrary("selected",input));
+handlers.set("prompts:list", () => promptLibrary("list")); handlers.set("prompts:create", input => promptLibrary("create",input)); handlers.set("prompts:update", input => promptLibrary("update",input)); handlers.set("prompts:delete", input => promptLibrary("delete",input));
 
 // ---- settings
-const DEFAULT_SETTINGS = {
-  // Foundry answers with its own language and reasoning only (Prism R4, r4.mjs): every visitor starts,
-  // and stays, on the model in Prism on this device.
-  selectedModel: { name: LOCAL_MODEL, provider: "local" }, providerSettings: {}, telemetryConsent: "opted_out", telemetryUserId: "web",
-  hasRunBefore: true, experiments: {}, enableProLazyEditsMode: false, enableProSmartFilesContextMode: false, selectedChatMode: "build",
-  enableAppBlueprint: false, enableTestingForNewApps: false, enableAutoUpdate: false, releaseChannel: "stable", isRunning: false,
-  enableSandboxScriptExecution: false, enableMcpToolSearch: false, enableCodeExplorer: false, runTypeScriptForWholeProject: false,
-  enableMultiWindow: false, enableExplorerSubagent: false, enableAutoReview: false, enableReviewButton: false,
-  enableImplementerSubagent: false, enableAdvancedSubagents: false, autoFixReviewIssues: false, autoApproveNonSchemaSql: true,
-  autoExpandPreviewPanel: true, enableContextCompaction: true, enablePnpmMinimumReleaseAgeWarning: false,
-  previewIdleTimeoutPolicy: "default", nodeRuntimePreference: "system", disablePreviewNodeAutoInstall: true,
-  // The scaffold every project starts from is a Vite React app, which is the template this names.
-  selectedTemplateId: "react",
-};
+const DEFAULT_SETTINGS = { selectedModel: { name: LOCAL_MODEL, provider: "local" }, providerSettings: {}, telemetryConsent: "opted_out", telemetryUserId: "web", hasRunBefore: true, experiments: {}, enableProLazyEditsMode: false, enableProSmartFilesContextMode: false, selectedChatMode: "build", enableAppBlueprint: false, enableTestingForNewApps: false, enableAutoUpdate: false, releaseChannel: "stable", isRunning: false, enableSandboxScriptExecution: false, enableMcpToolSearch: false, enableCodeExplorer: false, runTypeScriptForWholeProject: false, enableMultiWindow: false, enableExplorerSubagent: false, enableAutoReview: false, enableReviewButton: false, enableImplementerSubagent: false, enableAdvancedSubagents: false, autoFixReviewIssues: false, autoApproveNonSchemaSql: true, autoExpandPreviewPanel: true, enableContextCompaction: true, enablePnpmMinimumReleaseAgeWarning: false, previewIdleTimeoutPolicy: "default", nodeRuntimePreference: "system", disablePreviewNodeAutoInstall: true, selectedTemplateId: "react" };
 // A stored record from an earlier shell may lack a key a newer renderer reads (providerSettings, say): the
 // defaults fill what is missing, the record keeps what it has. One mode is implemented here, the build
 // turn that writes files, so that is the mode the record always carries: an agent mode would promise
 // tool calls this host does not make.
-handlers.set("get-user-settings", async () => {
-  const stored = (await inference.settingsGet()) || {};
-  // A selection stored when a cloud model was offered names a route R4 refuses; the stored setting is
-  // moved to the device model once, as one write of the visitor's settings record, never per turn.
-  if (stored.selectedModel && stored.selectedModel.provider !== "local") {
-    return changeUserSettings(dbReady, { selectedModel: DEFAULT_SETTINGS.selectedModel }, (current, captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured })));
-  }
-  return browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...stored }));
-});
+handlers.set("get-user-settings", async () => { const stored = (await inference.settingsGet()) || {}; return stored.selectedModel && stored.selectedModel.provider !== "local" ? changeUserSettings(dbReady, { selectedModel: DEFAULT_SETTINGS.selectedModel }, (current, captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured }))) : browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...stored })); });
 handlers.set("set-user-settings", (patch) => { assertBrowserSettingsPatch(patch); assertBrowserChatModes(patch); return changeUserSettings(dbReady, patch || {}, (current,captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured }))); });
 // What the renderer takes as "set up": the studio's own model is the only provider, and it is always
 // set up, so no connect dialog ever stands between the first prompt and the answer. Whether this
 // browser can run it is the R4 route's question (Local or NoGpu), never a provider or key question.
-handlers.set("get-env-vars", () => ({ HOLOGRAM_DEVICE: "on this device" }));
-handlers.set("get-system-platform", () => "web");
-handlers.set("get-app-version", () => ({ version: "1.15.0-web" }));
-handlers.set("native-theme:get-state", () => ({ shouldUseDarkColors: matchMedia("(prefers-color-scheme: dark)").matches }));
-handlers.set("get-initial-load-telemetry-context", () => ({ isFirstSession: false, previousSessionAppSize: null }));
+handlers.set("get-env-vars", () => ({ HOLOGRAM_DEVICE: "on this device" })); handlers.set("get-system-platform", () => "web"); handlers.set("get-app-version", () => ({ version: "1.15.0-web" })); handlers.set("native-theme:get-state", () => ({ shouldUseDarkColors: matchMedia("(prefers-color-scheme: dark)").matches })); handlers.set("get-initial-load-telemetry-context", () => ({ isFirstSession: false, previousSessionAppSize: null }));
 // The build engine is esbuild in the tab; the renderer asks for Node before it shows a preview, so the
 // answer names the engine that will run: no Node is installed or needed.
 handlers.set("nodejs-status", () => ({ nodeVersion: "browser (esbuild in the tab)", pnpmVersion: "browser", nodeDownloadUrl: "", source: "system", nodePath: null, managedNodeInstalled: false, managedNodeVersion: null, systemNodeTooOld: false, managedNodeSupported: false }));
-// A window here is a tab, and its session id has to be a UUID: the renderer parses it, and "web-1"
-// was refused, so the window session never initialised and every screen that keys off it -- the
-// version controls among them -- reported itself unavailable. The id lasts as long as the tab, which
-// is what a window session is, so a reload finds the same one.
-const windowsStore=dbReady.then(windowJournalStore);
-const windowSchemas={visible:VisibleEntitySchema.array().max(100),tabs:ChatTabOwnershipSchema.array().max(100),interest:WindowInterestSchema,scopes:QueryInvalidationScopeSchema.array().min(1).max(128),batch:QueryInvalidationBatchSchema};
+const windowsStore=dbReady.then(windowJournalStore), windowSchemas={visible:VisibleEntitySchema.array().max(100),tabs:ChatTabOwnershipSchema.array().max(100),interest:WindowInterestSchema,scopes:QueryInvalidationScopeSchema.array().min(1).max(128),batch:QueryInvalidationBatchSchema};
 const windowCoordination=createWindowCoordinator({store:{read:()=>windowsStore.then(s=>s.read()),commit:(...args)=>windowsStore.then(s=>s.commit(...args))},locks:navigator.locks,channel:typeof BroadcastChannel==="function"?new BroadcastChannel("foundry:windows:v1"):null,storage:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value)},mintId:()=>crypto.randomUUID(),validate:(kind,value)=>windowSchemas[kind].safeParse(value),deliver:createWindowDelivery({emit:emitLocal,chatMachine:chatMachineOf,chatActor:id=>chatActorId(id),appMachine:machineOf}),exists:entity=>get(entity.kind==="app"?"apps":"chats",entity.id).then(Boolean)});
-handlers.set("window-infrastructure:bootstrap", input => windowCoordination.bootstrap(input));
-handlers.set("window-infrastructure:set-focused", () => windowCoordination.setFocused());
-handlers.set("window-infrastructure:set-visible-entities", input => windowCoordination.setVisible(input));
-handlers.set("window-infrastructure:set-chat-tab-ownership", input => windowCoordination.setTabs(input));
+handlers.set("window-infrastructure:bootstrap", input => windowCoordination.bootstrap(input)); handlers.set("window-infrastructure:set-focused", () => windowCoordination.setFocused()); handlers.set("window-infrastructure:set-visible-entities", input => windowCoordination.setVisible(input)); handlers.set("window-infrastructure:set-chat-tab-ownership", input => windowCoordination.setTabs(input));
 for (const c of ["add-log", "renderer:error-toast-ready", "clear-logs"]) handlers.set(c, () => undefined);
 relayWindowEvent=(channel,payload)=>{windowCoordination.relay(channel,payload);if(channel==="version-created"&&Number.isSafeInteger(payload?.appId))void windowCoordination.invalidate([{family:"apps"},{family:"app",appId:payload.appId},{family:"versions",appId:payload.appId}]).catch(()=>{});if(channel==="chat:stream:end"&&Number.isSafeInteger(payload?.chatId))void windowCoordination.invalidate([{family:"chat",chatId:payload.chatId},{family:"chats"}]).catch(()=>{});};
-window.addEventListener("pagehide",()=>windowCoordination.dispose(),{once:true});
-handlers.set("does-release-note-exist", () => ({ exists: false }));
-handlers.set("get-user-budget", () => null);
-handlers.set("get-subscription-status", () => null);
-// Apps live in this browser's store, not in a folder: the path is the store's name and it is not a
-// place the visitor can point elsewhere.
-handlers.set("get-custom-apps-folder", () => ({ path: inference.DB, isPathAvailable: true, isPathDefault: true }));
-handlers.set("get-node-path", () => null);
-// What this build is, for the settings page's own debug panel: no Node, no auto updater, the engine
-// named where a Node path would be, and the chosen model as the renderer spells it.
-handlers.set("get-system-debug-info", async () => {
-  const s = (await get("settings", "user")) || DEFAULT_SETTINGS;
-  const m = s.selectedModel || {};
-  return { nodeVersion: null, pnpmVersion: null, nodePath: "esbuild in the tab", telemetryId: "web", telemetryConsent: "opted_out", telemetryUrl: "", prismVersion: "1.15.0-web", platform: "web", architecture: navigator.userAgent.includes("WOW64") || navigator.userAgent.includes("x86_64") ? "x86_64" : "unknown", logs: "", updaterLogs: null, selectedLanguageModel: (m.provider ? m.provider + "/" : "") + (m.name || "") };
-});
+window.addEventListener("pagehide",()=>windowCoordination.dispose(),{once:true}); handlers.set("does-release-note-exist", () => ({ exists: false })); handlers.set("get-user-budget", () => null); handlers.set("get-subscription-status", () => null); handlers.set("get-custom-apps-folder", () => ({ path: inference.DB, isPathAvailable: true, isPathDefault: true })); handlers.set("get-node-path", () => null);
+handlers.set("get-system-debug-info", async () => { const s = (await get("settings", "user")) || DEFAULT_SETTINGS, m = s.selectedModel || {}; return { nodeVersion: null, pnpmVersion: null, nodePath: "esbuild in the tab", telemetryId: "web", telemetryConsent: "opted_out", telemetryUrl: "", prismVersion: "1.15.0-web", platform: "web", architecture: navigator.userAgent.includes("WOW64") || navigator.userAgent.includes("x86_64") ? "x86_64" : "unknown", logs: "", updaterLogs: null, selectedLanguageModel: (m.provider ? m.provider + "/" : "") + (m.name || "") }; });
 // Foundry's reader is the one provider, already set up: it needs no key, GPU or download.
 const LOCAL = { id: "local", name: "In this browser", type: "custom", hasFreeTier: true, envVarName: "HOLOGRAM_DEVICE" };
 const LOCAL_MODELS = [
@@ -151,7 +56,7 @@ const LOCAL_MODELS = [
 handlers.set("get-language-model-providers", () => [LOCAL]);
 handlers.set("get-language-models", ({ providerId }) => (providerId === "local" ? LOCAL_MODELS : []));
 handlers.set("get-language-models-by-providers", () => ({ local: LOCAL_MODELS }));
-let r4Worker = null, r4WasmSha = null, r4Boot = null, r4HoloModel = "";
+let r4Worker = null, r4WasmSha = null, r4Boot = null;
 async function fetchLocalHolo(pin, signal) {
   for (const src of [pin.holoFile && new URL("./r4/" + pin.holoFile, BASE), pin.holoFingerprintUrl].filter(Boolean)) { try { const r = await fetch(src, { signal }); if (r.ok) return new Uint8Array(await r.arrayBuffer()); } catch (e) { if (signal?.aborted) throw e; } }
   throw new Error("Failed to fetch LexLean-R4 .holo");
@@ -163,24 +68,119 @@ async function ensureR4Studio(signal) {
     if (!bytes) { const done = await install(bytes = await fetchLocalHolo(pin, signal), { application: pin.application, version: pin.version }); if (done.kappa !== pin.archiveKappa || done.fingerprint !== pin.fingerprint) throw new Error("LexLean-R4 .holo archive pin mismatch"); }
     const info = await inspect(bytes), wf = info.view.files.find((f) => f.path === "lexlean_r4_bg.wasm"), jf = info.view.files.find((f) => f.path === "lexlean_r4.js"); if (!wf || !jf) throw new Error("LexLean-R4 .holo missing Wasm runtime");
     const wasmSha = await sha256(wf.bytes); if (wasmSha !== pin.wasmSha256) throw new Error("LexLean-R4 Wasm pin mismatch");
-    const prevW = await get("refs", "r4:weights:" + pin.archiveKappa); await put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: wasmSha, archiveKappa: pin.archiveKappa, weightsKappa: prevW?.weightsKappa || pin.offlineQ31WeightsKappa, family: prevW?.family || "offlineQ31" });
+    const prevW = await get("refs", "r4:weights:" + pin.archiveKappa), validW = prevW?.wasmSha256 === wasmSha && [pin.qwen3WeightsKappa, pin.offlineQ31WeightsKappa].includes(prevW?.weightsKappa);
+    await put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: wasmSha, archiveKappa: pin.archiveKappa, weightsKappa: validW ? prevW.weightsKappa : "", family: validW ? (prevW.family || (prevW.weightsKappa === pin.offlineQ31WeightsKappa ? "offlineQ31" : "qwen3")) : "" });
     const wasmUrl = URL.createObjectURL(new Blob([wf.bytes], { type: "application/wasm" })), jsSrc = dec.decode(jf.bytes).replaceAll("import.meta" + ".url", JSON.stringify(pin.liveUrl)).replace("await __wbg_init();", "await __wbg_init({ module_or_path: " + JSON.stringify(wasmUrl) + " });");
-    r4WasmSha = wasmSha; r4Worker = new Worker(URL.createObjectURL(new Blob([jsSrc], { type: "text/javascript" })), { type: "module", name: "uor-r4-engine-worker" }); r4Worker.addEventListener("message", (e) => { if (e.data?.event === "holo_ready" && e.data.payload?.recommendedModel) r4HoloModel = e.data.payload.recommendedModel; });
+    r4WasmSha = wasmSha; r4Worker = new Worker(URL.createObjectURL(new Blob([jsSrc], { type: "text/javascript" })), { type: "module", name: "uor-r4-engine-worker" });
+    r4Runtime.attachWorker(r4Worker);
+    await r4Runtime.configureWorker();
   })().catch((e) => { r4Boot = null; throw e; }));
 }
 async function r4StudioFacts(receipt) {
   const pin = await r4StudioPin(), ref = (await installed()).find((r) => r.kappa === pin.archiveKappa) || (await installed()).find((r) => r.application === pin.application), weightsRef = await get("refs", "r4:weights:" + pin.archiveKappa);
-  const w = receipt ? (weightsRef?.wasmSha256 === pin.wasmSha256 ? receipt.weightsKappa : "mismatch") : (weightsRef?.wasmSha256 === pin.wasmSha256 ? (weightsRef.weightsKappa || "missing") : weightsRef ? "mismatch" : "missing");
-  return r4InprismFacts(pin, receipt ? (receipt.wasmSha256 === pin.wasmSha256 ? ref : { kappa: "mismatch" }) : ref, w, weightsRef?.family);
+  const fam = receipt?.family || weightsRef?.family, w = receipt ? (receipt.wasmSha256 === pin.wasmSha256 ? receipt.weightsKappa : "mismatch") : (weightsRef?.wasmSha256 === pin.wasmSha256 ? (weightsRef.weightsKappa || "missing") : weightsRef ? "mismatch" : "missing");
+  return r4InprismFacts(pin, receipt ? (receipt.wasmSha256 === pin.wasmSha256 ? ref : { kappa: "mismatch" }) : ref, w, fam);
 }
-async function askR4Studio(asks, signal) {
-  await ensureR4Studio(signal); const pin = await r4StudioPin(), id = crypto.randomUUID(), prompt = asks[asks.length - 1] || "";
-  return new Promise((ok, no) => {
-    const done = (fn, v) => { r4Worker?.removeEventListener("message", onMsg); r4Worker?.removeEventListener("error", onErr); clearTimeout(t); signal?.removeEventListener("abort", onAbort); fn(v); }, onAbort = () => done(no, signal.reason), onErr = (ev) => { r4Worker?.terminate(); r4Worker = null; r4Boot = null; done(no, new Error(ev?.message || "LexLean-R4 worker error")); }, t = setTimeout(() => done(no, new Error("LexLean-R4 inference timed out")), 90000);
-    const onMsg = (e) => { if (e.data?.id !== id) return; const res = e.data.result || {}; if (!e.data.ok || !res.ok) return done(no, new Error(e.data.error || res.error || "LexLean-R4 refused")); done(ok, { lines: [...String(res.reply || "").trim().split(/\r?\n/).filter((l) => l.trim()).map((l) => "= " + l), `= Studio: [Open LexLean-R4 Studio & IDE](?r4=studio) · Full Tab: [lexlean-r4](${pin.liveUrl}) · Archive: [holo.html](holo.html) (\`${res.model_id || "uor-r4.native-q31-d85"}\`)`], wasmSha256: r4WasmSha, weightsKappa: res.weights_kappa }); };
-    r4Worker.addEventListener("message", onMsg); r4Worker.addEventListener("error", onErr); signal?.addEventListener("abort", onAbort, { once: true }); r4Worker.postMessage({ id, op: "inprism_r4_turn", payload: { prompt, preferredModel: r4HoloModel || "uor-r4.native-q31-d85" } });
+async function askR4Studio(asks, signal, opts) { return r4Runtime.ask(asks, signal, opts); }
+function createR4Runtime(deps) {
+  const pinFn = deps.pinFn || (async () => deps.pin), w = () => deps.r4Worker(), listeners = new Set(), sessions = new Map(), attached = new WeakSet();
+  const utf8Fatal = new TextDecoder("utf-8", { fatal: true });
+  let netMode = "sandboxed", relayUrl = "", modelTier = "uor-r4.qwen3-0.6b-holo", tele = { tokens_emitted: 0, tok_per_sec: 0, geometric_metrics: {}, holo_v13: null, selectedModel: modelTier, networkMode: "sandboxed" };
+  const errOf = (code, msg) => Object.assign(new Error(msg), { code }), pushTele = (patch) => { tele = { ...tele, ...patch, ts: Date.now() }; for (const cb of listeners) try { cb(tele); } catch {} };
+  const isTextPath = (p) => typeof p === "string" && p.length > 0 && !p.startsWith("/") && !p.split("/").some((seg) => !seg || seg === "." || seg === "..") && !/(?:^|\/)(?:\.git|node_modules|\.venv|__pycache__)(?:\/|$)/.test(p) && !/\.(?:db|sqlite|sqlite3|wasm)$/i.test(p);
+  const isText = (s) => typeof s === "string" && !s.includes("\u0000"), b64E = (s) => { const u = new TextEncoder().encode(s); let b = ""; for (let i = 0; i < u.length; i++) b += String.fromCharCode(u[i]); return btoa(b); };
+  const b64D = (b) => { try { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return utf8Fatal.decode(u); } catch { return null; } };
+  const wkOf = (h) => h?.weights_kappa || h?.holo?.weights_kappa || ((h?.kappaStore?.container_sha256 || h?.holo?.container_sha256) ? "sha256:" + (h?.kappaStore?.container_sha256 || h?.holo?.container_sha256) : "");
+  const hydrateLabel = (d, def) => { if (d.label) return d.label; const l = Number(d.loadedBytes ?? d.loaded_bytes ?? d.bytes), t = Number(d.totalBytes ?? d.total_bytes); return Number.isFinite(l) && Number.isFinite(t) && t > 0 ? `Hydrating ${d.modelId || modelTier} (${(l / 1048576).toFixed(1)}/${(t / 1048576).toFixed(1)} MiB)` : def; };
+  const handleWorkerEvent = (d) => {
+    if (!d?.event) return;
+    if (d.event === "audit_event") void deps.put("audit", `${Date.now()}:${d.operation || "r4"}:${crypto.randomUUID().slice(0, 8)}`, { timestamp_millis: d.timestamp_millis || Date.now(), principal: "r4:lexlean-r4", operation: d.operation || "r4", target: d.target || "", mode: d.mode || netMode, transport: d.transport || "holo", status: d.status || "ok", bytes: Number(d.bytes || 0), resource: d.target || d.operation || "r4", outcome: d.status || "ok" }).catch(() => {});
+    if (["chat_chunk", "holo_observatory_batch", "holo_trace_frame", "brain_pulse", "stitch_health", "bridge_activity", "telos_tick", "ready", "holo_ready"].includes(d.event)) pushTele({ event: d.event, ...(d.tokens_emitted != null ? { tokens_emitted: d.tokens_emitted } : {}), ...(d.tok_per_sec != null ? { tok_per_sec: d.tok_per_sec } : {}), ...(d.geometric_metrics ? { geometric_metrics: d.geometric_metrics } : {}), ...(d.holo_v13 ? { holo_v13: d.holo_v13 } : {}), ...(d.recommendedModel ? { selectedModel: d.recommendedModel } : {}) });
+  };
+  const attachWorker = (wk) => { if (!wk || attached.has(wk)) return; attached.add(wk); wk.addEventListener("message", (e) => handleWorkerEvent(e.data)); };
+  const rpc = (op, payload, onEvt, signal, ms = deps.rpcTimeoutMs || 90000) => new Promise((ok, no) => {
+    const wk = w(), id = crypto.randomUUID(); if (!wk) return no(errOf("r4Unavailable", "LexLean-R4 worker unavailable")); attachWorker(wk);
+    let tmr = null; const done = (fn, v) => { wk.removeEventListener("message", onMsg); wk.removeEventListener("error", onErr); clearTimeout(tmr); signal?.removeEventListener("abort", onAbort); fn(v); };
+    const arm = () => { clearTimeout(tmr); tmr = setTimeout(() => done(no, new Error("LexLean-R4 request timed out")), ms); }, onAbort = () => { if (op === "inprism_r4_turn") wk.postMessage({ id: crypto.randomUUID(), op: "cancel_inprism_turn", payload: { targetId: id } }); done(no, signal.reason || new Error("Aborted")); };
+    const onErr = (ev) => done(no, new Error(ev?.message || "LexLean-R4 worker error")), onMsg = (e) => { const d = e.data; if (!d) return; if (d.event) { arm(); return void onEvt?.(d); } if (d.id !== id) return; if (!d.ok) return done(no, errOf(d.error_code || "r4WorkerRefused", d.error || "LexLean-R4 refused")); done(ok, d.result || {}); };
+    arm(); wk.addEventListener("message", onMsg); wk.addEventListener("error", onErr); signal?.addEventListener("abort", onAbort, { once: true }); wk.postMessage({ id, op, payload });
   });
+  const configureWorker = async () => { const sm = await deps.get("refs", "r4:network-mode"), sr = await deps.get("refs", "r4:relay-url"), c = await deps.get("refs", "capabilities:r4:spiralcore-internet"); netMode = sm === "full_spiralcore" ? "full_spiralcore" : "sandboxed"; relayUrl = typeof sr === "string" ? sr : ""; return rpc("set_host_config", { esbuildModuleUrl: new URL("compiler/esm/browser.min.js", deps.BASE).href, esbuildWasmUrl: new URL("compiler/esbuild.wasm", deps.BASE).href, mode: netMode, relayWsUrl: relayUrl, consentGranted: c?.outcome === "granted" }); };
+  const syncWorkspaceIn = async (appId, source) => rpc("mvm_sync_workspace_in", { epoch: Date.now(), files: ((source || await deps.captureProjectSource(await deps.dbReady(), appId))?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content_base64: b64E(content) })) });
+  const mergeDiffsToTags = (diffs, skip = new Set()) => {
+    const state = new Map();
+    for (const diff of Array.isArray(diffs) ? diffs : [diffs]) {
+      if (!diff) continue;
+      for (const e of [...(diff.writes || []), ...(diff.added || []), ...(diff.modified || [])]) { const p = e?.path, c = typeof e?.content === "string" ? e.content : typeof e?.content_base64 === "string" ? b64D(e.content_base64) : null; if (p && !skip.has(p) && isTextPath(p) && !/^prism\/.*\.lex\.tex$/.test(p) && typeof c === "string" && isText(c)) state.set(p, { kind: "write", path: p, content: c }); }
+      for (const dp of [...(diff.deletes || []), ...(diff.removed || [])]) { const p = typeof dp === "string" ? dp : dp?.path; if (p && !skip.has(p) && isTextPath(p) && !/^prism\/.*\.lex\.tex$/.test(p)) state.set(p, { kind: "delete", path: p }); }
+    }
+    const writes = [], deletes = []; for (const v of state.values()) v.kind === "write" ? writes.push({ path: v.path, content: v.content }) : deletes.push({ path: v.path });
+    return { writes, deletes, renames: [], deps: [] };
+  };
+  const applyDiffTags = async (appId, diffs, source, skipPaths, opts = {}) => { const tags = mergeDiffsToTags(diffs, skipPaths); return (!tags.writes.length && !tags.deletes.length) ? { changed: 0, source } : deps.applyPrismTags(appId, tags, { source: source || await deps.captureProjectSource(await deps.dbReady(), appId), signal: opts.signal, onCommit: opts.onCommit }); };
+  const syncWorkspaceOut = async (appId, source, skipPaths = [], opts = {}) => applyDiffTags(appId, await rpc("mvm_export_workspace_diff", {}), source, new Set(skipPaths), opts);
+  const saveWeightsRef = async (pin, weightsKappa, family) => { if (weightsKappa) await deps.put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: deps.getWasmSha(), archiveKappa: pin.archiveKappa, weightsKappa, family }); };
+  const grantWeightsConsent = async (pin) => { await deps.authorizeR4WeightsDownload({ source: pin.archiveKappa, endpoints: ["https://huggingface.co"] }, { db: await deps.dbReady() }); void configureWorker().catch(() => {}); };
+  const prepareInprism = async (signal, onText) => {
+    const pin = await pinFn(), refW = await deps.get("refs", "r4:weights:" + pin.archiveKappa), wantFam = modelTier === "uor-r4.native-q31-d85" ? "offlineQ31" : "qwen3", wantK = wantFam === "offlineQ31" ? pin.offlineQ31WeightsKappa : pin.qwen3WeightsKappa;
+    if (refW?.wasmSha256 === deps.getWasmSha() && refW?.weightsKappa === wantK && refW?.family === wantFam) return;
+    if (wantFam === "offlineQ31") return void await saveWeightsRef(pin, pin.offlineQ31WeightsKappa, "offlineQ31");
+    const allow = (await deps.get("refs", "capabilities:r4:weights-download"))?.outcome === "granted", runHydrate = (ok) => rpc("hydrate_holo_model", { modelId: modelTier, allowOffOriginHydration: ok }, (d) => { if (["chat_hydration", "hydration_progress", "boot_progress"].includes(d.event)) void onText?.(`_${hydrateLabel(d, `Hydrating ${modelTier} shards ${d.index || 0}/${d.total || "?"}`)}…_\n\n`); }, signal);
+    try { const h = await runHydrate(allow), wk = wkOf(h); if (wk === pin.qwen3WeightsKappa) await saveWeightsRef(pin, wk, "qwen3"); } catch (e) { if (e?.code !== "ConsentRequiredForWeightDownload") return; try { await grantWeightsConsent(pin); } catch { return; } const h = await runHydrate(true), wk = wkOf(h); if (wk === pin.qwen3WeightsKappa) await saveWeightsRef(pin, wk, "qwen3"); }
+  };
+  const ask = async (asks, signal, opts = {}) => {
+    const pin = await pinFn(), prompt = asks[asks.length - 1] || "", diffs = [], wsFiles = (opts.projectSource?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content }));
+    if (opts.appId != null && opts.projectSource) await syncWorkspaceIn(opts.appId, opts.projectSource).catch(() => {});
+    const allowOff = (await deps.get("refs", "capabilities:r4:weights-download"))?.outcome === "granted"; let streamed = "", res;
+    const runTurn = (allow) => rpc("inprism_r4_turn", { prompt, selected_model: modelTier, preferredModel: modelTier, workspace_files: wsFiles, active_file: opts.activeFile || null, allowOffOriginHydration: allow }, (d) => { if (["chat_hydration", "hydration_progress", "boot_progress"].includes(d.event)) void opts.onText?.(`_${hydrateLabel(d, "Hydrating Qwen3-0.6B Holo v13 shards")}…_\n\n`); if (d.event === "chat_chunk") { const seg = d.delta ?? d.text ?? d.chunk ?? ""; if (seg) { streamed += seg; void opts.onText?.(streamed); } } if (d.event === "workspace_sync" && d.diff) diffs.push(d.diff); if (d.event === "tool_result" && d.workspace_diff) diffs.push(d.workspace_diff); }, signal);
+    try { res = await runTurn(allowOff); } catch (e) { if (e?.code !== "ConsentRequiredForWeightDownload") throw e; try { await grantWeightsConsent(pin); } catch { throw errOf("r4Refused", deps.r4Refusal({ outcome: "refuse", rule: "REQ-005" }, { mode: "inprism" })); } res = await runTurn(true); }
+    const fam = res.model_id === "uor-r4.native-q31-d85" ? "offlineQ31" : "qwen3", expK = fam === "offlineQ31" ? pin.offlineQ31WeightsKappa : pin.qwen3WeightsKappa;
+    if (res.weights_kappa === expK) await saveWeightsRef(pin, res.weights_kappa, fam);
+    return { reply: res.reply || streamed, lines: [], wasmSha256: deps.getWasmSha(), weightsKappa: res.weights_kappa || "", family: fam, modelId: res.model_id || modelTier, pendingDiffs: diffs };
+  };
+  const applyTurnWorkspaceDiff = async (appId, source, r4Turn, skip = [], opts = {}) => { let exp = null; try { exp = await rpc("mvm_export_workspace_diff", {}); } catch {} return applyDiffTags(appId, [...(r4Turn?.pendingDiffs || []), ...(exp ? [exp] : [])], source, new Set(skip), opts); };
+  const termGet = (id, allowExited) => { const s = sessions.get(id); if (!s) throw errOf("r4TerminalMissing", "Terminal session not found"); if (!allowExited && s.exited) throw errOf("r4TerminalExited", "Terminal session has exited"); return s; }, appendTerm = (s, chunk) => { if (!chunk) return; const startOffset = s.scrollback.length; s.scrollback += chunk; deps.emit("terminal:data:" + s.sessionId, { sessionId: s.sessionId, chunk, startOffset, endOffset: s.scrollback.length }); };
+  const terminalOpen = async ({ appId, cols, rows }) => {
+    if (!Number.isSafeInteger(appId) || appId < 1) throw errOf("r4TerminalInvalid", "Invalid application identifier");
+    const app = await deps.get("apps", appId); if (!app) throw errOf("r4TerminalMissing", "Application not found");
+    for (const s of sessions.values()) if (s.appId === appId && !s.exited) { s.cols = cols; s.rows = rows; return { sessionId: s.sessionId, shell: s.shell, cwd: s.cwd, appName: s.appName, scrollback: s.scrollback, created: false }; }
+    await deps.ensureR4Studio?.();
+    const sessionId = crypto.randomUUID(), s = { sessionId, appId, appName: app.name || String(appId), shell: "lexlean-sh", cwd: "/workspace", cols, rows, scrollback: "", line: "", exited: null, pending: Promise.resolve() };
+    sessions.set(sessionId, s); try { await syncWorkspaceIn(appId); await rpc("terminal:open", { appId, cols, rows, sessionId }); } catch (e) { sessions.delete(sessionId); throw e; }
+    appendTerm(s, `${s.shell} ${s.cwd} $ `); return { sessionId, shell: s.shell, cwd: s.cwd, appName: s.appName, scrollback: s.scrollback, created: true };
+  };
+  const runTermCmd = async (s, cmd) => {
+    if (!cmd) return void appendTerm(s, `${s.shell} ${s.cwd} $ `); if (cmd === "clear") return void appendTerm(s, `\x1b[2J\x1b[H${s.shell} ${s.cwd} $ `);
+    if (cmd === "exit") { s.exited = { exitCode: 0 }; return void deps.emit("terminal:exit:" + s.sessionId, { sessionId: s.sessionId, exitCode: 0 }); }
+    await syncWorkspaceIn(s.appId);
+    const diffs = [], onCommit = (oid) => deps.emit("version-created", { appId: s.appId, oid }), out = await rpc("terminal:write", { sessionId: s.sessionId, cmd }, (d) => { if (d.event === "workspace_sync" && d.diff) diffs.push(d.diff); });
+    const nl = (x) => { const n = x.replace(/\r?\n/g, "\r\n"); return n.endsWith("\r\n") ? n : n + "\r\n"; }, so = typeof (out?.mvm_stdout ?? out?.stdout ?? out?.output) === "string" ? (out?.mvm_stdout ?? out?.stdout ?? out?.output) : "", se = typeof (out?.mvm_stderr ?? out?.stderr) === "string" ? (out?.mvm_stderr ?? out?.stderr) : "", fb = !so && !se && out?.message ? String(out.message) : "", txt = (so ? nl(so) : "") + (se ? nl(se) : "") + (fb ? nl(fb) : "");
+    if (txt) appendTerm(s, txt);
+    if (diffs.length) await applyDiffTags(s.appId, diffs, null, new Set(), { onCommit }); else try { await syncWorkspaceOut(s.appId, null, [], { onCommit }); } catch {}
+    if (!s.exited) appendTerm(s, `${s.shell} ${s.cwd} $ `);
+  };
+  const terminalWrite = async ({ sessionId, data }) => {
+    const s = termGet(sessionId, false), str = String(data || ""); let echo = "", cmds = [];
+    for (let i = 0; i < str.length; i++) { const ch = str[i]; if (ch === "\x1b" && str[i + 1] === "[") { i += 2; while (i < str.length && !/[A-Za-z~]/.test(str[i])) i++; } else if (ch === "\r" || ch === "\n") { if (ch === "\r" && str[i + 1] === "\n") i++; echo += "\r\n"; cmds.push(s.line.trim()); s.line = ""; } else if (ch === "\x7f" || ch === "\b") { if (s.line.length) { s.line = s.line.slice(0, -1); echo += "\b \b"; } } else if (ch === "\x03") { s.line = ""; echo += `^C\r\n${s.shell} ${s.cwd} $ `; } else if (ch !== "\x1b") { s.line += ch; echo += ch; } }
+    if (echo) appendTerm(s, echo); for (const cmd of cmds) s.pending = s.pending.catch(() => {}).then(() => runTermCmd(s, cmd)); await s.pending; return { ok: true };
+  };
+  const terminalResize = async ({ sessionId, cols, rows }) => { const s = termGet(sessionId, true); s.cols = cols; s.rows = rows; await rpc("terminal:resize", { sessionId, cols, rows }).catch(() => {}); return { ok: true }; };
+  const terminalSerialize = async ({ sessionId }) => { const s = termGet(sessionId, true); return { scrollback: s.scrollback, scrollbackEndOffset: s.scrollback.length }; };
+  const terminalKill = async ({ sessionId }) => { const s = termGet(sessionId, true); if (!s.exited) { s.exited = { exitCode: 0 }; deps.emit("terminal:exit:" + sessionId, { sessionId, exitCode: 0 }); } await rpc("terminal:kill", { sessionId }).catch(() => {}); return { ok: true }; };
+  const terminalClose = async ({ sessionId }) => { if (sessions.delete(sessionId)) await rpc("terminal:close", { sessionId }).catch(() => {}); return { ok: true }; };
+  const setNetworkMode = async (mode) => {
+    const next = mode === "full_spiralcore" ? "full_spiralcore" : "sandboxed";
+    if (next === "full_spiralcore") await deps.authorizeSpiralCoreInternet({ source: "r4:spiralcore-internet", endpoints: relayUrl ? [relayUrl] : ["https://registry.npmjs.org"] }, { db: await deps.dbReady() });
+    await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: next, relayWsUrl: relayUrl, consentGranted: next === "full_spiralcore" });
+    if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused");
+    netMode = next; await deps.put("refs", "r4:network-mode", netMode); pushTele({ networkMode: netMode }); return netMode;
+  };
+  const setRelayUrl = async (url) => { const next = String(url || "").trim(); await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: netMode, relayWsUrl: next, consentGranted: netMode === "full_spiralcore" }); if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused"); relayUrl = next; await deps.put("refs", "r4:relay-url", relayUrl); return relayUrl; };
+  const gitAction = async (op, args = {}) => { await deps.ensureR4Studio?.(); return rpc(op === "set_secret" ? "mvm_set_secret" : "host_bridge_exec", op === "set_secret" ? args : { op: "git", subcommand: op, action: op, ...args }); };
+  return { attachWorker, configureWorker, handleWorkerEvent, prepareInprism, ask, syncWorkspaceIn, syncWorkspaceOut, applyTurnWorkspaceDiff, terminalOpen, terminalWrite, terminalResize, terminalSerialize, terminalKill, terminalClose, getTelemetrySnapshot: () => tele, onTelemetry: (cb) => { listeners.add(cb); return () => listeners.delete(cb); }, getNetworkMode: () => netMode, setNetworkMode, getRelayUrl: () => relayUrl, setRelayUrl, gitAction, getModelTier: () => modelTier, setModelTier: (m) => { modelTier = String(m || "uor-r4.qwen3-0.6b-holo"); pushTele({ selectedModel: modelTier }); return modelTier; } };
 }
+// R4_RUNTIME_END
+const r4Runtime = createR4Runtime({ pinFn: r4StudioPin, BASE, ensureR4Studio, r4Worker: () => r4Worker, getWasmSha: () => r4WasmSha, get, put, installed, dbReady: () => dbReady, emit, captureProjectSource, applyPrismTags, authorizeR4WeightsDownload, authorizeSpiralCoreInternet, commitR4Consent, r4Refusal });
 
 // ---- apps and files. A file is stored under "<appId>:<path>"; the app record carries no files,
 // get-app lists them. Every edit seals a version: the address of the project state.
@@ -1643,12 +1643,6 @@ async function chatTurn(chatId, intent) {
   const committed = [];
   const onCommit = (oid) => { committed.push(oid); updatedFiles = true; emit("version-created", { appId, oid }); };
   try {
-    // R4 decides the route before the request is made: a route to any model outside Foundry is
-    // ungranted, so it is refused here and no byte of the request leaves the tab.
-    const inprism = model === INPRISM_MODEL ? (await ensureR4Studio(abort.signal), await r4StudioFacts()) : null;
-    const before = r4Request({ provider, model, ...(inprism || {}) });
-    const allowed = await r4Decide(before);
-    if (allowed.outcome !== "answer") throw new Error(r4Refusal(allowed, before));
     let lastSave = 0;
     const onText = async (t) => {
       assertGenerationActive(abort.signal);
@@ -1681,18 +1675,25 @@ async function chatTurn(chatId, intent) {
     // Foundry's own language model reads the idea: IdeaReader, compiled with Prism into the kernel guest, reads
     // every request so far into the app notation (closed lexicon, fixed grammar, no weights). A phrase it cannot
     // read is an open claim the chat shows, never a guess. R4 judges the answer as a compiled one.
+    // R4 decides the route before the request is made: a route to any model outside Foundry is
+    // ungranted, so it is refused here and no byte of the request leaves the tab.
+    const inprism = model === INPRISM_MODEL ? (await ensureR4Studio(abort.signal), await r4Runtime.prepareInprism(abort.signal, enqueueText), await r4StudioFacts()) : null;
+    const before = r4Request({ provider, model, ...(inprism || {}) });
+    const allowed = await r4Decide(before);
+    if (allowed.outcome !== "answer") throw new Error(r4Refusal(allowed, before));
     const asks = messages.filter((x) => x.role === "user" && x.content && !prism.isApproval(x.content)).map((x) => x.content);
     await enqueueText("");
     // A stop ends the turn at once, as it did a model's stream: the reading is then left unread.
-    const r4Turn = inprism ? await askR4Studio(asks, abort.signal) : null;
-    const lines = r4Turn ? r4Turn.lines : (await Promise.race([(await kernelReady).ask("read " + [...new Set(asks)].join(", ")), new Promise((_, no) => abort.signal.addEventListener("abort", () => no(abort.signal.reason), { once: true }))])).split("\n");
+    const r4Turn = inprism ? await askR4Studio(asks, abort.signal, { appId, activeFile: projectSource.files[0]?.[0] || null, projectSource, onText: enqueueText }) : null;
+    const lines = r4Turn ? [] : (await Promise.race([(await kernelReady).ask("read " + [...new Set(asks)].join(", ")), new Promise((_, no) => abort.signal.addEventListener("abort", () => no(abort.signal.reason), { once: true }))])).split("\n");
     assertGenerationActive(abort.signal);
     const made = r4Request({ provider, model, ...(inprism ? await r4StudioFacts(r4Turn) : {}) });
     const shown = await r4Decide(made);
     if (shown.outcome !== "answer") throw new Error(r4Refusal(shown, made));
     // "= " lines are the idea's goal and measure as read; "? " lines are open questions, shown and never guessed.
     const said = (m) => lines.filter((l) => l.startsWith(m)).map((l) => "- " + l.slice(2)).join("\n"), notationLines = lines.filter((l) => l && !/^[?=] /.test(l));
-    await enqueueText((notationLines.length ? "<prism-lexlean>\n" + notationLines.join("\n") + "\n</prism-lexlean>\n\n" : "") + [said("= "), said("? ") && "Open questions:\n" + said("? ")].filter(Boolean).join("\n\n"));
+    if (r4Turn) await enqueueText(r4Turn.reply);
+    else await enqueueText((notationLines.length ? "<prism-lexlean>\n" + notationLines.join("\n") + "\n</prism-lexlean>\n\n" : "") + [said("= "), said("? ") && "Open questions:\n" + said("? ")].filter(Boolean).join("\n\n"));
     messages[messages.length - 1].model = inprism ? INPRISM_MODEL : LOCAL_MODEL;
     // T6: completed batches have their own committed snapshots.
     // A streamed parser still owns the pre-turn snapshot until it settles. Finish it before our
@@ -1704,10 +1705,11 @@ async function chatTurn(chatId, intent) {
     if (execution.sourceEffects) {
       // Code a model wrote is never applied: the app's code and screen are projections of its module.
       const wrote = parsePrismTags(full);
-      const refusedCode = wrote.writes.length + wrote.deletes.length + wrote.renames.length + wrote.deps.length;
-      const tags = { ...wrote, writes: [], deletes: [], renames: [], deps: [] };
+      const refusedCode = inprism ? 0 : wrote.writes.length + wrote.deletes.length + wrote.renames.length + wrote.deps.length;
+      const tags = inprism ? wrote : { ...wrote, writes: [], deletes: [], renames: [], deps: [] };
       const applied = await applyPrismTags(appId, tags, { signal: abort.signal, source: projectSource, onCommit });
       let changed = applied.changed;
+      if (inprism && r4Turn) { const wsOut = await r4Runtime.applyTurnWorkspaceDiff(appId, applied.source, r4Turn, [...tags.writes.map((w) => w.path), ...tags.deletes.map((d) => d.path), ...tags.renames.flatMap((r) => [r.from, r.to])], { signal: abort.signal, onCommit }); if (wsOut.changed) { changed += wsOut.changed; applied.source = wsOut.source; } }
       const turn = full;
       const spec = (await appAfterTurn(appId, turn, { signal: abort.signal, source: applied.source, onCommit })) || await rulesAfterTurn(appId, turn, [], { signal: abort.signal, source: applied.source, onCommit });
       const patchRefusals = [];
@@ -1738,7 +1740,7 @@ async function chatTurn(chatId, intent) {
       }
       changed += spec.changed;
       if (await hasRules(appId)) { await showLive(appId).catch(() => {}); await refreshPreview(appId, { signal: abort.signal }); }
-      else if (speculativeLive && liveShown.has(appId) && !(await scaffoldOnly(appId))) { liveShown.delete(appId); showBuilt(appId).catch(() => {}); }
+      else if ((inprism && changed > 0) || (speculativeLive && liveShown.has(appId) && !(await scaffoldOnly(appId)))) { liveShown.delete(appId); showBuilt(appId).catch(() => {}); }
       updatedFiles = updatedFiles || changed > 0;
       const commit = committed.at(-1) || null;
       messages[messages.length - 1] = { ...messages[messages.length - 1], content: prism.withCard(full, spec.card), commitHash: commit, approvalState: "approved", requestId: provenance && provenance.receipt || null };
@@ -1797,6 +1799,7 @@ async function chatDispatch(raw){
 }
 handlers.set("chat:observe-submission-stop-policy",async chatId=>(await readStoredChatQueue(await dbReady,chatId)).journal.state.stopPolicy);
 handlers.set("chat:cancel",chatId=>chatQueue.cancelCurrent(chatId));
+handlers.set("terminal:open", (p) => r4Runtime.terminalOpen(p)); handlers.set("terminal:write", (p) => r4Runtime.terminalWrite(p)); handlers.set("terminal:resize", (p) => r4Runtime.terminalResize(p)); handlers.set("terminal:serialize", (p) => r4Runtime.terminalSerialize(p)); handlers.set("terminal:close", (p) => r4Runtime.terminalClose(p)); handlers.set("terminal:kill", (p) => r4Runtime.terminalKill(p));
 
 // ---- the typed host boundary (FoundrySpecification.hostResponseBoundary)
 function dispatch(channel, args) {
@@ -1827,30 +1830,14 @@ async function buildPortable(appId, captured) {
   await coreReady; const source = captured || await verifiedBuildSource(appId); if (applicationShape(source) === 'stateful') throw shapeFailure('statefulBuildUnsupported');
   const environment = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure;
   return runBuildWork({appId,source:source.reference,environment}, () => withPortableBuildPermission({id:"portable-"+crypto.randomUUID(),source:source.reference}, async lease => {
-    const t0 = performance.now(), files = new Map(source.files), pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
-    const pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")]));
-    for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
+    const t0 = performance.now(), files = new Map(source.files), pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json(), pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")])); for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
     const urlOf = (name) => { const bare = name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0], sub = name.slice(bare.length), v = pkgs[bare] ? "@" + pkgs[bare] : ""; return bare === "react" ? `https://esm.sh/react${v}${sub}?target=es2022` : bare === "react-dom" ? `https://esm.sh/react-dom${v}${sub}?target=es2022&external=react` : `https://esm.sh/${bare}${v}${sub}?target=es2022&external=react,react-dom`; };
     return withBuildModules(async remote => {
-      const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text(), m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/), tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}";
-      const exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"], resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
-      const plugin = { name: "portable", setup(b) {
-        b.onResolve({ filter: /.*/ }, (args) => {
-          if (args.namespace === "http") return (/^https?:\/\//.test(args.path) || args.path.startsWith("/") || /^\.\.?\//.test(args.path)) ? { path: new URL(args.path, args.importer).href, namespace: "http" } : { path: urlOf(args.path), namespace: "http" };
-          if (args.kind === "entry-point") { const r = resolveFile(args.path); if (r) return { path: r, namespace: "project" }; }
-          if (args.path.startsWith("@/")) { const r = resolveFile("src/" + args.path.slice(2)); if (r) return { path: r, namespace: "project" }; }
-          if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) { const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src", norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1), r = resolveFile(norm); return r ? { path: r, namespace: "project" } : { errors: [{ text: "not in project: " + norm }] }; }
-          return /^https?:\/\//.test(args.path) ? { path: args.path, namespace: "http" } : { path: urlOf(args.path), namespace: "http" };
-        });
-        b.onLoad({ filter: /.*/, namespace: "http" }, async (args) => ({ contents: await remote.fetchText(args.path), loader: /\.css(\?|$)/.test(args.path) ? "css" : "js" }));
-        b.onLoad({ filter: /.*/, namespace: "project" }, (args) => { const src = files.get(args.path); return args.path.endsWith(".css") ? { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" } : { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" }; });
-      } };
+      const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text(), m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/), tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}", exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"], resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
+      const plugin = { name: "portable", setup(b) { b.onResolve({ filter: /.*/ }, (args) => { if (args.namespace === "http") return (/^https?:\/\//.test(args.path) || args.path.startsWith("/") || /^\.\.?\//.test(args.path)) ? { path: new URL(args.path, args.importer).href, namespace: "http" } : { path: urlOf(args.path), namespace: "http" }; if (args.kind === "entry-point") { const r = resolveFile(args.path); if (r) return { path: r, namespace: "project" }; } if (args.path.startsWith("@/")) { const r = resolveFile("src/" + args.path.slice(2)); if (r) return { path: r, namespace: "project" }; } if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) { const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src", norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1), r = resolveFile(norm); return r ? { path: r, namespace: "project" } : { errors: [{ text: "not in project: " + norm }] }; } return /^https?:\/\//.test(args.path) ? { path: args.path, namespace: "http" } : { path: urlOf(args.path), namespace: "http" }; }); b.onLoad({ filter: /.*/, namespace: "http" }, async (args) => ({ contents: await remote.fetchText(args.path), loader: /\.css(\?|$)/.test(args.path) ? "css" : "js" })); b.onLoad({ filter: /.*/, namespace: "project" }, (args) => { const src = files.get(args.path); return args.path.endsWith(".css") ? { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" } : { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" }; }); } };
       const es = await esbuild(), r = await es.build({ entryPoints: ["src/main.tsx"], bundle: true, write: false, format: "esm", target: "es2022", jsx: "automatic", plugins: [plugin], outdir: "out", logLevel: "silent", minify: true, define: { "import.meta.env.DEV": "false", "import.meta.env.MODE": '"production"', "import.meta.env.BASE_URL": "__HOLO_BASE__", "process.env.NODE_ENV": '"production"' } });
-      const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text, css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text, inline = (s) => s.replace(/<\/script/g, "<\\/script"), body = `<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>\n<script type="module">${inline(js)}<\/script></body></html>`, head = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n<script>var __HOLO_BASE__ = location.pathname.replace(/index\\.html$/, "");`;
-      const candidates = [...new Set((js + " " + css).match(/[A-Za-z][A-Za-z0-9_\-:\/\.\[\]#%!]*/g) || [])].filter((t) => t.length < 120).join(" "), compilePage = head + ` tailwind = { config: ${tailwindConfig} };<\/script>\n<script src="https://cdn.tailwindcss.com"><\/script>\n<div hidden id="tw-candidates" class="${candidates.replace(/"/g, "")}"></div>\n` + body;
-      const tailwindCss = await compileTailwind(compilePage, lease), html = head + `<\/script>\n<style>${tailwindCss}</style>\n` + body;
-      await assertBuildSourceCurrent(await dbReady, appId, source);
-      return { html, sourceReference: source.reference, modules: remote.count, jsBytes: js.length, cssBytes: css.length, tailwindBytes: tailwindCss.length, ms: Math.round(performance.now() - t0) };
+      const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text, css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text, inline = (s) => s.replace(/<\/script/g, "<\\/script"), body = `<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>\n<script type="module">${inline(js)}<\/script></body></html>`, head = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n<script>var __HOLO_BASE__ = location.pathname.replace(/index\\.html$/, "");`, candidates = [...new Set((js + " " + css).match(/[A-Za-z][A-Za-z0-9_\-:\/\.\[\]#%!]*/g) || [])].filter((t) => t.length < 120).join(" "), compilePage = head + ` tailwind = { config: ${tailwindConfig} };<\/script>\n<script src="https://cdn.tailwindcss.com"><\/script>\n<div hidden id="tw-candidates" class="${candidates.replace(/"/g, "")}"></div>\n` + body, tailwindCss = await compileTailwind(compilePage, lease), html = head + `<\/script>\n<style>${tailwindCss}</style>\n` + body;
+      await assertBuildSourceCurrent(await dbReady, appId, source); return { html, sourceReference: source.reference, modules: remote.count, jsBytes: js.length, cssBytes: css.length, tailwindBytes: tailwindCss.length, ms: Math.round(performance.now() - t0) };
     }, {signal:lease.signal,fetch:async(url,init)=>{await lease.check();return fetch(url,init);}});
   }, {assertSource:async()=>assertBuildSourceCurrent(await dbReady,appId,source),grant:async(id,permission)=>grantPreview(id,permission.disclosure.endpoints,permission,undefined),readGrant:id=>get("refs","capabilities:"+id),revoke:id=>del("refs","capabilities:"+id)}), {guest:await kernelReady,derive:kappa,...buildWorkStore(await dbReady,appId,source)});
 }
@@ -1858,31 +1845,11 @@ async function buildPortable(appId, captured) {
 // sandbox with an opaque origin and the host cannot read its document: the frame reports instead,
 // every 250 ms, the compiled sheet, whether the app rendered, and the classes in use that no rule
 // covers. A report is the app's own word about its own styles; a false one can only spoil that app.
-function tailwindReporter() {
-  const escapeClass = (c) => c.replace(/[^a-zA-Z0-9_-]/g, (m) => "\\" + m);
-  setInterval(() => {
-    const sheets = [...document.querySelectorAll("style")].map((s) => s.textContent), root = document.getElementById("root"), all = sheets.join("\n");
-    const used = new Set([...document.querySelectorAll("[class]")].filter((e) => e.id !== "tw-candidates").flatMap((e) => String(e.className.baseVal ?? e.className).split(/\s+/).filter(Boolean)));
-    parent.postMessage({ tailwindReport: true, sheet: sheets.find((t) => t.includes("--tw-")) || "", rendered: !!(root && (root.childElementCount || root.textContent.trim())), missing: [...used].filter((c) => !all.includes("." + escapeClass(c))) }, "*");
-  }, 250);
-}
-
+function tailwindReporter() { const escapeClass = (c) => c.replace(/[^a-zA-Z0-9_-]/g, (m) => "\\" + m); setInterval(() => { const sheets = [...document.querySelectorAll("style")].map((s) => s.textContent), root = document.getElementById("root"), all = sheets.join("\n"), used = new Set([...document.querySelectorAll("[class]")].filter((e) => e.id !== "tw-candidates").flatMap((e) => String(e.className.baseVal ?? e.className).split(/\s+/).filter(Boolean))); parent.postMessage({ tailwindReport: true, sheet: sheets.find((t) => t.includes("--tw-")) || "", rendered: !!(root && (root.childElementCount || root.textContent.trim())), missing: [...used].filter((c) => !all.includes("." + escapeClass(c))) }, "*"); }, 250); }
 async function compileTailwind(page, lease) {
-  await lease.check(); const id = lease.id, path = new URL("p/" + id + "/index.html", BASE).pathname, at = page.lastIndexOf("</body>");
-  const reporting = page.slice(0, at) + `<script>(${tailwindReporter})();<\/script>` + page.slice(at);
-  await lease.check(); const cache = await caches.open("previews"); await cache.put(path, new Response(reporting, { headers: { "content-type": "text/html; charset=utf-8" } }));
-  const frame = document.createElement("iframe"); frame.style.cssText = "position:fixed;width:1280px;height:800px;left:-2000px;top:0;visibility:hidden";
-  let report = null; const listen = (e) => { if (e.source === frame.contentWindow && e.data && e.data.tailwindReport) report = e.data; };
-  window.addEventListener("message", listen); frame.src = path; const removeFrame = () => frame.remove(); lease.signal.addEventListener("abort", removeFrame, { once: true });
-  try {
-    await lease.check(); document.body.append(frame); const t0 = performance.now(); let last = "", stable = 0;
-    while (performance.now() - t0 < 30000) {
-      await new Promise((r) => setTimeout(r, 250)); await lease.check(); if (!report || !report.sheet || !report.rendered) continue;
-      const sheet = String(report.sheet).replace(/<\/style/gi, "<\\/style"), missing = Array.isArray(report.missing) ? report.missing.map(String) : [], key = sheet.length + ":" + missing.join(",");
-      if (key === last) { stable += 1; if (stable >= 3 && missing.length === 0) return sheet; if (stable >= 12) throw portablePermissionFailure("portableBuildStyleIncomplete"); } else { last = key; stable = 0; }
-    }
-    throw new Error(last ? "tailwind did not converge on the page" : "tailwind did not compile the page");
-  } finally { window.removeEventListener("message", listen); lease.signal.removeEventListener("abort", removeFrame); frame.remove(); await cache.delete(path); }
+  await lease.check(); const id = lease.id, path = new URL("p/" + id + "/index.html", BASE).pathname, at = page.lastIndexOf("</body>"), reporting = page.slice(0, at) + `<script>(${tailwindReporter})();<\/script>` + page.slice(at); await lease.check(); const cache = await caches.open("previews"); await cache.put(path, new Response(reporting, { headers: { "content-type": "text/html; charset=utf-8" } }));
+  const frame = document.createElement("iframe"); frame.style.cssText = "position:fixed;width:1280px;height:800px;left:-2000px;top:0;visibility:hidden"; let report = null; const listen = (e) => { if (e.source === frame.contentWindow && e.data && e.data.tailwindReport) report = e.data; }, removeFrame = () => frame.remove(); window.addEventListener("message", listen); frame.src = path; lease.signal.addEventListener("abort", removeFrame, { once: true });
+  try { await lease.check(); document.body.append(frame); const t0 = performance.now(); let last = "", stable = 0; while (performance.now() - t0 < 30000) { await new Promise((r) => setTimeout(r, 250)); await lease.check(); if (!report || !report.sheet || !report.rendered) continue; const sheet = String(report.sheet).replace(/<\/style/gi, "<\\/style"), missing = Array.isArray(report.missing) ? report.missing.map(String) : [], key = sheet.length + ":" + missing.join(","); if (key === last) { stable += 1; if (stable >= 3 && missing.length === 0) return sheet; if (stable >= 12) throw portablePermissionFailure("portableBuildStyleIncomplete"); } else { last = key; stable = 0; } } throw new Error(last ? "tailwind did not converge on the page" : "tailwind did not compile the page"); } finally { window.removeEventListener("message", listen); lease.signal.removeEventListener("abort", removeFrame); frame.remove(); await cache.delete(path); }
 }
 window.__portable = buildPortable;
 const PROVENANCE_FIELDS = ["source_id", "semantic_id", "compiler_semantics_id", "snapshot_id", "stdlib_semantics_id", "prism_stdlib_crate_sha256", "lexlean_commit", "lexlean_package_sha256", "lean4_prod_commit", "hologram_live_commit", "uor_hologram_commit", "target_profile_id", "lean_manifest_sha256", "lcnf_manifest_sha256", "generated_core_sha256", "cargo_name", "cargo_version", "cargo_crate_sha256", "view_model_id", "browser_projection_sha256"];
@@ -1891,164 +1858,67 @@ const holoUrl = (k) => new URL(core.run({ op: "holo-path", kappa: k }).path.slic
 handlers.set("holo:view", async () => { await coreReady; return core.run({ op: "view" }); });
 handlers.set("holo:list", async (appId) => { await coreReady; return (await installed()).filter((r) => r.appId === appId).map((r) => ({ ...r, url: holoUrl(r.kappa) })); });
 handlers.set("holo:publish", async ({ appId }) => {
-  await coreReady;
-  const t0 = performance.now();
-  const words = core.run({ op: "view" });
-  const [manifest, provenance] = await Promise.all([
-    fetch(new URL("manifest.json", BASE), { cache: "no-store" }).then((r) => r.json()),
-    fetch(new URL("provenance.json", BASE), { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-  ]);
-  const closure = manifest.closure, built = provenance ? provenance.browser_projection_sha256 || "" : "";
-  const attestation = provenance && provenance.attestation_id ? provenance.attestation_id : null;
-  const { decision } = core.run({ op: "publish-decision", closure, built, attestation });
-  const captured = await verifiedBuildSource(appId);
-  const app = { name: captured.name }, version = captured.reference;
-  const row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "holo.application.publish", resource, outcome });
+  await coreReady; const t0 = performance.now(), words = core.run({ op: "view" }), [manifest, provenance] = await Promise.all([fetch(new URL("manifest.json", BASE), { cache: "no-store" }).then((r) => r.json()), fetch(new URL("provenance.json", BASE), { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+  const closure = manifest.closure, built = provenance ? provenance.browser_projection_sha256 || "" : "", attestation = provenance && provenance.attestation_id ? provenance.attestation_id : null, { decision } = core.run({ op: "publish-decision", closure, built, attestation });
+  const captured = await verifiedBuildSource(appId), app = { name: captured.name }, version = captured.reference, row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "holo.application.publish", resource, outcome });
   if (decision !== "Accept") { await row("refused", version || ""); return { decision, word: words.publishRefusedLabel, closure, built, attestation }; }
-  // Cached proof status can be absent after an edit; source determines the publication route.
-  // An app with rules is published only once Lean proved them; its page asks the kernel guest (rulePage).
   const ruled = requiresRulePublication(captured), rules = ruled ? await rulesOf(appId) : null;
   if (ruled && !(rules && rules.spec && (rules.phase === "proved" || rules.phase === "published"))) { await row("refused", version); return { decision: "Chat", word: "This app has rules: approve them in the chat, then say publish.", closure, built, attestation }; }
-  const page = ruled ? { files: await rulePage(rules.spec), ms: 0 } : await buildPortable(appId, captured);
-  const view = encodeView(ruled ? page.files : [{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]);
-  const guest = new Uint8Array(await (await fetch(new URL(ruled ? "kernel/guest.wasm" : "core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
-  const model = core.run({ op: "publish-preimage", application: app.name, version, closure, attestation }).bytes;
-  const modelBytes = enc.encode(model);
-  const modelId = await sha256(modelBytes);
-  const source = core.run({ op: "source-manifest", leanManifest: provenance.lean_manifest_sha256, coverage: provenance.coverage_sha256, kernel: provenance.kernel_ir_sha256, modelId, semanticId: provenance.semantic_id, sourceId: provenance.source_id }).bytes;
-  const sourceBytes = enc.encode(source);
-  const prov = Object.fromEntries(PROVENANCE_FIELDS.map((k) => [k, provenance[k]]));
-  const t1 = performance.now();
-  const composed = core.run({ op: "compose", application: app.name, guest: b64(guest), view: b64(view), model: b64(modelBytes), source: b64(sourceBytes), provenance: prov });
-  const composeMs = Math.round(performance.now() - t1);
-  const bytes = unb64(composed.bytes);
-  const address = await kappa(bytes);
+  const page = ruled ? { files: await rulePage(rules.spec), ms: 0 } : await buildPortable(appId, captured), view = encodeView(ruled ? page.files : [{ path: "index.html", bytes: enc.encode(page.html) }, { path: "build/modules.json", bytes: enc.encode(JSON.stringify(page.moduleClosure, null, 2) + "\n") }, ...page.moduleFiles]), guest = new Uint8Array(await (await fetch(new URL(ruled ? "kernel/guest.wasm" : "core.wasm", BASE), { cache: "no-store" })).arrayBuffer());
+  const model = core.run({ op: "publish-preimage", application: app.name, version, closure, attestation }).bytes, modelBytes = enc.encode(model), modelId = await sha256(modelBytes), source = core.run({ op: "source-manifest", leanManifest: provenance.lean_manifest_sha256, coverage: provenance.coverage_sha256, kernel: provenance.kernel_ir_sha256, modelId, semanticId: provenance.semantic_id, sourceId: provenance.source_id }).bytes, sourceBytes = enc.encode(source), prov = Object.fromEntries(PROVENANCE_FIELDS.map((k) => [k, provenance[k]]));
+  const t1 = performance.now(), composed = core.run({ op: "compose", application: app.name, guest: b64(guest), view: b64(view), model: b64(modelBytes), source: b64(sourceBytes), provenance: prov }), composeMs = Math.round(performance.now() - t1), bytes = unb64(composed.bytes), address = await kappa(bytes);
   if (address !== composed.identities.archive_kappa) throw new Error("the page's address of the archive differs from PrismPM's: " + address);
-  await assertBuildSourceCurrent(await dbReady, appId, captured);
-  const done = await install(bytes, { appId, application: app.name, version });
-  tmNameApp("holo:" + done.path.split("/").filter(Boolean).pop(), appId, app.name);
-  await row("granted", address);
+  await assertBuildSourceCurrent(await dbReady, appId, captured); const done = await install(bytes, { appId, application: app.name, version });
+  tmNameApp("holo:" + done.path.split("/").filter(Boolean).pop(), appId, app.name); await row("granted", address);
   const record = { application: app.name, version, closure, attestation, provenance: prov, identities: composed.identities, directory: composed.directory, byteLength: bytes.length, modelId, viewBytes: view.length, guestBytes: guest.length };
   lastPublish = { record, bytes, guest, view, model: modelBytes, source: sourceBytes, page };
   return { decision, kappa: address, url: done.url, byteLength: bytes.length, viewBytes: view.length, guestBytes: guest.length, ms: Math.round(performance.now() - t0), buildMs: page.ms, composeMs, installMs: done.ms, modules: page.modules, jsBytes: page.jsBytes, cssBytes: page.cssBytes, tailwindBytes: page.tailwindBytes, identities: composed.identities, record };
 });
 
-window.electron = {
-  ipcRenderer: {
-    invokeEnvelope: (channel, ...args) => dispatch(channel, args),
-    invoke: (channel, ...args) => dispatch(channel, args).then(unwrapHost),
-    send: (channel) => { const n = (seen.get(channel) || 0) + 1; seen.set(channel, n); if (n === 1) console.warn("[host] send:", channel); },
-    on: (channel, fn) => { if (!listeners.has(channel)) listeners.set(channel, new Set()); listeners.get(channel).add(fn); return () => listeners.get(channel).delete(fn); },
-    removeListener: (channel, fn) => { const set = listeners.get(channel); if (set) set.delete(fn); },
-    removeAllListeners: (channel) => { listeners.delete(channel); },
-  },
-};
-// The landing page keeps the visitor's first prompt; on arrival the builder creates the app from
-// the scaffold, opens its chat and runs the turn, so the visitor lands in the renderer's UI mid build.
+window.electron = { ipcRenderer: { invokeEnvelope: (channel, ...args) => dispatch(channel, args), invoke: (channel, ...args) => dispatch(channel, args).then(unwrapHost), send: (channel) => { const n = (seen.get(channel) || 0) + 1; seen.set(channel, n); if (n === 1) console.warn("[host] send:", channel); }, on: (channel, fn) => { if (!listeners.has(channel)) listeners.set(channel, new Set()); listeners.get(channel).add(fn); return () => listeners.get(channel).delete(fn); }, removeListener: (channel, fn) => { const set = listeners.get(channel); if (set) set.delete(fn); }, removeAllListeners: (channel) => { listeners.delete(channel); } } };
 (async () => {
-  let first = null;
-  try { first = JSON.parse(sessionStorage.getItem("holo.first-prompt.v1") || "null"); sessionStorage.removeItem("holo.first-prompt.v1"); } catch (e) {}
+  let first = null; try { first = JSON.parse(sessionStorage.getItem("holo.first-prompt.v1") || "null"); sessionStorage.removeItem("holo.first-prompt.v1"); } catch (e) {}
   if (!first || !first.prompt) return;
-  const name = ("app-" + first.prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).slice(0, 40) || "app";
-  const created = await handlers.get("create-app")({ name });
-  const intentId="first-"+crypto.randomUUID();
-  const intent=await bindQueuePayload({schemaVersion:1,intentId,appId:created.app.id,chatId:created.chatId,invocationRef:{kind:"chat-stream",entityKey:created.chatId,operationId:intentId},prompt:first.prompt,redo:false,selectedComponents:[],requestedChatMode:"build"},serializeImmutableChatTurnPayload);
+  const name = ("app-" + first.prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).slice(0, 40) || "app", created = await handlers.get("create-app")({ name }), intentId="first-"+crypto.randomUUID(), intent=await bindQueuePayload({schemaVersion:1,intentId,appId:created.app.id,chatId:created.chatId,invocationRef:{kind:"chat-stream",entityKey:created.chatId,operationId:intentId},prompt:first.prompt,redo:false,selectedComponents:[],requestedChatMode:"build"},serializeImmutableChatTurnPayload);
   await chatDispatch({encodedKey:{chatId:created.chatId},messageId:intentId,encodedEvent:{type:"SUBMIT",intent,observedStopPolicyVersion:0}});
-  const base = new URL(document.baseURI).pathname;
-  history.replaceState(null, "", base + "chat?id=" + created.chatId + "&appId=" + created.app.id);
-  dispatchEvent(new PopStateEvent("popstate"));
+  history.replaceState(null, "", new URL(document.baseURI).pathname + "chat?id=" + created.chatId + "&appId=" + created.app.id); dispatchEvent(new PopStateEvent("popstate"));
 })();
 window.__gallery = Object.freeze({read: appId => readGallery(dbReady, appId)});
-window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
+window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, getTelemetrySnapshot: () => r4Runtime.getTelemetrySnapshot(), onTelemetry: (cb) => r4Runtime.onTelemetry(cb), getNetworkMode: () => r4Runtime.getNetworkMode(), setNetworkMode: (m) => r4Runtime.setNetworkMode(m), getRelayUrl: () => r4Runtime.getRelayUrl(), setRelayUrl: (u) => r4Runtime.setRelayUrl(u), gitAction: (op, a) => r4Runtime.gitAction(op, a), getModelTier: () => r4Runtime.getModelTier(), setModelTier: (m) => r4Runtime.setModelTier(m), authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
 if ("serviceWorker" in navigator) {
-  // A page an older worker drew reloads once when a newer worker takes control, so no visitor keeps running
-  // a build Foundry has replaced (a removed screen stays removed). The worker's script is always fetched
-  // fresh, and checked on every load.
-  const drawnByWorker = !!navigator.serviceWorker.controller;
-  let reloading = false;
+  const drawnByWorker = !!navigator.serviceWorker.controller; let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (drawnByWorker && !reloading) { reloading = true; location.reload(); } });
-  // A first visit has no worker running yet; previews wait until it runs, or until its install fails.
   workerActive = navigator.serviceWorker.register(new URL("sw.js", BASE), { updateViaCache: "none" }).then((r) => { r.update().catch(() => {}); const w = r.installing || r.waiting; return r.active || (w && new Promise((ok) => w.addEventListener("statechange", () => /activated|redundant/.test(w.state) && ok()))); }).catch(() => {});
-}
-// The worker installs only what a first paint needs; once this page has loaded and is idle it is asked to
-// fill the rest of the closure (the engine, the chat app, the photos), so offline use follows soon after.
-if ("serviceWorker" in navigator) {
   const idle = (fn) => (self.requestIdleCallback ? requestIdleCallback(fn, { timeout: 10000 }) : setTimeout(fn, 3000));
   addEventListener("load", () => idle(() => navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage("fill")).catch(() => {})), { once: true });
 }
-// After a deployment a page can run an entry that names a chunk the origin no longer serves: the worker has
-// already revalidated the entry, so one reload runs the new build whole.
-addEventListener("vite:preloadError", (event) => {
-  const key = "holo.chunk.reloaded";
-  if (sessionStorage.getItem(key)) return;
-  sessionStorage.setItem(key, "1");
-  event.preventDefault();
-  location.reload();
-});
+addEventListener("vite:preloadError", (event) => { const key = "holo.chunk.reloaded"; if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); event.preventDefault(); location.reload(); });
 addEventListener("load", () => setTimeout(() => sessionStorage.removeItem("holo.chunk.reloaded"), 10000), { once: true });
-// Applications installed before the kernel's gate held no grant record, and the gate refuses to
-// serve without one: each gets the grant install now writes, served with no network.
 (async () => {
   await coreReady;
-  for (const key of await keys("refs")) {
-    if(typeof key!=="string"||!key.startsWith("capabilities:portable-"))continue;
-    const record=await get("refs",key);
-    if(record?.previewConsent?.purpose==="portable-build"&&(!Number.isFinite(record.previewConsent.expires)||Date.now()>=record.previewConsent.expires)){
-      const id=key.slice(13);await del("refs",key);await (await caches.open("previews")).delete(new URL("p/"+id+"/index.html",BASE).pathname);
-    }
-  }
-  for (const ref of await installed()) {
-    const id = core.run({ op: "holo-path", kappa: ref.kappa }).path.split("/").filter(Boolean).pop();
-    if (!(await get("refs", "capabilities:" + id))) await put("refs", "capabilities:" + id, { serve: true, network: { endpoints: [], denied: [] } });
-  }
+  for (const key of await keys("refs")) { if (typeof key !== "string" || !key.startsWith("capabilities:portable-")) continue; const record = await get("refs", key); if (record?.previewConsent?.purpose === "portable-build" && (!Number.isFinite(record.previewConsent.expires) || Date.now() >= record.previewConsent.expires)) { const id = key.slice(13); await del("refs", key); await (await caches.open("previews")).delete(new URL("p/" + id + "/index.html", BASE).pathname); } }
+  for (const ref of await installed()) { const id = core.run({ op: "holo-path", kappa: ref.kappa }).path.split("/").filter(Boolean).pop(); if (!(await get("refs", "capabilities:" + id))) await put("refs", "capabilities:" + id, { serve: true, network: { endpoints: [], denied: [] } }); }
 })().catch(() => {});
-// One closure per page. A document can be served by a worker that installed an older shell while a
-// newer one is published; then its scripts and the page disagree and a screen breaks for reasons that
-// are not in the code. The worker names its cache after the closure it installed, and the origin serves
-// the closure that is published, so the two are compared here and the page reloads itself once.
 (async () => {
   const key = "holo.closure.reloaded";
   try {
-    const names = await caches.keys();
-    const running = (names.find((n) => n.startsWith("shell-")) || "").slice("shell-".length);
-    const published = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure;
-    if (!running || !published || running === published) { sessionStorage.removeItem(key); return; }
-    if (sessionStorage.getItem(key) === published) { console.warn("[host] this page runs shell", running.slice(0, 12), "while", published.slice(0, 12), "is published; the worker could not take over"); return; }
-    sessionStorage.setItem(key, published);
-    console.warn("[host] a newer shell is published; reloading once", running.slice(0, 12), "->", published.slice(0, 12));
-    location.reload();
+    const running = ((await caches.keys()).find((n) => n.startsWith("shell-")) || "").slice("shell-".length), published = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure;
+    if (!running || !published || running === published) return void sessionStorage.removeItem(key);
+    if (sessionStorage.getItem(key) === published) return void console.warn("[host] this page runs shell", running.slice(0, 12), "while", published.slice(0, 12), "is published; the worker could not take over");
+    sessionStorage.setItem(key, published); console.warn("[host] a newer shell is published; reloading once", running.slice(0, 12), "->", published.slice(0, 12)); location.reload();
   } catch (e) {}
 })();
-
-mountInteractionApplications({
-  create:input=>handlers.get("forge:interaction-create")(input),
-  list:async()=>{const apps=[];for(const app of await all("apps"))if(await get("files",app.id+":prism/interaction.json")!==undefined)apps.push(app);return apps;},
-  run:input=>handlers.get("forge:interaction-run")(input),
-  probe:input=>executeInteraction(kernelReady,input),
-});
-
+mountInteractionApplications({ create: input => handlers.get("forge:interaction-create")(input), list: async () => { const apps = []; for (const app of await all("apps")) if (await get("files", app.id + ":prism/interaction.json") !== undefined) apps.push(app); return apps; }, run: input => handlers.get("forge:interaction-run")(input), probe: input => executeInteraction(kernelReady, input) });
 mountApplicationDiscovery({discover:input=>handlers.get("forge:discover")(input),accept:input=>handlers.get("forge:discovery-create")(input),open:appId=>openInteractionApplication(appId,{run:input=>handlers.get("forge:interaction-run")(input),probe:input=>executeInteraction(kernelReady,input)})});
-
 (function mountR4StudioWorkspace() {
-  const mk = (t, a = {}, txt = "") => { const n = document.createElement(t); for (const [k, v] of Object.entries(a)) n.setAttribute(k, v); if (txt) n.textContent = txt; return n; };
-  const okPath = (p) => typeof p === "string" && p.length > 0 && !/[\\\u0000-\u001f:]/.test(p) && p.split("/").every((s) => s && s !== "." && s !== "..");
-  const panel = mk("section", { id: "foundry-lexlean-workspace", "aria-label": "LexLean-R4 Studio and IDE", hidden: "" }), bar = mk("div", { id: "foundry-lexlean-bar" }), status = mk("span", { id: "foundry-lexlean-status" }, "Idle"), appSel = mk("select", { id: "foundry-lexlean-apps", "aria-label": "Foundry app" }), modeSel = mk("select", { id: "foundry-lexlean-mode", "aria-label": "Runtime surface" });
-  modeSel.append(mk("option", { value: "live" }, "Studio + IDE (Live)"), mk("option", { value: "holo" }, "Verified .holo Sandbox"));
-  const syncBtn = mk("button", { id: "foundry-lexlean-sync", type: "button" }, "Sync App → IDE"), applyBtn = mk("button", { id: "foundry-lexlean-apply", type: "button" }, "Apply IDE → App"), closeBtn = mk("button", { id: "foundry-lexlean-close", type: "button" }, "Back to Foundry"), frame = mk("iframe", { id: "foundry-lexlean-frame", title: "LexLean-R4 Studio and IDE", allow: "cross-origin-isolated" });
-  bar.append(mk("strong", {}, "LexLean-R4 Studio & IDE"), status, appSel, modeSel, syncBtn, applyBtn, closeBtn); panel.append(bar, frame); document.body.append(panel);
-  const launch = mk("button", { id: "foundry-lexlean-launch", type: "button", title: "Open LexLean-R4 Studio & IDE" }, "Studio & IDE"); document.body.append(launch);
+  const mk = (t, a = {}, txt = "") => { const n = document.createElement(t); for (const [k, v] of Object.entries(a)) n.setAttribute(k, v); if (txt) n.textContent = txt; return n; }, okPath = (p) => typeof p === "string" && p.length > 0 && !/[\\\u0000-\u001f:]/.test(p) && p.split("/").every((s) => s && s !== "." && s !== "..");
+  const panel = mk("section", { id: "foundry-lexlean-workspace", "aria-label": "LexLean-R4 Studio and IDE", hidden: "" }), bar = mk("div", { id: "foundry-lexlean-bar" }), status = mk("span", { id: "foundry-lexlean-status" }, "Idle"), appSel = mk("select", { id: "foundry-lexlean-apps", "aria-label": "Foundry app" }), modeSel = mk("select", { id: "foundry-lexlean-mode", "aria-label": "Runtime surface" }), syncBtn = mk("button", { id: "foundry-lexlean-sync", type: "button" }, "Sync App → IDE"), applyBtn = mk("button", { id: "foundry-lexlean-apply", type: "button" }, "Apply IDE → App"), closeBtn = mk("button", { id: "foundry-lexlean-close", type: "button" }, "Back to Foundry"), frame = mk("iframe", { id: "foundry-lexlean-frame", title: "LexLean-R4 Studio and IDE", allow: "cross-origin-isolated" }), launch = mk("button", { id: "foundry-lexlean-launch", type: "button", title: "Open LexLean-R4 Studio & IDE" }, "Studio & IDE");
+  modeSel.append(mk("option", { value: "live" }, "Studio + IDE (Live)"), mk("option", { value: "holo" }, "Verified .holo Sandbox")); bar.append(mk("strong", {}, "LexLean-R4 Studio & IDE"), status, appSel, modeSel, syncBtn, applyBtn, closeBtn); panel.append(bar, frame); document.body.append(panel, launch);
   let loadedMode = "", syncedLoad = false; const waiters = new Map();
   const refreshApps = async () => { const prev = appSel.value, apps = (await all("apps").catch(() => [])).sort((a, b) => Number(b.id) - Number(a.id)), q = new URLSearchParams(location.search), uid = q.get("id") || q.get("appId"); appSel.innerHTML = ""; appSel.append(mk("option", { value: "" }, "+ New Foundry app from IDE")); for (const a of apps) appSel.append(mk("option", { value: String(a.id) }, `${a.name} (#${a.id})`)); appSel.value = prev && [...appSel.options].some((o) => o.value === prev) ? prev : (uid && [...appSel.options].some((o) => o.value === uid) ? uid : (apps[0] ? String(apps[0].id) : "")); };
   const syncAppToIde = async () => { if (!appSel.value || !frame.contentWindow) { status.textContent = appSel.value ? "Frame not ready" : "Select an app or edit starter workspace"; return; } const appId = Number(appSel.value), app = await get("apps", appId), list = await filesOf(appId), files = {}; for (const p of list) files[p] = String((await get("files", appId + ":" + p)) ?? ""); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "sync-foundry-files", projectName: app?.name || `app-${appId}`, layout: "studio", replace: true, files }, "*"); status.textContent = `Synced ${list.length} files from ${app?.name || appId} → IDE`; };
-  const applyIdeToApp = async () => {
-    if (!frame.contentWindow) return; status.textContent = "Exporting workspace from IDE…"; const requestId = crypto.randomUUID();
-    const exported = await new Promise((resolve, reject) => { const t = setTimeout(() => { waiters.delete(requestId); reject(new Error("Timed out reading workspace from IDE")); }, 8000); waiters.set(requestId, (msg) => { clearTimeout(t); resolve(msg); }); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "export-foundry-files", requestId }, "*"); });
-    const incoming = Object.entries(exported.files || {}).filter(([p, c]) => okPath(p) && typeof c === "string"); if (!incoming.length) { status.textContent = "No portable workspace files to apply"; return; } await coreReady;
-    if (!appSel.value) { const name = "r4-studio-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(8, 14), merged = { ...(await loadScaffold()), ...Object.fromEntries(incoming) }, prepared = await prepareNewProject({ name, initialChatMode: "build", files: merged }, { core, derive: kappa }), created = await createStoredProject(await dbReady, prepared, nulls, themesData); emit("version-created", { appId: created.app.id, oid: created.oid }); await refreshApps(); appSel.value = String(created.app.id); status.textContent = `Created Foundry app ${name} (${incoming.length} files)`; }
-    else { const appId = Number(appSel.value), source = await captureProjectSource(await dbReady, appId), next = Object.fromEntries(source.files), changed = []; for (const [p, c] of incoming) if (next[p] !== c) { next[p] = c; changed.push(p); } if (!changed.length) { status.textContent = "Foundry app already matches IDE"; return; } const prepared = await prepareExistingProject({ name: source.name, files: next }, { core, derive: kappa }, source.reference), oid = await commitPreparedProject(await dbReady, appId, changed, source, prepared); emit("version-created", { appId, oid }); status.textContent = `Applied ${changed.length} updated file(s) → ${source.name}`; }
-  };
-  const loadSurface = async () => { const pin = await r4StudioPin(), mode = modeSel.value; loadedMode = mode; syncedLoad = false; status.textContent = mode === "holo" ? "Verifying local .holo sandbox…" : "Connecting to LexLean-R4 Studio & IDE…"; if (mode === "holo") { await coreReady; await ensureR4Studio(); frame.src = new URL(core.run({ op: "holo-path", kappa: pin.archiveKappa }).path.replace(/^\//, "") + "#studio", BASE).href; } else frame.src = `${pin.liveUrl}?embed=foundry&mode=studio#studio`; };
-  const openR4 = async () => { panel.hidden = false; await refreshApps(); if (!loadedMode || loadedMode !== modeSel.value) await loadSurface(); else status.textContent = "Connected to LexLean-R4 Studio & IDE"; }, closeR4 = () => { panel.hidden = true; frame.src = "about:blank"; loadedMode = ""; }, onErr = (e) => { status.textContent = String(e?.message || e); };
+  const applyIdeToApp = async () => { if (!frame.contentWindow) return; status.textContent = "Exporting workspace from IDE…"; const requestId = crypto.randomUUID(), exported = await new Promise((resolve, reject) => { const t = setTimeout(() => { waiters.delete(requestId); reject(new Error("Timed out reading workspace from IDE")); }, 8000); waiters.set(requestId, (msg) => { clearTimeout(t); resolve(msg); }); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "export-foundry-files", requestId }, "*"); }), incoming = Object.entries(exported.files || {}).filter(([p, c]) => okPath(p) && typeof c === "string"); if (!incoming.length) return void (status.textContent = "No portable workspace files to apply"); await coreReady; if (!appSel.value) { const name = "r4-studio-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(8, 14), merged = { ...(await loadScaffold()), ...Object.fromEntries(incoming) }, prepared = await prepareNewProject({ name, initialChatMode: "build", files: merged }, { core, derive: kappa }), created = await createStoredProject(await dbReady, prepared, nulls, themesData); emit("version-created", { appId: created.app.id, oid: created.oid }); await refreshApps(); appSel.value = String(created.app.id); status.textContent = `Created Foundry app ${name} (${incoming.length} files)`; } else { const appId = Number(appSel.value), source = await captureProjectSource(await dbReady, appId), next = Object.fromEntries(source.files), changed = []; for (const [p, c] of incoming) if (next[p] !== c) { next[p] = c; changed.push(p); } if (!changed.length) return void (status.textContent = "Foundry app already matches IDE"); const prepared = await prepareExistingProject({ name: source.name, files: next }, { core, derive: kappa }, source.reference), oid = await commitPreparedProject(await dbReady, appId, changed, source, prepared); emit("version-created", { appId, oid }); status.textContent = `Applied ${changed.length} updated file(s) → ${source.name}`; } };
+  const loadSurface = async () => { const pin = await r4StudioPin(), mode = modeSel.value; loadedMode = mode; syncedLoad = false; status.textContent = mode === "holo" ? "Verifying local .holo sandbox…" : "Connecting to LexLean-R4 Studio & IDE…"; if (mode === "holo") { await coreReady; await ensureR4Studio(); frame.src = new URL(core.run({ op: "holo-path", kappa: pin.archiveKappa }).path.replace(/^\//, "") + "#studio", BASE).href; } else frame.src = `${pin.liveUrl}?embed=foundry&mode=studio#studio`; }, openR4 = async () => { panel.hidden = false; await refreshApps(); if (!loadedMode || loadedMode !== modeSel.value) await loadSurface(); else status.textContent = "Connected to LexLean-R4 Studio & IDE"; }, closeR4 = () => { panel.hidden = true; frame.src = "about:blank"; loadedMode = ""; }, onErr = (e) => { status.textContent = String(e?.message || e); };
   launch.addEventListener("click", () => void openR4().catch(onErr)); closeBtn.addEventListener("click", closeR4); modeSel.addEventListener("change", () => void loadSurface().catch(onErr)); syncBtn.addEventListener("click", () => void syncAppToIde().catch(onErr)); applyBtn.addEventListener("click", () => void applyIdeToApp().catch(onErr));
   window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closeR4(); }); window.addEventListener("foundry:r4-studio", () => void openR4().catch(onErr)); document.addEventListener("click", (e) => { const a = e.target?.closest?.("a[href]"); if (a && String(a.getAttribute("href")).includes("?r4=studio")) { e.preventDefault(); void openR4(); } }, true);
   window.addEventListener("message", (e) => { const d = e.data; if (!d || d.protocol !== "uor-workspace-bridge/1") return; if (d.type === "uor-workspace-bridge/1:ready" || d.type === "uor-workspace-bridge/1:status") { status.textContent = `Connected · ${d.model || d.selectedModel || "Qwen3"} (${d.workspaceFileCount ?? 0} files)`; if (!syncedLoad && appSel.value && d.type === "uor-workspace-bridge/1:ready") { syncedLoad = true; void syncAppToIde().catch(() => {}); } } else if (d.type === "uor-workspace-bridge/1:files-synced") status.textContent = `Synced ${d.fileCount || 0} files → IDE`; else if (d.type === "uor-workspace-bridge/1:files-exported" && d.requestId && waiters.has(d.requestId)) { const w = waiters.get(d.requestId); waiters.delete(d.requestId); w(d); } });
