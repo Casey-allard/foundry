@@ -80,6 +80,7 @@ export async function invokeHost(channel, args, handler, schema, inputContract =
     if (error?.code === "canonicalProjectionReadOnly") return refusal("canonicalProjectionReadOnly", channel, "validation", "Edit the canonical model to change its generated rule runtime");
     if (error?.code === "browserCompilerUnavailable") return refusal("browserCompilerUnavailable", channel, "internal", "The browser compiler could not initialize");
     if (error?.code === "browserTelemetryUnavailable") return refusal("browserTelemetryUnavailable", channel, "validation", "Vendor telemetry is unavailable in this browser");
+    if (["r4TerminalMissing", "r4TerminalInvalid", "r4TerminalExited"].includes(error?.code)) return refusal(error.code, channel, "validation", "Terminal session refused this operation");
     return refusal("handlerFailed", channel, "internal", "The browser operation failed");
   }
   // Legacy channels without imported output contracts retain their handler result.

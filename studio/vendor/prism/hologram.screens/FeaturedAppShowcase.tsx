@@ -12,6 +12,7 @@
 // This file is given to the build as the source of src/components/FeaturedAppShowcase.tsx, so what it
 // imports is resolved from there: two levels up is the vendored renderer's own folder.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { ArrowRight, Maximize, Play, RectangleHorizontal, RotateCw, Search, Share2, SquarePen, Star } from "lucide-react";
@@ -19,9 +20,11 @@ import { homeChatInputValueAtom } from "@/atoms/chatAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useOpenApp } from "@/hooks/useOpenApp";
 import { useRunApp } from "@/hooks/useRunApp";
+import { useSettings } from "@/hooks/useSettings";
 import { useCurrentAppUrl } from "@/hooks/useAppRun";
 import { useAppCard, useAppThumbnails } from "@/hooks/useAppThumbnails";
 import { Button } from "@/components/ui/button";
+import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import { sortAppsForShowcase } from "@/lib/sortApps";
 import { featuredApps, featuredOnHome } from "../../hologram.featured-apps.mjs";
@@ -151,6 +154,8 @@ function Card({
 
 export function FeaturedAppShowcase() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { updateSettings } = useSettings();
   const openApp = useOpenApp();
   const { apps } = useLoadApps();
   const { kept, toggle } = useBookmarks();
@@ -173,7 +178,7 @@ export function FeaturedAppShowcase() {
   const nothing = shownFeatured.length === 0 && shownMine.length === 0;
 
   const take = (app: Featured) => {
-    if (app.url.startsWith("?")) window.dispatchEvent(new CustomEvent("foundry:r4-studio", { detail: app.id }));
+    if (app.url.startsWith("?")) void updateSettings({ selectedModel: { name: "r4:lexlean-r4", provider: "local" } }).then(() => queryClient.invalidateQueries({ queryKey: queryKeys.settings.all })).finally(() => window.dispatchEvent(new CustomEvent("foundry:r4-studio", { detail: app.id })));
     else if (app.url) window.open(app.url, "_blank", "noopener,noreferrer");
     else window.dispatchEvent(new CustomEvent("foundry:idea", { detail: app.idea }));
   };
@@ -310,6 +315,8 @@ function StageButton({ label, onClick, children }: { label: string; onClick: () 
 
 export function TheaterPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { updateSettings } = useSettings();
   const openApp = useOpenApp();
   const setIdea = useSetAtom(homeChatInputValueAtom);
   const { apps } = useLoadApps();
@@ -379,9 +386,14 @@ export function TheaterPage() {
     setIdea(current.idea);
     navigate({ to: "/" });
   };
-  const builder = () => {
+  const builder = async () => {
     if (current.appId !== null) openApp(current.appId);
-    else if (inStudio) window.dispatchEvent(new CustomEvent("foundry:r4-studio", { detail: current.key }));
+    else if (inStudio) {
+      await updateSettings({ selectedModel: { name: "r4:lexlean-r4", provider: "local" } });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      window.dispatchEvent(new CustomEvent("foundry:r4-studio", { detail: current.key }));
+      navigate({ to: "/" });
+    }
     else if (current.url) window.open(current.url, "_blank", "noopener,noreferrer");
     else build();
   };
@@ -419,7 +431,7 @@ export function TheaterPage() {
                       </Button>
                     </>
                   ) : inStudio ? (
-                    <Button onClick={builder} className="h-[34px] rounded-full px-[21px]">
+                    <Button onClick={() => void builder()} className="h-[34px] rounded-full px-[21px]">
                       <Play className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true" /> Open Studio &amp; IDE
                     </Button>
                   ) : (

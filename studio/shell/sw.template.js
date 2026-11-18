@@ -35,6 +35,7 @@ async function readManifest() {
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
+    self.__shellLazy = (p) => /^r4\/.*\.holo$/.test(p);
     const entries = await ShellClosure.prepare(self.registration.scope, CLOSURE);
     try {
       const cache = await caches.open("shell-" + CLOSURE);
@@ -146,7 +147,7 @@ async function policyFor(kind, id, decisions = []) {
 }
 function untrusted(response, policy) {
   const headers = new Headers(response.headers);
-  headers.set("content-security-policy", policy);
+  headers.set("content-security-policy", policy); headers.set("cross-origin-embedder-policy", "credentialless"); headers.set("cross-origin-resource-policy", "cross-origin");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 // `opening` is true for the page an app opens with, so an app's own files are not each counted as an opening.
@@ -179,7 +180,7 @@ async function serveHolo(request, path) {
   }
   const slash = rest.indexOf("/");
   if (slash < 0) return Response.redirect(request.url + "/", 302);
-  const id = rest.slice(0, slash);
+  let id; try { id = decodeURIComponent(rest.slice(0, slash)); } catch { return new Response("invalid application id", { status: 400 }); }
   let file = rest.slice(slash + 1) || "index.html";
   if (file.endsWith("/")) file += "index.html";
   const cache = await caches.open("holo");
@@ -191,6 +192,20 @@ async function serveHolo(request, path) {
   }
   return new Response("no application file " + id + "/" + file, { status: 404 });
 }
+
+const isLazyShell = (p) => /^r4\/.*\.holo$/.test(p), lazyInFlight = new Map();
+async function fillLazy(onlyPath = null) {
+  const cache = await caches.open("shell-" + CLOSURE), mRes = await cache.match(BASE + "manifest.json", { ignoreSearch: true }); if (!mRes) return null;
+  let last = null;
+  for (const row of ((await mRes.json()).files || []).filter((r) => isLazyShell(r.path) && (!onlyPath || r.path === onlyPath))) {
+    const url = BASE + row.path, hit = await cache.match(url, { ignoreSearch: true }); if (hit) { if (onlyPath) return hit; continue; }
+    let job = lazyInFlight.get(row.path);
+    if (!job) { job = ShellClosure.verifyFile(self.registration.scope, row).then(async (res) => { await cache.put(url, res.clone()); return res; }).finally(() => lazyInFlight.delete(row.path)); lazyInFlight.set(row.path, job); }
+    last = (await job).clone();
+  }
+  return last;
+}
+self.addEventListener("message", (event) => { if (event.data === "fill") event.waitUntil(fillLazy().catch(() => {})); });
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
@@ -221,6 +236,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       const hit = await matchShell(event.request, { ignoreSearch: true });
       if (hit) return hit;
+      if (isLazyShell(path)) { try { return (await fillLazy(path)) || new Response("", { status: 404 }); } catch (e) { return new Response("Shell file refused: " + (e?.code || "shellFileMismatch"), { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } }); } }
       // Pages maps unknown renderer routes to its HTML fallback. Keep those navigations
       // on this closure too; a route allowlist would drift when a newer renderer adds one.
       // Subapps, engine/API and resource namespaces keep their existing ownership.

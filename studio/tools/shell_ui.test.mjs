@@ -175,3 +175,27 @@ test("each approval explains why, then how, then what, in plain words, and still
   for (const source of [preview]) for (const word of ["UTF-8", "module prefixes", "Credential:", "bounded retries", "aborts", "executes generated code"]) assert.equal(source.includes(word), false, word);
 });
 
+test("R4 weights download and SpiralCore internet access share the native dialog contract (FA-95)", () => {
+  const preview = read("../shell/preview-permissions.mjs");
+  assert.equal((preview.match(/element\(document,\s*["']dialog["']/g) || []).length, 1, "dialogs must share one parameterized native <dialog> helper");
+  for (const [label, allow, detail] of [
+    ["Review R4 model weights download", "Allow download", "~410 MiB"],
+    ["Review SpiralCore internet access", "Allow Full SpiralCore Internet", "Full SpiralCore Internet"],
+  ]) {
+    assert.ok(preview.includes(label), label);
+    assert.ok(preview.includes(detail), detail);
+    const deny = preview.search(/Don't allow/), ok = preview.lastIndexOf(allow);
+    assert.ok(deny > 0 && ok > deny, label + ": Don't allow precedes allow button");
+  }
+  assert.ok(/deny\.autofocus\s*=\s*true/.test(preview) && /dialog\.append\(deny,\s*allow\)/.test(preview));
+});
+
+test("FA-97: unified studio removes #foundry-lexlean-* rules and keeps zero raw hex colors or API key copy", () => {
+  for (const dead of ["#foundry-lexlean-launch", "#foundry-lexlean-workspace", "#foundry-lexlean-bar", "#foundry-lexlean-frame"]) assert.equal(css.includes(dead), false, dead);
+  for (const rel of ["../vendor/prism/hologram.GitHubIntegration.tsx", "../vendor/prism/hologram.ModelPicker.tsx", "../vendor/prism/hologram.screens.mjs"]) {
+    const src = read(rel);
+    assert.equal(/#[0-9a-fA-F]{3,8}\b/.test(src), false, rel + " introduces raw hex color");
+    assert.equal(/API key/i.test(src.replace(/api key/g, (m, off) => src.slice(Math.max(0, off - 40), off + 20).includes("hologram.no-remote-model") || rel.endsWith("screens.mjs") ? "" : m)), false, rel + " introduces API key copy");
+  }
+});
+

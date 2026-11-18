@@ -19,9 +19,9 @@ export const r4StudioPin = () => (pinOnce ??= readJson("./r4/lexlean-r4.json"));
 export const GRANT = Object.freeze([]);
 
 /** Verify LexLean-R4 .holo archive + parameter blob state against its pin. */
-export const r4InprismFacts = (pin, ref, w) => ({
+export const r4InprismFacts = (pin, ref, w, family) => ({
   engine: ref && pin && ref.kappa === pin.archiveKappa && ref.fingerprint === pin.fingerprint ? "match" : ref ? "mismatch" : "missing",
-  weights: w === "match" || w === true ? "match" : w === "mismatch" || w === false ? "mismatch" : "missing",
+  weights: !w || w === "missing" ? "missing" : (family === "offlineQ31" ? pin?.offlineQ31WeightsKappa : pin?.qwen3WeightsKappa) === w && typeof w === "string" ? "match" : "mismatch",
 });
 
 /** The R4 request a turn makes ("compiled" for Foundry's reader, "inprism" for pinned LexLean-R4, "routed" outside). */

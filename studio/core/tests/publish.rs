@@ -58,6 +58,11 @@ fn the_committed_archive_is_what_prismpm_accepts() {
     let middle = flipped.len() / 2;
     flipped[middle] ^= 1;
     assert!(validate_application(&flipped).is_err(), "a flipped byte must be refused");
+    let pin: Value = serde_json::from_str(&std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../shell/r4/lexlean-r4.json")).unwrap()).unwrap();
+    let r4_bytes = std::fs::read(format!("{}/../shell/r4/{}", env!("CARGO_MANIFEST_DIR"), s(&pin["holoFile"]))).unwrap();
+    assert!(r4_bytes.len() <= 32 * 1024 * 1024 && r4_bytes.len() as u64 == pin["holoByteLength"].as_u64().unwrap());
+    validate_application(&r4_bytes).expect("PrismPM accepts the bundled LexLean-R4 archive");
+    assert_eq!(hologram::space::address_bytes(&r4_bytes).to_string(), s(&pin["archiveKappa"]));
 }
 
 /// Composing from the recorded inputs reproduces the committed archive byte for byte: the composer

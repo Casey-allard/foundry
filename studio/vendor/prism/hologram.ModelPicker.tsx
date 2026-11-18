@@ -9,7 +9,7 @@
 // FoundrySpecification.chatModelPickerScopeBoundary: a mounted chat owns its selection;
 // Home owns the default used by future chats.
 import { ChevronDownIcon, CloudIcon, LaptopIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import {
   DropdownMenu,
@@ -50,7 +50,7 @@ const Pill = ({ where }: { where: string }) => (
 );
 
 export function ModelPicker() {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, refreshSettings } = useSettings();
   const routerState = useRouterState();
   const router = useRouter();
   const scope = modelSelectionScope(
@@ -118,6 +118,20 @@ export function ModelPicker() {
       setSelecting(false);
     }
   };
+  const chooseRef = useRef(choose), refreshRef = useRef(refreshSettings);
+  chooseRef.current = choose; refreshRef.current = refreshSettings;
+  const localModelsRef = useRef<LanguageModel[]>([]);
+  localModelsRef.current = modelsOf("local");
+  useEffect(() => {
+    const onR4 = () => {
+      const m = localModelsRef.current.find((x) => x.apiName === "r4:lexlean-r4");
+      if (m) void chooseRef.current("local", m);
+      else void refreshRef.current();
+      (document.querySelector('[data-testid="home-chat-input-container"] textarea') as HTMLElement | null)?.focus?.();
+    };
+    window.addEventListener("foundry:r4-studio", onR4);
+    return () => window.removeEventListener("foundry:r4-studio", onR4);
+  }, []);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
