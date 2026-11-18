@@ -29,6 +29,8 @@ export const SCREENS = {
   "src/hooks/useAppThumbnails.ts": "hologram.screens/useAppThumbnails.ts",
   // The home's floor: the apps already made, or, before the first one, the gallery's templates.
   "src/components/FeaturedAppShowcase.tsx": "hologram.screens/FeaturedAppShowcase.tsx",
+  "src/components/GitHubIntegration.tsx": "hologram.GitHubIntegration.tsx",
+  "src/components/GitHubConnector.tsx": "hologram.GitHubIntegration.tsx",
 };
 
 // A page's body in the inset, as dashboard-01 spaces it: the site header names the page, so the page keeps
@@ -485,6 +487,11 @@ import { ImportAppDialog } from "@/components/ImportAppDialog";`,
   // hologram.removed-integrations.tsx); the places that named them, and their settings, go with them.
   {
     file: "src/pages/settings.tsx",
+    from: `import { GitHubIntegration } from "@/components/GitHubIntegration";`,
+    to: `import { GitHubIntegration, SpiralCoreRelaySetting } from "@/components/GitHubIntegration";`,
+  },
+  {
+    file: "src/pages/settings.tsx",
     from: `            description="Link Prism to the services you deploy and store data with."
           >
             <div id={SETTING_IDS.github}>
@@ -499,10 +506,13 @@ import { ImportAppDialog } from "@/components/ImportAppDialog";`,
             <div id={SETTING_IDS.neon}>
               <NeonIntegration />
             </div>`,
-    to: `            description="Link Prism to GitHub, where your apps can be published."
+    to: `            description="Configure GitHub publishing and SpiralCore relay routing."
           >
             <div id={SETTING_IDS.github}>
               <GitHubIntegration />
+            </div>
+            <div id="setting-spiralcore-relay-url">
+              <SpiralCoreRelaySetting />
             </div>`,
   },
   {
@@ -575,7 +585,15 @@ import { ImportAppDialog } from "@/components/ImportAppDialog";`,
     sectionLabel: "Integrations",
   },
 `,
-    to: ``,
+    to: `  {
+    id: "setting-spiralcore-relay-url",
+    label: "SpiralCore Relay URL",
+    description: "Configure the SpiralCore AF_VSOCK WebSocket relay endpoint",
+    keywords: ["spiralcore", "relay", "url", "ws", "wss", "vsock"],
+    sectionId: SECTION_IDS.integrations,
+    sectionLabel: "Integrations",
+  },
+`,
   },
   {
     file: "src/lib/settingsSearchIndex.ts",
@@ -709,6 +727,50 @@ import { ImportAppDialog } from "@/components/ImportAppDialog";`,
     from: `    setHelpDialog({ open: true, uploadChatId: activeChatId });`,
     to: `    setHelpDialog({ open: true });`,
   },
+  { file: "src/atoms/appAtoms.ts", from: `  | "tests"\n  | "plan";`, to: `  | "tests"\n  | "plan"\n  | "observatory";` },
+  { file: "src/window_infrastructure/types.ts", from: `    "tests",\n    "plan",\n  ]),`, to: `    "tests",\n    "plan",\n    "observatory",\n  ]),` },
+  { file: "src/components/preview_panel/PreviewToolbar.tsx", from: `  Wrench,\n  X,\n} from "lucide-react";`, to: `  Activity,\n  Wrench,\n  X,\n} from "lucide-react";\nimport { Button } from "@/components/ui/button";` },
+  { file: "src/components/preview_panel/PreviewToolbar.tsx", from: `  "security",\n  "tests",\n] as const satisfies readonly ToolbarMode[];`, to: `  "security",\n  "tests",\n  "observatory",\n] as const satisfies readonly ToolbarMode[];` },
+  { file: "src/components/preview_panel/PreviewToolbar.tsx", from: `const TAB_BASE_CLASSES =\n  "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium whitespace-nowrap";`, to: `const TAB_BASE_CLASSES = "flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium whitespace-nowrap";` },
+  { file: "src/components/preview_panel/PreviewToolbar.tsx", from: `    publish: {\n      icon: <Globe size={16} />,\n      label: t("preview.publish"),\n      testId: "publish-mode-button",\n    },\n  };`, to: `    publish: { icon: <Globe size={16} />, label: t("preview.publish"), testId: "publish-mode-button" },\n    observatory: { icon: <Activity size={16} />, label: "Observatory", testId: "observatory-mode-button" },\n  };` },
+  { file: "src/components/preview_panel/PreviewToolbar.tsx", from: `    return (\n      <button\n        key={mode}\n        data-testid={meta.testId}\n        aria-label={meta.label}\n        aria-pressed={isActive}\n        className={tabClassName}\n        onClick={() => selectPanel(mode)}\n      >\n        {tabContent}\n      </button>\n    );`, to: `    return <Button key={mode} variant="ghost" data-testid={meta.testId} aria-label={meta.label} aria-pressed={isActive} className={tabClassName} onClick={() => selectPanel(mode)}>{tabContent}</Button>;` },
+  {
+    file: "src/components/preview_panel/PreviewPanel.tsx",
+    from: `// Console header component`,
+    to: `function ObservatoryView() {
+  const frameRef = useRef<HTMLIFrameElement>(null), readyRef = useRef(false);
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    readyRef.current = false; let alive = true;
+    const r4 = (window as unknown as { __host?: { r4Studio?: { pin?: (() => Promise<{ archiveKappa?: string }>) | { archiveKappa?: string }; ensure?: () => Promise<unknown>; getTelemetrySnapshot?: () => unknown; onTelemetry?: (cb: (snap: unknown) => void) => () => void } } }).__host?.r4Studio;
+    (async () => { await r4?.ensure?.(); const p = typeof r4?.pin === "function" ? await r4.pin() : r4?.pin; if (alive && p?.archiveKappa) setSrc((import.meta.env.BASE_URL || "/") + "holo/" + encodeURIComponent(p.archiveKappa) + "/?surface=observatory"); })().catch(() => {});
+    const postTheme = () => { const w = frameRef.current?.contentWindow; if (!w || !readyRef.current) return; const cs = getComputedStyle(document.documentElement); w.postMessage({ protocol: "uor-observatory/1", op: "theme", vars: Object.fromEntries(["--background", "--card", "--foreground", "--border", "--font-sans", "--font-mono"].map((k) => [k, cs.getPropertyValue(k).trim()])) }, "*"); };
+    const postTele = (snapshot: unknown) => { const w = frameRef.current?.contentWindow; if (w && readyRef.current && snapshot) w.postMessage({ protocol: "uor-observatory/1", op: "telemetry", snapshot }, "*"); };
+    const onMsg = (ev: MessageEvent) => { if (ev.source === frameRef.current?.contentWindow && ev.data?.protocol === "uor-observatory/1" && ev.data?.op === "ready") { readyRef.current = true; postTheme(); postTele(r4?.getTelemetrySnapshot?.()); } };
+    window.addEventListener("message", onMsg); const offTele = r4?.onTelemetry?.((snap) => postTele(snap));
+    const obs = new MutationObserver(() => postTheme()); obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+    return () => { alive = false; readyRef.current = false; window.removeEventListener("message", onMsg); offTele?.(); obs.disconnect(); };
+  }, []);
+  return src ? <iframe ref={frameRef} title="LexLean-R4 Observatory" data-testid="observatory-iframe" src={src} sandbox="allow-scripts" className="h-full w-full border-0 bg-background" /> : <div role="status" className="flex h-full items-center justify-center text-xs text-muted-foreground">Loading Observatory...</div>;
+}
+// Console header component`,
+  },
+  { file: "src/components/preview_panel/PreviewPanel.tsx", from: `                ) : previewMode === "plan" ? (\n                  <PlanPanel />\n                ) : (\n                  <Problems />\n                )}`, to: `                ) : previewMode === "plan" ? (\n                  <PlanPanel />\n                ) : previewMode === "observatory" ? (\n                  <ObservatoryView />\n                ) : (\n                  <Problems />\n                )}` },
+  { file: "src/components/chat/TerminalPanel.tsx", from: `import { RotateCcw, Search, X } from "lucide-react";`, to: `import { Globe, RotateCcw, Search, Shield, X } from "lucide-react";` },
+  {
+    file: "src/components/chat/TerminalPanel.tsx",
+    from: `type TerminalPanelSize = "full" | "split-bottom";`,
+    to: `function NetworkModePill() {
+  const api = (window as unknown as { __host?: { r4Studio?: { getNetworkMode?: () => "sandboxed" | "full_spiralcore"; setNetworkMode?: (m: "sandboxed" | "full_spiralcore") => Promise<string>; onTelemetry?: (cb: (s: Record<string, unknown>) => void) => () => void } } }).__host?.r4Studio;
+  const [mode, setMode] = useState<"sandboxed" | "full_spiralcore">(() => api?.getNetworkMode?.() || "sandboxed"), [busy, setBusy] = useState(false);
+  useEffect(() => api?.onTelemetry?.((s) => { if (s?.networkMode === "full_spiralcore" || s?.networkMode === "sandboxed") setMode(s.networkMode); }), [api]);
+  const full = mode === "full_spiralcore", toggle = async () => { setBusy(true); try { const next = await api?.setNetworkMode?.(full ? "sandboxed" : "full_spiralcore"); if (next === "full_spiralcore" || next === "sandboxed") setMode(next); } catch (err) { showError(err instanceof Error ? err.message : String(err || "Network mode change refused")); } finally { setBusy(false); } };
+  return <Button type="button" variant={full ? "secondary" : "outline"} size="sm" disabled={busy} data-testid="prism-network-mode-pill" aria-pressed={full} className="h-8 shrink-0 rounded-full px-3 text-xs font-medium" onClick={() => void toggle()}>{full ? <Globe className="size-3.5" /> : <Shield className="size-3.5" />}<span>{full ? "Full SpiralCore Internet" : "Sandboxed"}</span></Button>;
+}
+type TerminalPanelSize = "full" | "split-bottom";`,
+  },
+  { file: "src/components/chat/TerminalPanel.tsx", from: `      <div className="flex h-full flex-col bg-background">\n        <TerminalEscapeBanner appName={appLabel} onExit={onExit} />`, to: `      <div className="flex h-full flex-col bg-background">\n        <div className="flex items-center gap-2 border-b border-border bg-muted/30 pr-2 [&>*:first-child]:min-w-0 [&>*:first-child]:flex-1 [&>*:first-child]:border-b-0 [&>*:first-child]:bg-transparent"><TerminalEscapeBanner appName={appLabel} onExit={onExit} /><NetworkModePill /></div>` },
+  { file: "src/components/chat/TerminalPanel.tsx", from: `      <TerminalEscapeBanner appName={appLabel} cwd={cwd} onExit={onExit} />`, to: `      <div className="flex items-center gap-2 border-b border-border bg-muted/30 pr-2 [&>*:first-child]:min-w-0 [&>*:first-child]:flex-1 [&>*:first-child]:border-b-0 [&>*:first-child]:bg-transparent"><TerminalEscapeBanner appName={appLabel} cwd={cwd} onExit={onExit} /><NetworkModePill /></div>` },
 ];
 
 // The screens' patches, then the ones that keep the first load lean (hologram.lean.mjs).

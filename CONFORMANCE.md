@@ -412,6 +412,7 @@ model does not sanction.
 | `FA-87` | `build` | A chat turn is answered only by Foundry's own model in Prism, and Prism R4 refuses every route to another model before the request leaves the tab |
 | `FA-95` | `build` | LexLean-R4 bundles a content-addressed archive verified locally under dual weights pins, lazy shell caching, and queued consent dialogs persisted to refs and audit |
 | `FA-96` | `build` | In-Prism chat authoring streams verified LexLean-R4 tokens, applies consent-gated model weights and workspace patches under R4 rules, and wires Foundry's native terminal to lexlean-sh over shared /workspace |
+| `FA-97` | `build` | Foundry removes the #foundry-lexlean-* overlay so ?r4=studio and Featured Card #1 natively select r4:lexlean-r4, adds the Observatory tab over uor-observatory/1, exposes the Prism Network Mode pill in TerminalPanel, and wires SpiralCore Relay URL and GitHub personal token publishing under audit-prism |
 
 ## private-workspace
 

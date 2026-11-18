@@ -23,3 +23,11 @@ Feature: prism-r4-route
     When an in-Prism chat turn streams tokens and <prism-write> tags, cancels mid-stream, syncs /workspace diffs, or opens TerminalPanel over terminal:*
     Then off-origin Qwen3 shard hydration requires native consent and refuses under REQ-005 when declined while verified in-Prism answers apply canonical <prism-write> patches and !inprism retains empty writes
     And TerminalPanel routes terminal:open, terminal:write, terminal:resize, terminal:serialize, terminal:close, and terminal:kill to lexlean-sh with monotonic terminal:data offsets and bidirectional /workspace sync
+
+  @FA-97 @build
+  Scenario: Native Foundry unification removes the #foundry-lexlean-* overlay, renders sandboxed Observatory telemetry over uor-observatory/1, adds the Prism Network Mode pill, and wires SpiralCore Relay URL and GitHub personal token publishing
+    Given the unified Foundry shell without #foundry-lexlean-* overlays, a sandboxed holo Observatory view, and R4 runtime git/network controls
+    When the builder selects ?r4=studio or Featured Card #1, opens Observatory in PreviewPanel, toggles Prism Network Mode in TerminalPanel, or configures SpiralCore Relay URL and GitHub personal token
+    Then ?r4=studio and Featured Card #1 select r4:lexlean-r4 natively without mounting any overlay
+    And PreviewToolbar exposes an Observatory tab mounting holo/<id>/?surface=observatory with uor-observatory/1 ready/theme/telemetry handshake
+    And TerminalPanel shows the Prism Network Mode pill and Settings/PublishPanel expose SpiralCore Relay URL and GitHub personal token gitAction controls with zero API key copy

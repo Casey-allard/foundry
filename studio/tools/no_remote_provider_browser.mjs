@@ -53,6 +53,7 @@ try {
   await page.goto(`${base}settings`); await page.waitForFunction(() => document.body.innerText.includes("Settings"));
   await page.waitForTimeout(800);
   assert.deepEqual(await remoteWords(), [], "no provider or API-key screen in Settings");
+  assert.ok(await page.evaluate(() => document.body.innerText.includes("SpiralCore Relay URL") && document.body.innerText.includes("GitHub personal token")), "Settings exposes SpiralCore Relay URL and GitHub personal token");
   assert.ok(!(await page.evaluate(() => /API key/i.test(document.body.innerText))), "no model API-key field in Settings");
   assert.deepEqual(offOrigin, [], "the prompt was sent to no other origin");
   assert.deepEqual(errors, []);

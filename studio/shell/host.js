@@ -30,7 +30,9 @@ const DEFAULT_SETTINGS = { selectedModel: { name: LOCAL_MODEL, provider: "local"
 // defaults fill what is missing, the record keeps what it has. One mode is implemented here, the build
 // turn that writes files, so that is the mode the record always carries: an agent mode would promise
 // tool calls this host does not make.
-handlers.set("get-user-settings", async () => { const stored = (await inference.settingsGet()) || {}; return stored.selectedModel && stored.selectedModel.provider !== "local" ? changeUserSettings(dbReady, { selectedModel: DEFAULT_SETTINGS.selectedModel }, (current, captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured }))) : browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...stored })); });
+const DEFAULT_SPIRALCORE_RELAY_WS_URL = "wss://lexlean-r4-spiralcore-relay.swarm-relay-cloud-8d31a122.workers.dev/spvs";
+let r4Init = Promise.resolve();
+handlers.set("get-user-settings", async () => { await r4Init; r4Init = Promise.resolve(); const stored = (await inference.settingsGet()) || {}; return stored.selectedModel && stored.selectedModel.provider !== "local" ? changeUserSettings(dbReady, { selectedModel: DEFAULT_SETTINGS.selectedModel }, (current, captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured }))) : browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...stored })); });
 handlers.set("set-user-settings", (patch) => { assertBrowserSettingsPatch(patch); assertBrowserChatModes(patch); return changeUserSettings(dbReady, patch || {}, (current,captured) => browserSettings(browserChatModeSettings({ ...DEFAULT_SETTINGS, ...current, ...captured }))); });
 // What the renderer takes as "set up": the studio's own model is the only provider, and it is always
 // set up, so no connect dialog ever stands between the first prompt and the answer. Whether this
@@ -68,6 +70,8 @@ async function ensureR4Studio(signal) {
     if (!bytes) { const done = await install(bytes = await fetchLocalHolo(pin, signal), { application: pin.application, version: pin.version }); if (done.kappa !== pin.archiveKappa || done.fingerprint !== pin.fingerprint) throw new Error("LexLean-R4 .holo archive pin mismatch"); }
     const info = await inspect(bytes), wf = info.view.files.find((f) => f.path === "lexlean_r4_bg.wasm"), jf = info.view.files.find((f) => f.path === "lexlean_r4.js"); if (!wf || !jf) throw new Error("LexLean-R4 .holo missing Wasm runtime");
     const wasmSha = await sha256(wf.bytes); if (wasmSha !== pin.wasmSha256) throw new Error("LexLean-R4 Wasm pin mismatch");
+    const hf = info.view.files.find((f) => f.path === "index.html"), cf = info.view.files.find((f) => f.path === "app.css"), af = info.view.files.find((f) => f.path === "app.js");
+    if (typeof caches !== "undefined" && hf && cf && af) { const obsHtml = dec.decode(hf.bytes).replace(/<meta[^>]*Content-Security-Policy[^>]*>/i, "").replace('<link rel="stylesheet" href="app.css?v=v12r4">', () => `<style>${dec.decode(cf.bytes).replace(/<\/style/gi, "<\\/style")}</style>`).replace('<script type="module" src="app.js?v=v12r4"></script>', () => `<script type="module">${dec.decode(af.bytes).replace("from './lexlean_r4.js?v=v12r4'", () => `from ${JSON.stringify("data:text/javascript;base64," + b64(jf.bytes))}`).replace(/<\/script/gi, "<\\/script")}</script>`); await (await caches.open("holo")).put(new URL("holo/" + pin.archiveKappa + "/index.html", BASE).pathname, new Response(obsHtml, { headers: { "content-type": "text/html; charset=utf-8" } })); }
     const prevW = await get("refs", "r4:weights:" + pin.archiveKappa), validW = prevW?.wasmSha256 === wasmSha && [pin.qwen3WeightsKappa, pin.offlineQ31WeightsKappa].includes(prevW?.weightsKappa);
     await put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: wasmSha, archiveKappa: pin.archiveKappa, weightsKappa: validW ? prevW.weightsKappa : "", family: validW ? (prevW.family || (prevW.weightsKappa === pin.offlineQ31WeightsKappa ? "offlineQ31" : "qwen3")) : "" });
     const wasmUrl = URL.createObjectURL(new Blob([wf.bytes], { type: "application/wasm" })), jsSrc = dec.decode(jf.bytes).replaceAll("import.meta" + ".url", JSON.stringify(pin.liveUrl)).replace("await __wbg_init();", "await __wbg_init({ module_or_path: " + JSON.stringify(wasmUrl) + " });");
@@ -85,7 +89,8 @@ async function askR4Studio(asks, signal, opts) { return r4Runtime.ask(asks, sign
 function createR4Runtime(deps) {
   const pinFn = deps.pinFn || (async () => deps.pin), w = () => deps.r4Worker(), listeners = new Set(), sessions = new Map(), attached = new WeakSet();
   const utf8Fatal = new TextDecoder("utf-8", { fatal: true });
-  let netMode = "sandboxed", relayUrl = "", modelTier = "uor-r4.qwen3-0.6b-holo", tele = { tokens_emitted: 0, tok_per_sec: 0, geometric_metrics: {}, holo_v13: null, selectedModel: modelTier, networkMode: "sandboxed" };
+  let netMode = "sandboxed", relayUrl = "", modelTier = "uor-r4.qwen3-0.6b-holo", tele = { tokens_emitted: 0, tok_per_sec: 0, geometric_metrics: {}, holo_v13: null, selectedModel: modelTier, networkMode: "sandboxed" }, touchedMode = false, touchedRelay = false, githubTokenSet = false, activeWk = null;
+  void Promise.all([deps.get?.("refs", "r4:network-mode"), deps.get?.("refs", "r4:relay-url")]).then(([sm, sr]) => { if (!touchedMode && sm === "full_spiralcore") { netMode = "full_spiralcore"; tele = { ...tele, networkMode: netMode }; } if (!touchedRelay && typeof sr === "string") relayUrl = sr; }).catch(() => {});
   const errOf = (code, msg) => Object.assign(new Error(msg), { code }), pushTele = (patch) => { tele = { ...tele, ...patch, ts: Date.now() }; for (const cb of listeners) try { cb(tele); } catch {} };
   const isTextPath = (p) => typeof p === "string" && p.length > 0 && !p.startsWith("/") && !p.split("/").some((seg) => !seg || seg === "." || seg === "..") && !/(?:^|\/)(?:\.git|node_modules|\.venv|__pycache__)(?:\/|$)/.test(p) && !/\.(?:db|sqlite|sqlite3|wasm)$/i.test(p);
   const isText = (s) => typeof s === "string" && !s.includes("\u0000"), b64E = (s) => { const u = new TextEncoder().encode(s); let b = ""; for (let i = 0; i < u.length; i++) b += String.fromCharCode(u[i]); return btoa(b); };
@@ -97,7 +102,7 @@ function createR4Runtime(deps) {
     if (d.event === "audit_event") void deps.put("audit", `${Date.now()}:${d.operation || "r4"}:${crypto.randomUUID().slice(0, 8)}`, { timestamp_millis: d.timestamp_millis || Date.now(), principal: "r4:lexlean-r4", operation: d.operation || "r4", target: d.target || "", mode: d.mode || netMode, transport: d.transport || "holo", status: d.status || "ok", bytes: Number(d.bytes || 0), resource: d.target || d.operation || "r4", outcome: d.status || "ok" }).catch(() => {});
     if (["chat_chunk", "holo_observatory_batch", "holo_trace_frame", "brain_pulse", "stitch_health", "bridge_activity", "telos_tick", "ready", "holo_ready"].includes(d.event)) pushTele({ event: d.event, ...(d.tokens_emitted != null ? { tokens_emitted: d.tokens_emitted } : {}), ...(d.tok_per_sec != null ? { tok_per_sec: d.tok_per_sec } : {}), ...(d.geometric_metrics ? { geometric_metrics: d.geometric_metrics } : {}), ...(d.holo_v13 ? { holo_v13: d.holo_v13 } : {}), ...(d.recommendedModel ? { selectedModel: d.recommendedModel } : {}) });
   };
-  const attachWorker = (wk) => { if (!wk || attached.has(wk)) return; attached.add(wk); wk.addEventListener("message", (e) => handleWorkerEvent(e.data)); };
+  const attachWorker = (wk) => { if (!wk || attached.has(wk)) return; attached.add(wk); if (activeWk && activeWk !== wk) { githubTokenSet = false; pushTele({ githubConnected: false }); } activeWk = wk; wk.addEventListener("message", (e) => handleWorkerEvent(e.data)); };
   const rpc = (op, payload, onEvt, signal, ms = deps.rpcTimeoutMs || 90000) => new Promise((ok, no) => {
     const wk = w(), id = crypto.randomUUID(); if (!wk) return no(errOf("r4Unavailable", "LexLean-R4 worker unavailable")); attachWorker(wk);
     let tmr = null; const done = (fn, v) => { wk.removeEventListener("message", onMsg); wk.removeEventListener("error", onErr); clearTimeout(tmr); signal?.removeEventListener("abort", onAbort); fn(v); };
@@ -173,11 +178,11 @@ function createR4Runtime(deps) {
     if (next === "full_spiralcore") await deps.authorizeSpiralCoreInternet({ source: "r4:spiralcore-internet", endpoints: relayUrl ? [relayUrl] : ["https://registry.npmjs.org"] }, { db: await deps.dbReady() });
     await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: next, relayWsUrl: relayUrl, consentGranted: next === "full_spiralcore" });
     if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused");
-    netMode = next; await deps.put("refs", "r4:network-mode", netMode); pushTele({ networkMode: netMode }); return netMode;
+    touchedMode = true; netMode = next; await deps.put("refs", "r4:network-mode", netMode); pushTele({ networkMode: netMode }); return netMode;
   };
-  const setRelayUrl = async (url) => { const next = String(url || "").trim(); await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: netMode, relayWsUrl: next, consentGranted: netMode === "full_spiralcore" }); if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused"); relayUrl = next; await deps.put("refs", "r4:relay-url", relayUrl); return relayUrl; };
-  const gitAction = async (op, args = {}) => { await deps.ensureR4Studio?.(); return rpc(op === "set_secret" ? "mvm_set_secret" : "host_bridge_exec", op === "set_secret" ? args : { op: "git", subcommand: op, action: op, ...args }); };
-  return { attachWorker, configureWorker, handleWorkerEvent, prepareInprism, ask, syncWorkspaceIn, syncWorkspaceOut, applyTurnWorkspaceDiff, terminalOpen, terminalWrite, terminalResize, terminalSerialize, terminalKill, terminalClose, getTelemetrySnapshot: () => tele, onTelemetry: (cb) => { listeners.add(cb); return () => listeners.delete(cb); }, getNetworkMode: () => netMode, setNetworkMode, getRelayUrl: () => relayUrl, setRelayUrl, gitAction, getModelTier: () => modelTier, setModelTier: (m) => { modelTier = String(m || "uor-r4.qwen3-0.6b-holo"); pushTele({ selectedModel: modelTier }); return modelTier; } };
+  const setRelayUrl = async (url) => { const next = String(url || "").trim(); await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: netMode, relayWsUrl: next, consentGranted: netMode === "full_spiralcore" }); if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused"); touchedRelay = true; relayUrl = next; await deps.put("refs", "r4:relay-url", relayUrl); return relayUrl; };
+  const gitAction = async (op, args = {}) => { await deps.ensureR4Studio?.(); if (op === "set_secret") { const res = await rpc("mvm_set_secret", args); if (res?.ok !== false && args?.key === "GITHUB_TOKEN") { githubTokenSet = Boolean(String(args.value || "").trim()); pushTele({ githubConnected: githubTokenSet }); } return res; } const sub = op === "pr" ? "create_pr" : op; let files = args.files; if (args.appId != null && ["push", "commit_push", "commit"].includes(sub)) { const src = await deps.captureProjectSource(await deps.dbReady(), args.appId); await syncWorkspaceIn(args.appId, src).catch(() => {}); if (!Array.isArray(files)) files = (src?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content })); } const res = await rpc("host_bridge_exec", { op: "git", subcommand: sub, action: op, ...args, ...(Array.isArray(files) ? { files } : {}) }); if (res?.ok === false && res?.error_code === "GitAuthRequired") { githubTokenSet = false; pushTele({ githubConnected: false }); } if (args.appId != null && res?.ok && ["clone", "pull", "fetch"].includes(sub)) await applyDiffTags(args.appId, [{ writes: res.files || [] }], null, new Set(), { onCommit: (oid) => deps.emit("version-created", { appId: args.appId, oid }) }).catch(() => {}); return res; };
+  return { attachWorker, configureWorker, handleWorkerEvent, prepareInprism, ask, syncWorkspaceIn, syncWorkspaceOut, applyTurnWorkspaceDiff, terminalOpen, terminalWrite, terminalResize, terminalSerialize, terminalKill, terminalClose, hasGithubToken: () => githubTokenSet, getTelemetrySnapshot: () => tele, onTelemetry: (cb) => { listeners.add(cb); return () => listeners.delete(cb); }, getNetworkMode: () => netMode, setNetworkMode, getRelayUrl: () => relayUrl, setRelayUrl, gitAction, getModelTier: () => modelTier, setModelTier: (m) => { modelTier = String(m || "uor-r4.qwen3-0.6b-holo"); pushTele({ selectedModel: modelTier }); return modelTier; } };
 }
 // R4_RUNTIME_END
 const r4Runtime = createR4Runtime({ pinFn: r4StudioPin, BASE, ensureR4Studio, r4Worker: () => r4Worker, getWasmSha: () => r4WasmSha, get, put, installed, dbReady: () => dbReady, emit, captureProjectSource, applyPrismTags, authorizeR4WeightsDownload, authorizeSpiralCoreInternet, commitR4Consent, r4Refusal });
@@ -244,46 +249,25 @@ handlers.set("edit-app-file", async (input) => {
   return {};
 });
 handlers.set("delete-app", async ({ appId }) => { const deletedChats=(await all("chats")).filter(chat=>chat.appId===appId).map(chat=>chat.id); await deleteStoredProject(await dbReady, appId); liveEditors.delete(appId); coverSources.delete(appId); clearTimeout(coverTimers.get(appId)); coverTimers.delete(appId); await covers.forget(BASE, appId); for(const chatId of deletedChats){queueChannel?.postMessage({chatId});await chatQueue.refresh(chatId).catch(()=>{});} });
-handlers.set("rename-app", async (input) => {
-  await coreReady;
-  await renameStoredProject(await dbReady, input, { core, derive: kappa, onCommit: oid => emit("version-created", { appId: input.appId, oid }) });
-  return { app: withDates(await get("apps", input.appId)) };
-});
+handlers.set("rename-app", async (input) => { await coreReady; await renameStoredProject(await dbReady, input, { core, derive: kappa, onCommit: oid => emit("version-created", { appId: input.appId, oid }) }); return { app: withDates(await get("apps", input.appId)) }; });
 // A search matches a project by name, by the title of one of its chats, or by a line in one of their
 // messages, and says which: the renderer shows the matched title and message under the project's name.
 handlers.set("search-app", async (q) => {
-  const needle = String(q || "").toLowerCase();
-  const chats = await all("chats");
-  const out = [];
+  const needle = String(q || "").toLowerCase(), chats = await all("chats"), out = [];
   for (const a of await all("apps")) {
-    const mine = chats.filter((c) => c.appId === a.id);
-    const chat = mine.find((c) => String(c.title || "").toLowerCase().includes(needle));
-    let message = null;
-    for (const c of mine) {
-      const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle));
-      if (hit) { message = String(hit.content); break; }
-    }
-    if (!needle || a.name.toLowerCase().includes(needle) || chat || message) {
-      out.push({ ...withDates(a), matchedChatTitle: chat ? String(chat.title || "") : null, matchedChatMessage: message });
-    }
+    const mine = chats.filter((c) => c.appId === a.id), chat = mine.find((c) => String(c.title || "").toLowerCase().includes(needle));
+    let message = null; for (const c of mine) { const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle)); if (hit) { message = String(hit.content); break; } }
+    if (!needle || a.name.toLowerCase().includes(needle) || chat || message) out.push({ ...withDates(a), matchedChatTitle: chat ? String(chat.title || "") : null, matchedChatMessage: message });
   }
   return out;
 });
 // A file matches by its path or by a line of its text, and the renderer shows the matching line with
 // what surrounds it, so the snippets are cut here rather than left out.
 handlers.set("search-app-files", async ({ appId, query }) => {
-  const needle = String(query || "").toLowerCase();
-  const out = [];
+  const needle = String(query || "").toLowerCase(), out = [];
   for (const p of await filesOf(appId)) {
     const snippets = [];
-    if (needle) {
-      const lines = String((await get("files", appId + ":" + p)) || "").split(/\r?\n/);
-      for (let i = 0; i < lines.length && snippets.length < 8; i += 1) {
-        const at = lines[i].toLowerCase().indexOf(needle);
-        if (at < 0) continue;
-        snippets.push({ before: lines[i].slice(Math.max(0, at - 40), at), match: lines[i].slice(at, at + needle.length), after: lines[i].slice(at + needle.length, at + needle.length + 40), line: i + 1 });
-      }
-    }
+    if (needle) { const lines = String((await get("files", appId + ":" + p)) || "").split(/\r?\n/); for (let i = 0; i < lines.length && snippets.length < 8; i += 1) { const at = lines[i].toLowerCase().indexOf(needle); if (at >= 0) snippets.push({ before: lines[i].slice(Math.max(0, at - 40), at), match: lines[i].slice(at, at + needle.length), after: lines[i].slice(at + needle.length, at + needle.length + 40), line: i + 1 }); } }
     if (!needle || p.toLowerCase().includes(needle) || snippets.length) out.push({ path: p, matchesContent: snippets.length > 0, snippets });
   }
   return out;
@@ -300,46 +284,28 @@ handlers.set("app:get-current-commit-hash", async ({ appId }) => (await get("ref
 const EXPORT_SCHEMA = "hologram-forge/export/1";
 handlers.set("forge:import", async (input) => {
   await coreReady;
-  const { apps: entries, objects } = await prepareProjectImport(input, {
-    core, derive: kappa,
-    admit: (derived, expected) => core.run({ op: "restore", derived, expected }).decision === "Accept",
-  }, { takenNames: (await all("apps")).map(a => a.name) });
+  const { apps: entries, objects } = await prepareProjectImport(input, { core, derive: kappa, admit: (derived, expected) => core.run({ op: "restore", derived, expected }).decision === "Accept" }, { takenNames: (await all("apps")).map(a => a.name) });
   let appId = await nextId("apps"), chatId = await nextId("chats");
   const writes = [], apps = [];
   for (const entry of entries) {
-    const a = entry.app, name = a.name;
-    const id = appId++, at = new Date().toISOString();
+    const a = entry.app, name = a.name, id = appId++, at = new Date().toISOString(), files = Object.entries(entry.files), chats = [];
     writes.push(["apps", id, { ...nulls, ...a, id, name, path: name, createdAt: a.createdAt || at, updatedAt: a.updatedAt || at }]);
-    const files = Object.entries(entry.files);
     for (const [path, text] of files) writes.push(["files", id + ":" + path, text]);
     if (Array.isArray(entry.versions)) writes.push(["versions", id, entry.versions]);
     if (typeof entry.main === "string" && entry.main) writes.push(["refs", id + ":main", entry.main]);
-    const chats = [];
-    for (const c of Array.isArray(entry.chats) ? entry.chats : []) {
-      if (!c || typeof c !== "object") continue;
-      const cid = chatId++;
-      writes.push(["chats", cid, { ...c, id: cid, appId: id, messages: Array.isArray(c.messages) ? c.messages : [], referencedApps: [] }]);
-      chats.push(cid);
-    }
+    for (const c of Array.isArray(entry.chats) ? entry.chats : []) { if (!c || typeof c !== "object") continue; const cid = chatId++; writes.push(["chats", cid, { ...c, id: cid, appId: id, messages: Array.isArray(c.messages) ? c.messages : [], referencedApps: [] }]); chats.push(cid); }
     apps.push({ id, name, from: entry.from, chats, files: files.length });
   }
   for (const [k, bytes] of objects) writes.push(["objects", k, bytes]);
   const db = await dbReady;
   await new Promise((res, rej) => {
-    let t;
-    const refuse = () => rej(Object.assign(new Error("Project storage failed"), { code: "projectStorageFailed" }));
+    let t; const refuse = () => rej(Object.assign(new Error("Project storage failed"), { code: "projectStorageFailed" }));
     try {
-      t = db.transaction(["apps", "chats", "files", "objects", "refs", "versions"], "readwrite");
-      t.oncomplete = res; t.onerror = refuse; t.onabort = refuse;
-      const marks = new Map();
-      const commit = () => {
+      t = db.transaction(["apps", "chats", "files", "objects", "refs", "versions"], "readwrite"); t.oncomplete = res; t.onerror = refuse; t.onabort = refuse;
+      const marks = new Map(), commit = () => {
         if (marks.size !== 2) return;
         try {
-          for (const store of ["apps", "chats"]) {
-            const high = marks.get(store), assigned = writes.filter(row => row[0] === store).map(row => row[1]);
-            if (!Number.isSafeInteger(high) || high < 0 || assigned.some(id => !Number.isSafeInteger(id) || id <= high)) throw Error("stale allocation");
-            if (assigned.length) t.objectStore("refs").put(Math.max(high, ...assigned), `allocation:${store}`);
-          }
+          for (const store of ["apps", "chats"]) { const high = marks.get(store), assigned = writes.filter(row => row[0] === store).map(row => row[1]); if (!Number.isSafeInteger(high) || high < 0 || assigned.some(id => !Number.isSafeInteger(id) || id <= high)) throw Error("stale allocation"); if (assigned.length) t.objectStore("refs").put(Math.max(high, ...assigned), `allocation:${store}`); }
           for (const [store, key, value] of writes) { if (store === "apps" || store === "chats") t.objectStore(store).add(value, key); else t.objectStore(store).put(value, key); }
         } catch { try { t.abort(); } catch {} refuse(); }
       };
@@ -358,18 +324,8 @@ handlers.set("get-version-changes", async input => verifiedVersionChanges(await 
 handlers.set("set-version-favorite", async input => setStoredVersionMetadata(await dbReady,input,"isFavorite"));
 handlers.set("set-version-note", async input => setStoredVersionMetadata(await dbReady,input,"note"));
 async function restore(appId, oid, revert = false) {
-  oid = await resolveStoredVersion(await dbReady, appId, oid);
-  await coreReady;
-  return restoreStoredProject(await dbReady, appId, oid, {
-    core, onCommit: hash => emit("version-created", { appId, oid: hash }),
-    readObject: key => get("objects", key),
-    derive: kappa,
-    admit: async (derived, expected) => {
-      const { decision } = core.run({ op: "restore", derived, expected });
-      await put("audit", Date.now() + ":" + oid, { ts: Date.now(), operation: "snapshot.restore", resource: oid, outcome: decision });
-      return decision === "Accept";
-    },
-  }, revert);
+  oid = await resolveStoredVersion(await dbReady, appId, oid); await coreReady;
+  return restoreStoredProject(await dbReady, appId, oid, { core, onCommit: hash => emit("version-created", { appId, oid: hash }), readObject: key => get("objects", key), derive: kappa, admit: async (derived, expected) => { const { decision } = core.run({ op: "restore", derived, expected }); await put("audit", Date.now() + ":" + oid, { ts: Date.now(), operation: "snapshot.restore", resource: oid, outcome: decision }); return decision === "Accept"; } }, revert);
 }
 handlers.set("checkout-version", async ({ appId, purpose, versionId, branch }) => {
   if(purpose==="return"){if(branch!=="main")throw previewFailure("previewUnsupportedBranch");return versionPreview.dispatch(appId,{type:"CLOSE",operationId:crypto.randomUUID()});}
@@ -482,66 +438,35 @@ async function openTelemetry() {
 }
 addEventListener("keydown", (e) => { if (e.ctrlKey && e.altKey && (e.key === "t" || e.key === "T")) { e.preventDefault(); openTelemetry().catch(() => {}); } });
 const tmHash = () => { if (location.hash === "#telemetry") openTelemetry().catch(() => {}); };
-addEventListener("hashchange", tmHash);
-addEventListener("load", tmHash, { once: true });
+addEventListener("hashchange", tmHash); addEventListener("load", tmHash, { once: true });
 
 function publish(appId, patch) {
-  const m = machineOf(appId);
-  if (tm.turn && patch.previewReloadEpoch > (m.state.previewReloadEpoch || 0)) tmMark("reload");
-  m.revision += 1;
-  m.state = { ...m.state, ...patch, revision: m.revision, capabilities: caps(patch.phase || m.state.phase) };
+  const m = machineOf(appId); if (tm.turn && patch.previewReloadEpoch > (m.state.previewReloadEpoch || 0)) tmMark("reload");
+  m.revision += 1; m.state = { ...m.state, ...patch, revision: m.revision, capabilities: caps(patch.phase || m.state.phase) };
   emit("distributed-machine:snapshot", { protocolVersion: 1, machineId: "app_run", encodedKey: { appId }, actorInstanceId: "web-app_run-" + appId, revision: m.revision, encodedState: m.state });
   if (m.state.phase === "ready" && m.state.url && m.state.url.appUrl) scheduleCover(appId, m.state.url.appUrl);
   return m;
 }
-// ---- app covers (covers.mjs). Every preview carries the capture responder; when an app's preview is
-// ready and its version has no cover yet, the preview is loaded once more, hidden, at cover size, and its
-// picture is stored with the version it shows. The card's words are asked of the visitor's own model
-// once per app, and stored only when they meet the rules in covers.mjs.
-let coverLibraryReady = null;
+let coverLibraryReady = null, coverQueue = Promise.resolve();
 const coverLibrary = () => (coverLibraryReady ??= fetch(new URL("assets/html-to-image.js", BASE)).then((r) => (r.ok ? r.text() : null)).catch(() => null));
-async function withCoverResponder(html) {
-  const library = await coverLibrary();
-  return library ? covers.withResponder(html, library) : html;
-}
-const coverTimers = new Map();
-const coverSources = new Map();
-let coverQueue = Promise.resolve();
-// A turn writes in batches and the preview is announced ready after each; the picture waits for the last.
+async function withCoverResponder(html) { const library = await coverLibrary(); return library ? covers.withResponder(html, library) : html; }
+const coverTimers = new Map(), coverSources = new Map();
 function scheduleCover(appId, appUrl) {
   if (!String(appUrl).startsWith(BASE.href)) return;
-  // Capture when the preview is announced, before debounce, capture or model work.
-  const built = coverSources.get(appId);
-  const live = appUrl === liveFrameUrl + "#" + encodeURIComponent(appId);
+  const built = coverSources.get(appId), live = appUrl === liveFrameUrl + "#" + encodeURIComponent(appId);
   if (!live && built?.appUrl !== appUrl) return;
-  const source = live ? dbReady.then(db => captureProjectSource(db, appId)) : Promise.resolve(structuredClone(built.source));
-  void source.catch(() => {});
-  clearTimeout(coverTimers.get(appId));
-  coverTimers.set(appId, setTimeout(() => {
-    coverTimers.delete(appId);
-    coverQueue = coverQueue.then(async () => coverApp(appId, appUrl, await source)).catch(e => console.warn("cover", appId, e?.code || "galleryStorageFailed"));
-  }, 4000));
+  const source = live ? dbReady.then(db => captureProjectSource(db, appId)) : Promise.resolve(structuredClone(built.source)); void source.catch(() => {});
+  clearTimeout(coverTimers.get(appId)); coverTimers.set(appId, setTimeout(() => { coverTimers.delete(appId); coverQueue = coverQueue.then(async () => coverApp(appId, appUrl, await source)).catch(e => console.warn("cover", appId, e?.code || "galleryStorageFailed")); }, 4000));
 }
-async function galleryChanged(appId) {
-  dispatchEvent(new CustomEvent(covers.EVENT, { detail: { appId } }));
-  await windowCoordination.invalidate([{family:"apps"}]).catch(() => {});
-}
+async function galleryChanged(appId) { dispatchEvent(new CustomEvent(covers.EVENT, { detail: { appId } })); await windowCoordination.invalidate([{family:"apps"}]).catch(() => {}); }
 async function coverApp(appId, appUrl, source) {
-  const version = source.reference + " " + appUrl;
-  const current = await readGallery(dbReady, appId);
-  if (current?.version === version) return;
+  const version = source.reference + " " + appUrl, current = await readGallery(dbReady, appId); if (current?.version === version) return;
   const checkProjection = () => {
-    if (appUrl === liveFrameUrl + "#" + encodeURIComponent(appId)) {
-      const json = new Map(source.files).get("prism/spec.json");
-      if (!json || JSON.stringify(JSON.parse(json)) !== JSON.stringify(liveLatest.get(appId)?.raw)) throw galleryFailure("gallerySourceChanged");
-    } else if (coverSources.get(appId)?.appUrl !== appUrl) throw galleryFailure("gallerySourceChanged");
+    if (appUrl === liveFrameUrl + "#" + encodeURIComponent(appId)) { const json = new Map(source.files).get("prism/spec.json"); if (!json || JSON.stringify(JSON.parse(json)) !== JSON.stringify(liveLatest.get(appId)?.raw)) throw galleryFailure("gallerySourceChanged"); }
+    else if (coverSources.get(appId)?.appUrl !== appUrl) throw galleryFailure("gallerySourceChanged");
   };
-  checkProjection();
-  const shot = await covers.capture(appUrl);
-  if (!shot) return;
-  checkProjection();
-  await publishGallery(dbReady, appId, source, {picture:await covers.encodeCover(shot.png),version});
-  await galleryChanged(appId);
+  checkProjection(); const shot = await covers.capture(appUrl); if (!shot) return; checkProjection();
+  await publishGallery(dbReady, appId, source, {picture:await covers.encodeCover(shot.png),version}); await galleryChanged(appId);
 }
 const esbuild = () => loadBrowserCompiler(BASE);
 // Generated-code previews disclose network destinations before compilation. The grant is
@@ -639,26 +564,14 @@ function liveFrame() {
     return url.href;
   })().catch((error) => { liveFrameReady = null; throw error; }));
 }
-const liveWindows = new Map(); // the frame's window -> the app it shows
-const liveLatest = new Map();  // appId -> { raw, trust }
-const livePending = new Set();
-const liveShown = new Set();   // apps whose preview a streaming turn has pointed at the live frame
-const liveTimes = [];          // patch to pixel, as each frame reports it
+const liveWindows = new Map(), liveLatest = new Map(), livePending = new Set(), liveShown = new Set(), liveTimes = [], appApps = new Set();
 const themeOf = () => (document.documentElement.classList.contains("dark") ? "dark" : "light");
-// A frame is trusted to receive an app's spec only when it is an iframe of this page showing the live frame.
 const isLiveFrame = (source) => !!liveFrameUrl && [...document.querySelectorAll("iframe")].some((f) => f.contentWindow === source && f.src.startsWith(liveFrameUrl));
 let liveFrameUrl = null, workerActive = null;
 function sendLive(appId) {
-  const latest = liveLatest.get(appId);
-  if (!latest) return;
-  const p = live.project(latest.raw);
-  const message = { type: "live/projection", app: String(appId), root: p.root, logic: p.logic, logicKappa: p.logicKappa, nodes: p.nodes, trust: latest.trust, theme: themeOf(), edit: !!latest.edit };
+  const latest = liveLatest.get(appId); if (!latest) return; const p = live.project(latest.raw), message = { type: "live/projection", app: String(appId), root: p.root, logic: p.logic, logicKappa: p.logicKappa, nodes: p.nodes, trust: latest.trust, theme: themeOf(), edit: !!latest.edit };
   for (const [win, app] of liveWindows) { if (win.closed) liveWindows.delete(win); else if (app === appId) win.postMessage(message, "*"); }
 }
-// Coalesced to one projection per animation frame: a model streams far faster than a screen draws.
-// A stateful app (shell/live/app.mjs): its module is run as it is written, and each frame goes to the
-// same live frame a decision's projection goes to. The library model is fetched on the first such app.
-const appApps = new Set();     // apps whose preview is a running module, not a projection
 const postApp = (appId, message) => { const m = { ...message, theme: themeOf() }; for (const [win, app] of liveWindows) { if (win.closed) liveWindows.delete(win); else if (app === appId) win.postMessage(m, "*"); } };
 let appFrames = null;
 let appModelLoad = null;
@@ -666,29 +579,13 @@ const appModel = () => appModelLoad || (appModelLoad = fetch(new URL("live/v2/Mo
 const appFramesReady = () => appFrames || (appFrames = appModel().then((model) => appShape.appLive({ post: postApp, library: { "Foundation.View.Browser.V1.Model": model } })).catch(error => { appFrames = null; throw error; }));
 // The checker for a stateful app runs in this tab (shell/live/app.mjs checkApp): it reads, it runs, its theorems can be stated.
 const checkAppModule = async (module) => appShape.checkApp(module, { "Foundation.View.Browser.V1.Model": await appModel() });
-function pushApp(appId, module, trust = "draft", options = {}) {
-  assertGenerationActive(options.signal);
-  appApps.add(appId);
-  appFramesReady().then((frames) => { assertGenerationActive(options.signal); return frames.push(appId, module, trust, options); }).catch((e) => { if (!options.signal?.aborted) console.error(e); });
-}
-async function settleAppFrames(appId, signal) {
-  assertGenerationActive(signal);
-  if (appFrames && appApps.has(appId)) await (await appFrames).settled(appId);
-  assertGenerationActive(signal);
-}
-function forgetApplicationFrames(appId) {
-  liveLatest.delete(appId); livePending.delete(appId); liveEditors.delete(appId); livePointed.delete(appId);
-  appApps.delete(appId);
-  if (appFrames) appFrames.then(frames => frames.forget(appId)).catch(() => {});
-}
+function pushApp(appId, module, trust = "draft", options = {}) { assertGenerationActive(options.signal); appApps.add(appId); appFramesReady().then((frames) => { assertGenerationActive(options.signal); return frames.push(appId, module, trust, options); }).catch((e) => { if (!options.signal?.aborted) console.error(e); }); }
+async function settleAppFrames(appId, signal) { assertGenerationActive(signal); if (appFrames && appApps.has(appId)) await (await appFrames).settled(appId); assertGenerationActive(signal); }
+function forgetApplicationFrames(appId) { liveLatest.delete(appId); livePending.delete(appId); liveEditors.delete(appId); livePointed.delete(appId); appApps.delete(appId); if (appFrames) appFrames.then(frames => frames.forget(appId)).catch(() => {}); }
 function pushLive(appId, raw, trust, edit = false) {
   liveLatest.set(appId, { raw, trust, edit });
-  // An edit is one change a person just made: it goes now, not at the next frame, so the frame can paint
-  // it on its own next frame. Only a model's stream, many changes a frame, is coalesced.
   if (edit) { livePending.delete(appId); sendLive(appId); return; }
-  if (livePending.has(appId)) return;
-  livePending.add(appId);
-  requestAnimationFrame(() => { livePending.delete(appId); sendLive(appId); });
+  if (!livePending.has(appId)) { livePending.add(appId); requestAnimationFrame(() => { livePending.delete(appId); sendLive(appId); }); }
 }
 window.addEventListener("message", (e) => {
   const m = e.data;
@@ -850,51 +747,29 @@ async function showBuilt(appId) {
 async function showLive(appId) {
   liveShown.add(appId);
   liveFrameUrl = await liveFrame();
-  const appUrl = liveFrameUrl + "#" + encodeURIComponent(appId);
-  const m = machineOf(appId);
+  const appUrl = liveFrameUrl + "#" + encodeURIComponent(appId), m = machineOf(appId);
   if (m.state.phase === "ready" && m.state.url && m.state.url.appUrl === appUrl) return appUrl;
-  // The renderer keeps the route the preview was on when the new address shares its origin (it expects
-  // a dev server per app), and every preview here shares this origin; so a preview already showing
-  // another page is first announced as restarting, the renderer's own signal to forget that route.
   if (m.state.url) publish(appId, { phase: "starting", operation: "restart", invocationRef: { kind: "app-run", entityKey: appId, operationId: "live-" + appId + "-" + Date.now() }, startedAt: Date.now(), operationError: null, exit: null });
   publish(appId, { phase: "ready", operation: null, invocationRef: null, startedAt: Date.now(), operationError: null, exit: null, url: { appUrl, originalUrl: appUrl, mode: "cloud" }, previewReloadEpoch: m.state.previewReloadEpoch + 1 });
   return appUrl;
 }
-// An app whose preview is the live frame: one with rules, or one that is a running module.
 const hasRules = async (appId) => !!(await get("files", appId + ":prism/spec.json")) || !!(await get("files", appId + ":" + appShape.SOURCE_PATH));
-// An app whose code is still the scaffold it was made from. Code a model writes is never applied, so an
-// app made from an idea stays one until its rules arrive: its preview is the live frame, which Forge draws
-// from the rules on this origin, and nothing is built or fetched from another site for it.
-async function scaffoldOnly(appId) {
-  const made = await loadScaffold(), files = (await captureProjectSource(await dbReady, appId)).files;
-  return files.every(([path, text]) => !(path.startsWith("src/") || Object.hasOwn(made, path)) || made[path] === text);
-}
+async function scaffoldOnly(appId) { const made = await loadScaffold(), files = (await captureProjectSource(await dbReady, appId)).files; return files.every(([path, text]) => !(path.startsWith("src/") || Object.hasOwn(made, path)) || made[path] === text); }
 const projected = async (appId) => (await hasRules(appId)) || (await scaffoldOnly(appId));
-// Warm before the first spec: the frame is built (about 90 ms of fetching, encoding and hashing) and
-// loaded once, hidden, while the page is idle, so the worker has it cached and its kernel has verified
-// itself and answered the gate before a model writes a word. The hidden copy goes once it says hello.
 function warmLive() {
   liveFrame().then((url) => {
-    liveFrameUrl = url;
-    const f = document.createElement("iframe");
-    f.src = url + "#";
-    f.setAttribute("aria-hidden", "true"); f.tabIndex = -1;
-    f.style.cssText = "position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none";
+    liveFrameUrl = url; const f = document.createElement("iframe"); f.src = url + "#"; f.setAttribute("aria-hidden", "true"); f.tabIndex = -1; f.style.cssText = "position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none";
     const done = (e) => { if (e.source === f.contentWindow && e.data && e.data.type === "live/hello") { window.removeEventListener("message", done); f.remove(); } };
-    window.addEventListener("message", done);
-    setTimeout(() => { window.removeEventListener("message", done); f.remove(); }, 15000);
-    document.body.append(f);
+    window.addEventListener("message", done); setTimeout(() => { window.removeEventListener("message", done); f.remove(); }, 15000); document.body.append(f);
   }).catch(() => {});
 }
 (window.requestIdleCallback || ((fn) => setTimeout(fn, 1500)))(warmLive, { timeout: 4000 });
 window.__live = { liveFrame, showLive, pushLive, pushApp, appFrames: appFramesReady, refreshLive: refreshPreview, patchSpec, stepSpec, pointed: livePointed, times: liveTimes, project: live.project };
-
 handlers.set("distributed-machine:subscribe", async ({ machineId, encodedKey }) => {
   if (machineId === "version_preview") return previewEnvelope(encodedKey.appId);
   if (machineId === "chat_stream") return chatSubscribe({ machineId, encodedKey });
   if (machineId !== "app_run") throw new Error("no browser machine " + machineId);
-  const m = machineOf(encodedKey.appId);
-  return { protocolVersion: 1, machineId, encodedKey, actorInstanceId: "web-app_run-" + encodedKey.appId, revision: m.revision, encodedState: m.state };
+  const m = machineOf(encodedKey.appId); return { protocolVersion: 1, machineId, encodedKey, actorInstanceId: "web-app_run-" + encodedKey.appId, revision: m.revision, encodedState: m.state };
 });
 handlers.set("distributed-machine:unsubscribe", () => undefined);
 handlers.set("distributed-machine:dispatch", async (envelope) => {
@@ -902,44 +777,30 @@ handlers.set("distributed-machine:dispatch", async (envelope) => {
   if (machineId === "version_preview") return previewDispatch(envelope);
   if (machineId === "chat_stream") return chatDispatch(envelope);
   if (machineId !== "app_run") throw new Error("no browser machine " + machineId);
-  const appId = encodedKey.appId, type = encodedEvent && encodedEvent.type;
-  const receipt = (m) => ({ kind: "applied", actorInstanceId: "web-app_run-" + appId, revision: m.revision, transactionSequence: m.revision, messageId });
+  const appId = encodedKey.appId, type = encodedEvent && encodedEvent.type, receipt = (m) => ({ kind: "applied", actorInstanceId: "web-app_run-" + appId, revision: m.revision, transactionSequence: m.revision, messageId });
   if (type === "START" || type === "RESTART" || type === "MANUAL_RELOAD") {
     const op = type === "START" ? "run" : type === "RESTART" ? (encodedEvent.operation === "rebuild" ? "rebuild" : "restart") : "reload";
-    // An app with rules is projected, not built: the live frame already shows it, so a start, restart
-    // or reload keeps the frame (no epoch bump, no reload) and resends the rules.
     if(await get("files",appId+":prism/interaction.json")!==undefined){
       try{const opened=await openInteractionApplication(appId,{run:input=>handlers.get("forge:interaction-run")(input),probe:input=>executeInteraction(kernelReady,input)});if(!opened.current)throw interactionFailure("interactionApplicationMismatch");}
       catch(error){return receipt(publish(appId,{phase:"errored",operation:null,operationError:{message:error.message}}));}
       return receipt(publish(appId,{phase:"stopped",operation:null,url:null,lastSettlement:{operationId:encodedEvent.operationId||messageId,kind:"run",outcome:"succeeded"}}));
     }
-    // The first build may have opened the frame before its first module was complete.
     if (liveShown.has(appId) || await projected(appId)) {
       try { await showLive(appId); if (await hasRules(appId)) await refreshPreview(appId); }
       catch (e) { const m = publish(appId, { phase: "errored", operation: null, operationError: { message: String((e && e.message) || e) } }); return receipt(m); }
-      const m = publish(appId, { lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "succeeded" } });
-      return receipt(m);
+      return receipt(publish(appId, { lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "succeeded" } }));
     }
     const m = publish(appId, { phase: type === "MANUAL_RELOAD" ? "reloading" : "starting", operation: op, startedAt: Date.now(), operationError: null, exit: null });
     m.pending = (async () => {
       try {
         const { appUrl } = await buildPreview(appId);
-        // A build that finishes after the app's rules took the preview (a model began writing a spec
-        // while it ran) is about a page the app no longer shows: the live frame stays, and the start it
-        // answered still settles, or the renderer keeps waiting on it.
         if (liveShown.has(appId)) { await showLive(appId).catch(() => {}); publish(appId, { phase: "ready", operation: null, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "succeeded" } }); return; }
-        const cur = machineOf(appId);
-        publish(appId, { phase: "ready", operation: null, url: { appUrl, originalUrl: appUrl, mode: "cloud" }, previewReloadEpoch: cur.state.previewReloadEpoch + 1, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "succeeded" } });
-      } catch (e) {
-        publish(appId, { phase: "errored", operation: null, operationError: { message: String((e && e.message) || e) }, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "failed", error: { message: String((e && e.message) || e) } } });
-      }
+        const cur = machineOf(appId); publish(appId, { phase: "ready", operation: null, url: { appUrl, originalUrl: appUrl, mode: "cloud" }, previewReloadEpoch: cur.state.previewReloadEpoch + 1, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "succeeded" } });
+      } catch (e) { publish(appId, { phase: "errored", operation: null, operationError: { message: String((e && e.message) || e) }, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "run", outcome: "failed", error: { message: String((e && e.message) || e) } } }); }
     })();
     return receipt(m);
   }
-  if (type === "STOP_REQUESTED") {
-    const m = publish(appId, { phase: "stopped", operation: null, url: null, exit: { exitCode: 0, timestamp: Date.now() }, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "stop", outcome: "succeeded" } });
-    return receipt(m);
-  }
+  if (type === "STOP_REQUESTED") return receipt(publish(appId, { phase: "stopped", operation: null, url: null, exit: { exitCode: 0, timestamp: Date.now() }, lastSettlement: { operationId: encodedEvent.operationId || messageId, kind: "stop", outcome: "succeeded" } }));
   return { kind: "ignored", actorInstanceId: "web-app_run-" + appId, revision: machineOf(appId).revision, messageId, reason: "unknown intent " + type };
 });
 handlers.set("connection-flow:get-states", () => ({ github: { status: "disconnected", revision: 0 }, supabase: { status: "disconnected", revision: 0 }, neon: { status: "disconnected", revision: 0 } }));
@@ -989,23 +850,11 @@ handlers.set("get-cloud-sandbox-status", () => null);
 // files -- no glob library, the two wildcards the renderer's dialog writes are enough.
 const globMatch = (glob, path) => new RegExp("^" + String(glob).split("**").map((s) => s.split("*").map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")).join(".*") + "$").test(path);
 async function contextCounts(appId, globs) {
-  const paths = await filesOf(appId);
-  const out = [];
-  for (const { globPath } of globs || []) {
-    let files = 0, chars = 0;
-    for (const p of paths) if (globMatch(globPath, p)) { files += 1; chars += String((await get("files", appId + ":" + p)) || "").length; }
-    out.push({ globPath, files, tokens: Math.ceil(chars / 4) });
-  }
+  const paths = await filesOf(appId), out = [];
+  for (const { globPath } of globs || []) { let files = 0, chars = 0; for (const p of paths) if (globMatch(globPath, p)) { files += 1; chars += String((await get("files", appId + ":" + p)) || "").length; } out.push({ globPath, files, tokens: Math.ceil(chars / 4) }); }
   return out;
 }
-handlers.set("get-context-paths", async ({ appId }) => {
-  const c = ((await get("apps", appId)) || {}).chatContext || {};
-  return {
-    contextPaths: await contextCounts(appId, c.contextPaths),
-    smartContextAutoIncludes: await contextCounts(appId, c.smartContextAutoIncludes),
-    excludePaths: await contextCounts(appId, c.excludePaths),
-  };
-});
+handlers.set("get-context-paths", async ({ appId }) => { const c = ((await get("apps", appId)) || {}).chatContext || {}; return { contextPaths: await contextCounts(appId, c.contextPaths), smartContextAutoIncludes: await contextCounts(appId, c.smartContextAutoIncludes), excludePaths: await contextCounts(appId, c.excludePaths) }; });
 handlers.set("set-context-paths", async ({ appId, chatContext }) => { const a = await get("apps", appId); if (!a) throw new Error("no app " + appId); a.chatContext = chatContext; await put("apps", appId, a); });
 // Unimplemented imported capabilities have no handler. The typed dispatch
 // boundary reports unsupportedChannel, preserving the renderer error state.
@@ -1336,205 +1185,100 @@ async function appStateOf(appId) {
 const saveAppFiles = async (appId, writes, source, appUpdate) => applyStoredProjectPatch(await dbReady, appId, { writes, deletes: [], renames: [], deps: [] }, { core, derive: kappa, source, appUpdate });
 // Approval of a stateful app: the kernel moves it from checked to proving, and Lean is asked.
 async function approveApp(appId, app, options = {}) {
-  const { source, state } = app;
-  if (options.signal) assertGenerationActive(options.signal);
+  const { source, state } = app; if (options.signal) assertGenerationActive(options.signal);
   if (!state) return { text: "This app's module is not checked yet, so there is nothing to approve. Ask me to fix it." };
   if (state.phase === "proving") return { text: "Lean is already proving this app's properties." };
   if (state.phase === "proved" || state.phase === "published") return { text: "This app's properties are already proved by Lean." };
   if (state.phase !== "checked") return { text: "This app's module is not checked yet, so there is nothing to approve. Ask me to fix it." };
-  const count = appShape.theoremsOf(source).length;
-  if (!count) return { text: "This app's module states no properties, so there is nothing for Lean to prove. Ask me to add its promises." };
-  const phase = await nextPhase("checked", "approve");
-  const reservation = { ...state, phase, approved: now(), approvalId: options.approvalId || crypto.randomUUID() };
+  const count = appShape.theoremsOf(source).length; if (!count) return { text: "This app's module states no properties, so there is nothing for Lean to prove. Ask me to add its promises." };
+  const phase = await nextPhase("checked", "approve"), reservation = { ...state, phase, approved: now(), approvalId: options.approvalId || crypto.randomUUID() };
   let saved, submitted = false, abandoned = false, rollback;
   const cancel = () => {
-    if (submitted) return Promise.resolve(false);
-    abandoned = true;
+    if (submitted) return Promise.resolve(false); abandoned = true;
     return (rollback ||= (async () => {
-      if (!saved) return false;
-      const attempted = new Set();
-      let conflict;
+      if (!saved) return false; const attempted = new Set(); let conflict;
       for (;;) {
-        const latest = await appStateOf(appId);
-        if (!latest?.state || latest.source !== source || JSON.stringify(latest.expectedState) !== JSON.stringify(reservation)) return false;
-        // Unrelated edits may advance the project while this exact proof reservation survives.
-        // Restore only its lifecycle, using each new current source once; the CAS preserves all
-        // unrelated bytes and refuses a replacement approval or an edit to the approved module.
-        const predecessor = JSON.stringify(latest.captured);
-        if (attempted.has(predecessor)) throw conflict;
-        attempted.add(predecessor);
-        try {
-          await saveAppFiles(appId, [{ path: appShape.STATE_PATH, content: JSON.stringify(state, null, 2) + "\n" }], latest.captured, { expected: reservation, state });
-          await refreshApp(appId).catch(() => {});
-          return true;
-        } catch (error) {
-          if (!["projectEditConflict", "applicationStateConflict"].includes(error?.code)) throw error;
-          conflict = error;
-        }
+        const latest = await appStateOf(appId); if (!latest?.state || latest.source !== source || JSON.stringify(latest.expectedState) !== JSON.stringify(reservation)) return false;
+        const predecessor = JSON.stringify(latest.captured); if (attempted.has(predecessor)) throw conflict; attempted.add(predecessor);
+        try { await saveAppFiles(appId, [{ path: appShape.STATE_PATH, content: JSON.stringify(state, null, 2) + "\n" }], latest.captured, { expected: reservation, state }); await refreshApp(appId).catch(() => {}); return true; }
+        catch (error) { if (!["projectEditConflict", "applicationStateConflict"].includes(error?.code)) throw error; conflict = error; }
       }
     })());
   };
   try {
-    if (options.signal) assertGenerationActive(options.signal);
-    saved = await saveAppFiles(appId, [{ path: appShape.STATE_PATH, content: JSON.stringify(reservation, null, 2) + "\n" }], app.captured, { expected: app.expectedState, state: reservation });
-    if (options.signal) assertGenerationActive(options.signal);
-    await refreshApp(appId);
-    if (options.signal) assertGenerationActive(options.signal);
-  } catch (error) {
-    await cancel();
-    if (["projectEditConflict", "applicationStateConflict"].includes(error?.code)) return { text: "The app changed before approval was recorded. Check the current module again." };
-    throw error;
-  }
-  return {
-    text: appShape.provingMessage(count), message: appShape.proofMessage, cancel, submitted: () => submitted,
-    prove: async (onWait) => {
-      try {
-        return await proveApp(appId, state.sourceKappa, source, onWait, { expectedState: reservation, beforeSubmit: () => {
-          if (options.signal) assertGenerationActive(options.signal);
-          if (abandoned) throw Object.assign(new Error("Generation cancelled"), { code: "generationCancelled" });
-          submitted = true;
-        } });
-      } finally { if (!submitted) await cancel(); }
-    },
-  };
+    if (options.signal) assertGenerationActive(options.signal); saved = await saveAppFiles(appId, [{ path: appShape.STATE_PATH, content: JSON.stringify(reservation, null, 2) + "\n" }], app.captured, { expected: app.expectedState, state: reservation });
+    if (options.signal) assertGenerationActive(options.signal); await refreshApp(appId); if (options.signal) assertGenerationActive(options.signal);
+  } catch (error) { await cancel(); if (["projectEditConflict", "applicationStateConflict"].includes(error?.code)) return { text: "The app changed before approval was recorded. Check the current module again." }; throw error; }
+  return { text: appShape.provingMessage(count), message: appShape.proofMessage, cancel, submitted: () => submitted, prove: async (onWait) => { try { return await proveApp(appId, state.sourceKappa, source, onWait, { expectedState: reservation, beforeSubmit: () => { if (options.signal) assertGenerationActive(options.signal); if (abandoned) throw Object.assign(new Error("Generation cancelled"), { code: "generationCancelled" }); submitted = true; } }); } finally { if (!submitted) await cancel(); } } };
 }
 // Lean proves the module with its kernel in this tab (prism.js proveModule); the Forge kernel moves the phase on its
 // verdict. A proof whose module changed meanwhile is dropped: it is about other bytes.
 async function proveApp(appId, sourceKappa, source, onWait, options = {}) {
-  const current = await appStateOf(appId);
-  if (!current?.state || current.state.sourceKappa !== sourceKappa || current.state.phase !== "proving" || current.source !== source || (options.expectedState && JSON.stringify(current.expectedState) !== JSON.stringify(options.expectedState))) return null;
-  const model = await appModel(), proved = source;
-  let submitted = false;
-  const result = await prism.proveModule(source, appShape.semanticData(source, { theorems: true }), model.declarations, { guest: kernelReady, beforeSubmit: () => { options.beforeSubmit?.(); submitted = true; } }).catch((e) => {
-    if (options.beforeSubmit && !submitted) throw e;
-    return { ok: false, error: String((e && e.message) || e) };
-  });
-  const attempted = new Set();
-  let theorems, promises;
+  const current = await appStateOf(appId); if (!current?.state || current.state.sourceKappa !== sourceKappa || current.state.phase !== "proving" || current.source !== source || (options.expectedState && JSON.stringify(current.expectedState) !== JSON.stringify(options.expectedState))) return null;
+  const model = await appModel(), proved = source; let submitted = false;
+  const result = await prism.proveModule(source, appShape.semanticData(source, { theorems: true }), model.declarations, { guest: kernelReady, beforeSubmit: () => { options.beforeSubmit?.(); submitted = true; } }).catch((e) => { if (options.beforeSubmit && !submitted) throw e; return { ok: false, error: String((e && e.message) || e) }; });
+  const attempted = new Set(); let theorems, promises;
   for (;;) {
-    const latest = await appStateOf(appId);
-    if (!latest?.state || latest.source !== source || latest.state.sourceKappa !== sourceKappa || latest.state.phase !== "proving" || latest.state.approvalId !== current.state.approvalId) return null;
-    const predecessor = JSON.stringify(latest.captured);
-    if (attempted.has(predecessor)) return null;
-    attempted.add(predecessor);
-    const phase = await nextPhase("proving", result.ok ? "attest" : "fail");
-    const kept = result.ok ? proved.trim() + "\n" : latest.source;
-    theorems = appShape.theoremsOf(kept); promises = appShape.promisesOf(kept);
+    const latest = await appStateOf(appId); if (!latest?.state || latest.source !== source || latest.state.sourceKappa !== sourceKappa || latest.state.phase !== "proving" || latest.state.approvalId !== current.state.approvalId) return null;
+    const predecessor = JSON.stringify(latest.captured); if (attempted.has(predecessor)) return null; attempted.add(predecessor);
+    const phase = await nextPhase("proving", result.ok ? "attest" : "fail"), kept = result.ok ? proved.trim() + "\n" : latest.source; theorems = appShape.theoremsOf(kept); promises = appShape.promisesOf(kept);
     const state = { ...latest.state, phase, sourceKappa: await kappa(enc.encode(kept)), proof: result.ok ? result.record : null, proofError: result.ok ? null : result.error, theorems: result.ok ? theorems : [], promises: result.ok ? promises : [], updated: now() };
-    try {
-      await saveAppFiles(appId, [...(kept !== latest.source ? [{ path: appShape.SOURCE_PATH, content: kept }] : []), { path: appShape.STATE_PATH, content: JSON.stringify(state, null, 2) + "\n" }], latest.captured, { expected: latest.expectedState, state });
-      break;
-    } catch (error) {
-      if (!["projectEditConflict", "applicationStateConflict"].includes(error?.code)) throw error;
-      // An unrelated edit can race this CAS. Retry only the completed result against a new
-      // capture of the same module and approval, never the already submitted proof request.
-    }
+    try { await saveAppFiles(appId, [...(kept !== latest.source ? [{ path: appShape.SOURCE_PATH, content: kept }] : []), { path: appShape.STATE_PATH, content: JSON.stringify(state, null, 2) + "\n" }], latest.captured, { expected: latest.expectedState, state }); break; }
+    catch (error) { if (!["projectEditConflict", "applicationStateConflict"].includes(error?.code)) throw error; }
   }
   await put("audit", Date.now() + ":prism:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "prism.app.prove", resource: sourceKappa, outcome: result.ok ? "proved" : "refused" });
-  await refreshApp(appId);
-  return { ...result, theorems, promises };
+  await refreshApp(appId); return { ...result, theorems, promises };
 }
 const approve = async (appId, options = {}) => { const app = await appStateOf(appId); return app ? approveApp(appId, app, options) : approveRules(appId, options); };
 async function approveRules(appId, options = {}) {
-  if (options.signal) assertGenerationActive(options.signal);
-  const state = await rulesOf(appId);
+  if (options.signal) assertGenerationActive(options.signal); const state = await rulesOf(appId);
   if (!state) return { text: "This app has no rules to prove yet. Tell me what it decides and I will draft them." };
   if (state.phase === "proving") return { text: "Lean is already proving these rules." };
   if (state.phase === "proved" || state.phase === "published") return { text: "These rules are already proved by Lean." };
   if (state.phase !== "checked") return { text: "The rules are not checked yet, so there is nothing to approve. Ask me to fix them." };
   const phase = await nextPhase("checked", "approve"), reservation = { ...state, phase, approved: now(), approvalId: options.approvalId || crypto.randomUUID() };
-  if (options.signal) assertGenerationActive(options.signal);
-  if (!await saveRules(appId, reservation, state)) return { text: "The rules changed before approval was recorded. Check the current rules again." };
+  if (options.signal) assertGenerationActive(options.signal); if (!await saveRules(appId, reservation, state)) return { text: "The rules changed before approval was recorded. Check the current rules again." };
   let submitted = false, abandoned = false, rollback;
   const cancel = () => {
-    if (submitted) return Promise.resolve(false);
-    abandoned = true;
+    if (submitted) return Promise.resolve(false); abandoned = true;
     return (rollback ||= (async () => {
       const attempted = new Set();
       for (;;) {
-        const latest = await rulesOf(appId);
-        if (!sameRuleReservation(latest, reservation)) return false;
-        const predecessor = JSON.stringify(latest);
-        if (attempted.has(predecessor)) return false;
-        attempted.add(predecessor);
-        const restored = { ...latest, phase: state.phase };
-        for (const key of ["approvalId", "approved"]) {
-          if (Object.hasOwn(state, key)) restored[key] = state[key]; else delete restored[key];
-        }
-        if (!await saveRules(appId, restored, latest)) continue;
-        await refreshLive(appId).catch(() => {});
-        return true;
+        const latest = await rulesOf(appId); if (!sameRuleReservation(latest, reservation)) return false;
+        const predecessor = JSON.stringify(latest); if (attempted.has(predecessor)) return false; attempted.add(predecessor);
+        const restored = { ...latest, phase: state.phase }; for (const key of ["approvalId", "approved"]) { if (Object.hasOwn(state, key)) restored[key] = state[key]; else delete restored[key]; }
+        if (!await saveRules(appId, restored, latest)) continue; await refreshLive(appId).catch(() => {}); return true;
       }
     })());
   };
-  try { if (options.signal) assertGenerationActive(options.signal); await refreshLive(appId); if (options.signal) assertGenerationActive(options.signal); }
-  catch (error) { await cancel(); throw error; }
-  return {
-    text: prism.provingMessage(state.spec), spec: state.spec, cancel, submitted: () => submitted,
-    prove: async (onWait) => {
-      try {
-        return await proveRules(appId, state.logicKappa || state.specKappa, onWait, { expectedState: reservation, beforeSubmit: () => {
-          if (options.signal) assertGenerationActive(options.signal);
-          if (abandoned) throw Object.assign(new Error("Generation cancelled"), { code: "generationCancelled" });
-          submitted = true;
-        } });
-      } finally { if (!submitted) await cancel(); }
-    },
-  };
+  try { if (options.signal) assertGenerationActive(options.signal); await refreshLive(appId); if (options.signal) assertGenerationActive(options.signal); } catch (error) { await cancel(); throw error; }
+  return { text: prism.provingMessage(state.spec), spec: state.spec, cancel, submitted: () => submitted, prove: async (onWait) => { try { return await proveRules(appId, state.logicKappa || state.specKappa, onWait, { expectedState: reservation, beforeSubmit: () => { if (options.signal) assertGenerationActive(options.signal); if (abandoned) throw Object.assign(new Error("Generation cancelled"), { code: "generationCancelled" }); submitted = true; } }); } finally { if (!submitted) await cancel(); } } };
 }
 // The approve turn stays open while Lean works, as a build turn stays open while the model writes:
 // the renderer shows it working, the message counts the seconds, and the result completes it.
 async function approveTurn(chatId, appId, messages, userId, ref, intentId) {
   const m = chatMachineOf(chatId), abort = new AbortController(), cancel = () => abort.abort();
-  m.abort = abort; m.queueSignal?.addEventListener("abort", cancel, { once: true });
-  if (m.queueSignal?.aborted) cancel();
+  m.abort = abort; m.queueSignal?.addEventListener("abort", cancel, { once: true }); if (m.queueSignal?.aborted) cancel();
   messages.push({ id: userId + 1, role: "assistant", content: "", approvalState: "approved", commitHash: null, createdAt: now() });
-  const show = async (content) => {
-    messages[messages.length - 1] = { ...messages[messages.length - 1], content };
-    await saveMessages(chatId, messages);
-    emit("chat:response:chunk", { chatId, invocationRef: ref, messages });
-  };
+  const show = async (content) => { messages[messages.length - 1] = { ...messages[messages.length - 1], content }; await saveMessages(chatId, messages); emit("chat:response:chunk", { chatId, invocationRef: ref, messages }); };
   let started, observing = true, stopListener, error = null;
   try {
-    assertGenerationActive(abort.signal);
-    started = await approve(appId, { signal: abort.signal, approvalId: intentId });
-    assertGenerationActive(abort.signal);
-    await show(started.text);
-    assertGenerationActive(abort.signal);
+    assertGenerationActive(abort.signal); started = await approve(appId, { signal: abort.signal, approvalId: intentId }); assertGenerationActive(abort.signal); await show(started.text); assertGenerationActive(abort.signal);
     if (started.prove) {
-      const stopped = new Promise(resolve => {
-        stopListener = () => resolve("stopped"); abort.signal.addEventListener("abort", stopListener, { once: true });
-        if (abort.signal.aborted) stopListener();
-      });
-      const proof = started.prove(s => { if (observing && !abort.signal.aborted) void show(started.text + `\n\nLean is working, ${s} s.`).catch(() => {}); });
-      proof.catch(() => {});
-      const result = await Promise.race([proof, stopped]);
-      observing = false;
-      if (result === "stopped") {
-        await started.cancel?.();
-        await show(started.submitted?.()
-          ? started.text + "\n\nStopped watching. Lean keeps working; the result is kept with the app's rules."
-          : "Stopped before proof submission. No proof request was sent.");
-      } else {
-        await show(started.text + "\n\n" + (result ? (started.message ? started.message(result) : prism.proofMessage(started.spec, result)) : "The rules changed while Lean worked, so this proof is about other rules and was dropped."));
-      }
+      const stopped = new Promise(resolve => { stopListener = () => resolve("stopped"); abort.signal.addEventListener("abort", stopListener, { once: true }); if (abort.signal.aborted) stopListener(); });
+      const proof = started.prove(s => { if (observing && !abort.signal.aborted) void show(started.text + `\n\nLean is working, ${s} s.`).catch(() => {}); }); proof.catch(() => {});
+      const result = await Promise.race([proof, stopped]); observing = false;
+      if (result === "stopped") { await started.cancel?.(); await show(started.submitted?.() ? started.text + "\n\nStopped watching. Lean keeps working; the result is kept with the app's rules." : "Stopped before proof submission. No proof request was sent."); }
+      else await show(started.text + "\n\n" + (result ? (started.message ? started.message(result) : prism.proofMessage(started.spec, result)) : "The rules changed while Lean worked, so this proof is about other rules and was dropped."));
     }
   } catch (failure) {
-    observing = false;
-    try { await started?.cancel?.(); } catch (rollbackFailure) { failure = rollbackFailure; }
+    observing = false; try { await started?.cancel?.(); } catch (rollbackFailure) { failure = rollbackFailure; }
     if (!abort.signal.aborted || failure?.code !== "generationCancelled") error = String((failure && failure.message) || failure);
-    try { await show(error ? `<prism-output type="error" message="${error.replace(/"/g, "'")}"></prism-output>` : started?.submitted?.()
-      ? "Stopped watching. Lean keeps working; the result is kept with the app's rules."
-      : "Stopped before proof submission. No proof request was sent."); }
+    try { await show(error ? `<prism-output type="error" message="${error.replace(/"/g, "'")}"></prism-output>` : started?.submitted?.() ? "Stopped watching. Lean keeps working; the result is kept with the app's rules." : "Stopped before proof submission. No proof request was sent."); }
     catch (storageFailure) { error = String((storageFailure && storageFailure.message) || storageFailure); }
   } finally {
-    observing = false;
-    if (stopListener) abort.signal.removeEventListener("abort", stopListener);
-    m.queueSignal?.removeEventListener("abort", cancel);
-    if (m.abort === abort) m.abort = null;
-    publishChat(chatId, { phase: "finalizing", error, lastCompletion: { intentId, invocationRef: ref, outcome: error ? "errored" : "completed", updatedFiles: false, suppressAutoReview: true, targetAppId: appId } });
-    publishChat(chatId, { phase: "idle", invocationRef: null });
-    emit("chat:stream:end", { chatId });
+    observing = false; if (stopListener) abort.signal.removeEventListener("abort", stopListener); m.queueSignal?.removeEventListener("abort", cancel); if (m.abort === abort) m.abort = null;
+    publishChat(chatId, { phase: "finalizing", error, lastCompletion: { intentId, invocationRef: ref, outcome: error ? "errored" : "completed", updatedFiles: false, suppressAutoReview: true, targetAppId: appId } }); publishChat(chatId, { phase: "idle", invocationRef: null }); emit("chat:stream:end", { chatId });
   }
 }
 handlers.set("prism:status", async ({ appId }) => (await rulesOf(appId)) || null);
@@ -1544,60 +1288,37 @@ handlers.set("prism:status", async ({ appId }) => (await rulesOf(appId)) || null
 // own card (shell/live/card-files.mjs); the card asks the kernel "rule " with the spec's words and the
 // request's, so the answer shown is the kernel guest's, after every acceptance vector replayed in this tab.
 // A rule that compares two fields has no rule words yet, so such an app is refused, never guessed.
-function ruleWords(spec) {
-  const hex = (n) => { if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) throw new Error("a bound outside 32 bits"); return [0, 8, 16, 24].map((k) => ((n >>> k) & 255).toString(16).padStart(2, "0")).join(""); };
-  const w = prism.ruleWordsOf(spec);
-  return { words: w.words.map(hex).join(""), outcomes: w.outcomes, choices: w.choices };
-}
+function ruleWords(spec) { const hex = (n) => { if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) throw new Error("a bound outside 32 bits"); return [0, 8, 16, 24].map((k) => ((n >>> k) & 255).toString(16).padStart(2, "0")).join(""); }; const w = prism.ruleWordsOf(spec); return { words: w.words.map(hex).join(""), outcomes: w.outcomes, choices: w.choices }; }
 const START = (w) => `import { load } from "./vendor/prism-code/src/browser.mjs";import start from "./card.mjs";const W=${JSON.stringify(w)},e=new TextEncoder(),d=new TextDecoder(),h=(n)=>[0,8,16,24].map((k)=>((n>>>k)&255).toString(16).padStart(2,"0")).join("");
 const ask=(k)=>async(b)=>{const r=d.decode(await k.dispatch(e.encode("rule "+W.words+d.decode(b).split(" ").map((v,i)=>h(W.choices[i]?W.choices[i].indexOf(v):Number(v))).join(""))));if(!r.startsWith("ok "))throw new Error(r);return e.encode(W.outcomes[parseInt(r.slice(11,19).match(/../g).reverse().join(""),16)]);};
 let app=null;try{const k=await load("./app.holo"),a=await k.acceptance();if(k.identities.verified&&a.failed.length===0)app={dispatch:ask(k)};}catch(x){console.error(x);}start({app,show:(b)=>d.decode(b),$:(id)=>document.getElementById(id)});\n`;
 async function rulePage(spec) {
   const w = ruleWords(spec), at = new URL("app/", BASE), bytes = async (u) => { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(u + " answered " + r.status); return new Uint8Array(await r.arrayBuffer()); };
   const keep = (await (await fetch(new URL("precache.json", at), { cache: "no-store" })).json()).files.map((f) => f.path.slice(2)).filter((p) => /^(app\.holo|brand\/|fonts\/|prism-page\.css|favicon\.svg|guest-worker\.mjs|vendor\/|worker-runtime\/)/.test(p));
-  const { cardFiles } = await import("./live/card-files.mjs");
-  const card = new Map((await cardFiles(spec, { load: async (p) => dec.decode(await bytes(new URL(p, BASE))) })).files.map((f) => [f.path.slice(5), f.content]));
+  const { cardFiles } = await import("./live/card-files.mjs"), card = new Map((await cardFiles(spec, { load: async (p) => dec.decode(await bytes(new URL(p, BASE))) })).files.map((f) => [f.path.slice(5), f.content]));
   const html = `<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${String(spec.title || spec.name).replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}</title><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="brand/hologram-warm.css"><link rel="stylesheet" href="brand/fonts.css"><link rel="stylesheet" href="prism-page.css"><style>${card.get("card.css")}</style></head><body class="has-card"><script type="application/json" id="app-data">${JSON.stringify({ inputLabel: spec.title || spec.name }).replace(/</g, "\\u003c")}</script>${card.get("card.html")}<output id="out"></output><ol id="hist"></ol><script type="module" src="start.mjs"></script></body></html>\n`;
   const files = [{ path: "index.html", bytes: enc.encode(html) }, { path: "card.mjs", bytes: enc.encode(card.get("card.mjs")) }, { path: "start.mjs", bytes: enc.encode(START(w)) }];
   for (const p of keep) files.push({ path: p, bytes: await bytes(new URL(p, at)) });
   // FA-05: the kernel this page carries is the one its page build named, and every vector it carries passes here.
-  const kernel = await (await import("./prism-code/src/index.mjs")).loadArchive(files.find((f) => f.path === "app.holo").bytes, {});
-  const admitted = admitPublication((await (await fetch(new URL("app.json", at), { cache: "no-store" })).json()).attestations?.build?.id, kernel.identities?.archiveFingerprint, await kernel.acceptance());
+  const kernel = await (await import("./prism-code/src/index.mjs")).loadArchive(files.find((f) => f.path === "app.holo").bytes, {}), admitted = admitPublication((await (await fetch(new URL("app.json", at), { cache: "no-store" })).json()).attestations?.build?.id, kernel.identities?.archiveFingerprint, await kernel.acceptance());
   if (!admitted.ok) throw new Error(admitted.error);
   return files.sort((x, y) => (x.path < y.path ? -1 : 1));
 }
 async function publishTurn(chatId, appId, messages, userId, ref, intentId) {
-  const m = chatMachineOf(chatId);
-  messages.push({ id: userId + 1, role: "assistant", content: "", approvalState: "approved", commitHash: null, createdAt: now() });
-  const show = async (content) => {
-    messages[messages.length - 1] = { ...messages[messages.length - 1], content };
-    await saveMessages(chatId, messages);
-    emit("chat:response:chunk", { chatId, invocationRef: ref, messages });
-  };
-  const finish = () => {
-    publishChat(chatId, { phase: "finalizing", error: null, lastCompletion: { intentId, invocationRef: ref, outcome: "completed", updatedFiles: false, suppressAutoReview: true, targetAppId: appId } });
-    publishChat(chatId, { phase: "idle", invocationRef: null });
-    emit("chat:stream:end", { chatId });
-  };
-  const rules = await rulesOf(appId);
-  const refusal = !rules || !rules.spec ? "This app has no rules to build yet. Tell me what it decides, approve the rules, then say publish."
-    : rules.phase !== "proved" && rules.phase !== "published" ? (rules.phase === "checked" ? "Reply approve first: Lean proves the rules, then they are published on this device." : `The rules are ${rules.phase === "proving" ? "being proved by Lean; say publish when it is done" : "not checked yet; ask me to fix them"}.`)
-    : rules.facets && !rules.facets.ok ? `Publishing writes the whole model, and its facets are not projected yet: ${rules.facets.issue} Ask me to fix the app's prompt, then say publish.`
-    : null;
+  const m = chatMachineOf(chatId); messages.push({ id: userId + 1, role: "assistant", content: "", approvalState: "approved", commitHash: null, createdAt: now() });
+  const show = async (content) => { messages[messages.length - 1] = { ...messages[messages.length - 1], content }; await saveMessages(chatId, messages); emit("chat:response:chunk", { chatId, invocationRef: ref, messages }); };
+  const finish = () => { publishChat(chatId, { phase: "finalizing", error: null, lastCompletion: { intentId, invocationRef: ref, outcome: "completed", updatedFiles: false, suppressAutoReview: true, targetAppId: appId } }); publishChat(chatId, { phase: "idle", invocationRef: null }); emit("chat:stream:end", { chatId }); };
+  const rules = await rulesOf(appId), refusal = !rules || !rules.spec ? "This app has no rules to build yet. Tell me what it decides, approve the rules, then say publish." : rules.phase !== "proved" && rules.phase !== "published" ? (rules.phase === "checked" ? "Reply approve first: Lean proves the rules, then they are published on this device." : `The rules are ${rules.phase === "proving" ? "being proved by Lean; say publish when it is done" : "not checked yet; ask me to fix them"}.`) : rules.facets && !rules.facets.ok ? `Publishing writes the whole model, and its facets are not projected yet: ${rules.facets.issue} Ask me to fix the app's prompt, then say publish.` : null;
   if (refusal) { await show(refusal); return finish(); }
-  const row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "prism.application.publish", resource, outcome });
-  const head = `**Publishing ${rules.spec.title}** on this device, as a holo named by its contents. Nothing leaves this browser.`;
+  const row = (outcome, resource) => put("audit", Date.now() + ":publish:" + appId, { timestamp_millis: Date.now(), principal: "app:" + appId, operation: "prism.application.publish", resource, outcome }), head = `**Publishing ${rules.spec.title}** on this device, as a holo named by its contents. Nothing leaves this browser.`;
   await show(`${head}\n\nComposing the page and replaying the kernel's acceptance vectors.`);
   const out = await handlers.get("holo:publish")({ appId }).catch((e) => ({ decision: "Refuse", word: String((e && e.message) || e) }));
   if (!out.kappa) { await row("refused", rules.specKappa || ""); await show(`${head}\n\nNot published: ${out.word}`); return finish(); }
-  const next = await nextPhase(rules.phase, "publish");
-  const current = await saveRules(appId, { ...rules, phase: next === "published" ? next : rules.phase, publishedAs: out.url, publicationCurrent: true, build: { kappa: out.kappa } }, rules);
+  const next = await nextPhase(rules.phase, "publish"), current = await saveRules(appId, { ...rules, phase: next === "published" ? next : rules.phase, publishedAs: out.url, publicationCurrent: true, build: { kappa: out.kappa } }, rules);
   if (!current) { await row("stale", out.kappa); await show(`${head}\n\nThe holo was made from earlier rules, so the current rules are not marked published. Approve them, then say publish.`); return finish(); }
-  await row("granted", out.kappa);
-  const run = machineOf(appId);
+  await row("granted", out.kappa); const run = machineOf(appId);
   publish(appId, { phase: "ready", operation: null, url: { appUrl: out.url, originalUrl: out.url, mode: "local" }, previewReloadEpoch: run.state.previewReloadEpoch + 1 });
-  await show(`${head}\n\n**Published:** [open it](${out.url}) · holo \`${out.kappa}\`, ${Math.round(out.byteLength / 1024)} KB, in ${Math.max(1, Math.round(out.ms / 1000))} s.\n\nShare the file from Publish, under Download; anyone opens it in any browser with holo.html, which checks it byte for byte before it runs.`);
-  finish();
+  await show(`${head}\n\n**Published:** [open it](${out.url}) · holo \`${out.kappa}\`, ${Math.round(out.byteLength / 1024)} KB, in ${Math.max(1, Math.round(out.ms / 1000))} s.\n\nShare the file from Publish, under Download; anyone opens it in any browser with holo.html, which checks it byte for byte before it runs.`); finish();
 }
 window.__prism = { rulesAfterTurn: afterTurn, approveRules: approve, rulesOf, appStateOf, nextPhase, check: prism.checkSpec };
 
@@ -1884,7 +1605,7 @@ window.electron = { ipcRenderer: { invokeEnvelope: (channel, ...args) => dispatc
   history.replaceState(null, "", new URL(document.baseURI).pathname + "chat?id=" + created.chatId + "&appId=" + created.app.id); dispatchEvent(new PopStateEvent("popstate"));
 })();
 window.__gallery = Object.freeze({read: appId => readGallery(dbReady, appId)});
-window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, getTelemetrySnapshot: () => r4Runtime.getTelemetrySnapshot(), onTelemetry: (cb) => r4Runtime.onTelemetry(cb), getNetworkMode: () => r4Runtime.getNetworkMode(), setNetworkMode: (m) => r4Runtime.setNetworkMode(m), getRelayUrl: () => r4Runtime.getRelayUrl(), setRelayUrl: (u) => r4Runtime.setRelayUrl(u), gitAction: (op, a) => r4Runtime.gitAction(op, a), getModelTier: () => r4Runtime.getModelTier(), setModelTier: (m) => r4Runtime.setModelTier(m), authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
+window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, DEFAULT_SPIRALCORE_RELAY_WS_URL, hasGithubToken: async () => r4Runtime.hasGithubToken(), getTelemetrySnapshot: () => r4Runtime.getTelemetrySnapshot(), onTelemetry: (cb) => r4Runtime.onTelemetry(cb), getNetworkMode: () => r4Runtime.getNetworkMode(), setNetworkMode: (m) => r4Runtime.setNetworkMode(m), getRelayUrl: () => r4Runtime.getRelayUrl(), setRelayUrl: (u) => r4Runtime.setRelayUrl(u), gitAction: (op, a) => r4Runtime.gitAction(op, a), getModelTier: () => r4Runtime.getModelTier(), setModelTier: (m) => r4Runtime.setModelTier(m), authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
 if ("serviceWorker" in navigator) {
   const drawnByWorker = !!navigator.serviceWorker.controller; let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (drawnByWorker && !reloading) { reloading = true; location.reload(); } });
@@ -1892,35 +1613,13 @@ if ("serviceWorker" in navigator) {
   const idle = (fn) => (self.requestIdleCallback ? requestIdleCallback(fn, { timeout: 10000 }) : setTimeout(fn, 3000));
   addEventListener("load", () => idle(() => navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage("fill")).catch(() => {})), { once: true });
 }
-addEventListener("vite:preloadError", (event) => { const key = "holo.chunk.reloaded"; if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); event.preventDefault(); location.reload(); });
+addEventListener("vite:preloadError", (event) => { const key = "holo.chunk.reloaded"; if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); event.preventDefault(); location.reload(); } });
 addEventListener("load", () => setTimeout(() => sessionStorage.removeItem("holo.chunk.reloaded"), 10000), { once: true });
-(async () => {
-  await coreReady;
-  for (const key of await keys("refs")) { if (typeof key !== "string" || !key.startsWith("capabilities:portable-")) continue; const record = await get("refs", key); if (record?.previewConsent?.purpose === "portable-build" && (!Number.isFinite(record.previewConsent.expires) || Date.now() >= record.previewConsent.expires)) { const id = key.slice(13); await del("refs", key); await (await caches.open("previews")).delete(new URL("p/" + id + "/index.html", BASE).pathname); } }
-  for (const ref of await installed()) { const id = core.run({ op: "holo-path", kappa: ref.kappa }).path.split("/").filter(Boolean).pop(); if (!(await get("refs", "capabilities:" + id))) await put("refs", "capabilities:" + id, { serve: true, network: { endpoints: [], denied: [] } }); }
-})().catch(() => {});
-(async () => {
-  const key = "holo.closure.reloaded";
-  try {
-    const running = ((await caches.keys()).find((n) => n.startsWith("shell-")) || "").slice("shell-".length), published = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure;
-    if (!running || !published || running === published) return void sessionStorage.removeItem(key);
-    if (sessionStorage.getItem(key) === published) return void console.warn("[host] this page runs shell", running.slice(0, 12), "while", published.slice(0, 12), "is published; the worker could not take over");
-    sessionStorage.setItem(key, published); console.warn("[host] a newer shell is published; reloading once", running.slice(0, 12), "->", published.slice(0, 12)); location.reload();
-  } catch (e) {}
-})();
+(async () => { await coreReady; for (const key of await keys("refs")) { if (typeof key !== "string" || !key.startsWith("capabilities:portable-")) continue; const record = await get("refs", key); if (record?.previewConsent?.purpose === "portable-build" && (!Number.isFinite(record.previewConsent.expires) || Date.now() >= record.previewConsent.expires)) { const id = key.slice(13); await del("refs", key); await (await caches.open("previews")).delete(new URL("p/" + id + "/index.html", BASE).pathname); } } for (const ref of await installed()) { const id = core.run({ op: "holo-path", kappa: ref.kappa }).path.split("/").filter(Boolean).pop(); if (!(await get("refs", "capabilities:" + id))) await put("refs", "capabilities:" + id, { serve: true, network: { endpoints: [], denied: [] } }); } })().catch(() => {});
+(async () => { const key = "holo.closure.reloaded"; try { const running = ((await caches.keys()).find((n) => n.startsWith("shell-")) || "").slice("shell-".length), published = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure; if (!running || !published || running === published) return void sessionStorage.removeItem(key); if (sessionStorage.getItem(key) === published) return void console.warn("[host] this page runs shell", running.slice(0, 12), "while", published.slice(0, 12), "is published; the worker could not take over"); sessionStorage.setItem(key, published); console.warn("[host] a newer shell is published; reloading once", running.slice(0, 12), "->", published.slice(0, 12)); location.reload(); } catch (e) {} })();
 mountInteractionApplications({ create: input => handlers.get("forge:interaction-create")(input), list: async () => { const apps = []; for (const app of await all("apps")) if (await get("files", app.id + ":prism/interaction.json") !== undefined) apps.push(app); return apps; }, run: input => handlers.get("forge:interaction-run")(input), probe: input => executeInteraction(kernelReady, input) });
 mountApplicationDiscovery({discover:input=>handlers.get("forge:discover")(input),accept:input=>handlers.get("forge:discovery-create")(input),open:appId=>openInteractionApplication(appId,{run:input=>handlers.get("forge:interaction-run")(input),probe:input=>executeInteraction(kernelReady,input)})});
-(function mountR4StudioWorkspace() {
-  const mk = (t, a = {}, txt = "") => { const n = document.createElement(t); for (const [k, v] of Object.entries(a)) n.setAttribute(k, v); if (txt) n.textContent = txt; return n; }, okPath = (p) => typeof p === "string" && p.length > 0 && !/[\\\u0000-\u001f:]/.test(p) && p.split("/").every((s) => s && s !== "." && s !== "..");
-  const panel = mk("section", { id: "foundry-lexlean-workspace", "aria-label": "LexLean-R4 Studio and IDE", hidden: "" }), bar = mk("div", { id: "foundry-lexlean-bar" }), status = mk("span", { id: "foundry-lexlean-status" }, "Idle"), appSel = mk("select", { id: "foundry-lexlean-apps", "aria-label": "Foundry app" }), modeSel = mk("select", { id: "foundry-lexlean-mode", "aria-label": "Runtime surface" }), syncBtn = mk("button", { id: "foundry-lexlean-sync", type: "button" }, "Sync App → IDE"), applyBtn = mk("button", { id: "foundry-lexlean-apply", type: "button" }, "Apply IDE → App"), closeBtn = mk("button", { id: "foundry-lexlean-close", type: "button" }, "Back to Foundry"), frame = mk("iframe", { id: "foundry-lexlean-frame", title: "LexLean-R4 Studio and IDE", allow: "cross-origin-isolated" }), launch = mk("button", { id: "foundry-lexlean-launch", type: "button", title: "Open LexLean-R4 Studio & IDE" }, "Studio & IDE");
-  modeSel.append(mk("option", { value: "live" }, "Studio + IDE (Live)"), mk("option", { value: "holo" }, "Verified .holo Sandbox")); bar.append(mk("strong", {}, "LexLean-R4 Studio & IDE"), status, appSel, modeSel, syncBtn, applyBtn, closeBtn); panel.append(bar, frame); document.body.append(panel, launch);
-  let loadedMode = "", syncedLoad = false; const waiters = new Map();
-  const refreshApps = async () => { const prev = appSel.value, apps = (await all("apps").catch(() => [])).sort((a, b) => Number(b.id) - Number(a.id)), q = new URLSearchParams(location.search), uid = q.get("id") || q.get("appId"); appSel.innerHTML = ""; appSel.append(mk("option", { value: "" }, "+ New Foundry app from IDE")); for (const a of apps) appSel.append(mk("option", { value: String(a.id) }, `${a.name} (#${a.id})`)); appSel.value = prev && [...appSel.options].some((o) => o.value === prev) ? prev : (uid && [...appSel.options].some((o) => o.value === uid) ? uid : (apps[0] ? String(apps[0].id) : "")); };
-  const syncAppToIde = async () => { if (!appSel.value || !frame.contentWindow) { status.textContent = appSel.value ? "Frame not ready" : "Select an app or edit starter workspace"; return; } const appId = Number(appSel.value), app = await get("apps", appId), list = await filesOf(appId), files = {}; for (const p of list) files[p] = String((await get("files", appId + ":" + p)) ?? ""); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "sync-foundry-files", projectName: app?.name || `app-${appId}`, layout: "studio", replace: true, files }, "*"); status.textContent = `Synced ${list.length} files from ${app?.name || appId} → IDE`; };
-  const applyIdeToApp = async () => { if (!frame.contentWindow) return; status.textContent = "Exporting workspace from IDE…"; const requestId = crypto.randomUUID(), exported = await new Promise((resolve, reject) => { const t = setTimeout(() => { waiters.delete(requestId); reject(new Error("Timed out reading workspace from IDE")); }, 8000); waiters.set(requestId, (msg) => { clearTimeout(t); resolve(msg); }); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "export-foundry-files", requestId }, "*"); }), incoming = Object.entries(exported.files || {}).filter(([p, c]) => okPath(p) && typeof c === "string"); if (!incoming.length) return void (status.textContent = "No portable workspace files to apply"); await coreReady; if (!appSel.value) { const name = "r4-studio-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(8, 14), merged = { ...(await loadScaffold()), ...Object.fromEntries(incoming) }, prepared = await prepareNewProject({ name, initialChatMode: "build", files: merged }, { core, derive: kappa }), created = await createStoredProject(await dbReady, prepared, nulls, themesData); emit("version-created", { appId: created.app.id, oid: created.oid }); await refreshApps(); appSel.value = String(created.app.id); status.textContent = `Created Foundry app ${name} (${incoming.length} files)`; } else { const appId = Number(appSel.value), source = await captureProjectSource(await dbReady, appId), next = Object.fromEntries(source.files), changed = []; for (const [p, c] of incoming) if (next[p] !== c) { next[p] = c; changed.push(p); } if (!changed.length) return void (status.textContent = "Foundry app already matches IDE"); const prepared = await prepareExistingProject({ name: source.name, files: next }, { core, derive: kappa }, source.reference), oid = await commitPreparedProject(await dbReady, appId, changed, source, prepared); emit("version-created", { appId, oid }); status.textContent = `Applied ${changed.length} updated file(s) → ${source.name}`; } };
-  const loadSurface = async () => { const pin = await r4StudioPin(), mode = modeSel.value; loadedMode = mode; syncedLoad = false; status.textContent = mode === "holo" ? "Verifying local .holo sandbox…" : "Connecting to LexLean-R4 Studio & IDE…"; if (mode === "holo") { await coreReady; await ensureR4Studio(); frame.src = new URL(core.run({ op: "holo-path", kappa: pin.archiveKappa }).path.replace(/^\//, "") + "#studio", BASE).href; } else frame.src = `${pin.liveUrl}?embed=foundry&mode=studio#studio`; }, openR4 = async () => { panel.hidden = false; await refreshApps(); if (!loadedMode || loadedMode !== modeSel.value) await loadSurface(); else status.textContent = "Connected to LexLean-R4 Studio & IDE"; }, closeR4 = () => { panel.hidden = true; frame.src = "about:blank"; loadedMode = ""; }, onErr = (e) => { status.textContent = String(e?.message || e); };
-  launch.addEventListener("click", () => void openR4().catch(onErr)); closeBtn.addEventListener("click", closeR4); modeSel.addEventListener("change", () => void loadSurface().catch(onErr)); syncBtn.addEventListener("click", () => void syncAppToIde().catch(onErr)); applyBtn.addEventListener("click", () => void applyIdeToApp().catch(onErr));
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closeR4(); }); window.addEventListener("foundry:r4-studio", () => void openR4().catch(onErr)); document.addEventListener("click", (e) => { const a = e.target?.closest?.("a[href]"); if (a && String(a.getAttribute("href")).includes("?r4=studio")) { e.preventDefault(); void openR4(); } }, true);
-  window.addEventListener("message", (e) => { const d = e.data; if (!d || d.protocol !== "uor-workspace-bridge/1") return; if (d.type === "uor-workspace-bridge/1:ready" || d.type === "uor-workspace-bridge/1:status") { status.textContent = `Connected · ${d.model || d.selectedModel || "Qwen3"} (${d.workspaceFileCount ?? 0} files)`; if (!syncedLoad && appSel.value && d.type === "uor-workspace-bridge/1:ready") { syncedLoad = true; void syncAppToIde().catch(() => {}); } } else if (d.type === "uor-workspace-bridge/1:files-synced") status.textContent = `Synced ${d.fileCount || 0} files → IDE`; else if (d.type === "uor-workspace-bridge/1:files-exported" && d.requestId && waiters.has(d.requestId)) { const w = waiters.get(d.requestId); waiters.delete(d.requestId); w(d); } });
-  window.__host.r4Studio.open = openR4; if (window.self === window.top && new URLSearchParams(location.search).get("r4") === "studio") void openR4();
-})();
+const selectR4Studio = () => handlers.get("set-user-settings")({ selectedModel: { provider: "local", name: INPRISM_MODEL } }).catch(() => {});
+if (window.self === window.top && new URLSearchParams(location.search).get("r4") === "studio") r4Init = selectR4Studio();
+window.addEventListener("foundry:r4-studio", () => void selectR4Studio());
+document.addEventListener("click", (e) => { const a = e.target?.closest?.("a[href]"); if (a && String(a.getAttribute("href")).includes("?r4=studio")) { e.preventDefault(); window.dispatchEvent(new CustomEvent("foundry:r4-studio", { detail: "link" })); } }, true);

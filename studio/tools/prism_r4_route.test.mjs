@@ -177,3 +177,68 @@ test("FA-96: post-consent ask errors propagate cleanly, modelTier verifies activ
   const { rt: rtTmr, stores: stTmr } = loadHostR4Runtime({ deps: { rpcTimeoutMs: 40 }, onWorkerMessage(msg, w) { if (msg.op === "mvm_sync_workspace_in") return ack(w, msg); if (msg.op === "inprism_r4_turn") { setTimeout(() => w.dispatchEvent(new MessageEvent("message", { data: { event: "chat_chunk", delta: "a" } })), 25); setTimeout(() => w.dispatchEvent(new MessageEvent("message", { data: { event: "chat_chunk", delta: "b" } })), 50); setTimeout(() => ack(w, msg, { reply: "ab", weights_kappa: pin.qwen3WeightsKappa }), 70); } } });
   stTmr.refs.set("capabilities:r4:weights-download", { outcome: "granted" }); assert.equal((await rtTmr.ask(["stream"], new AbortController().signal, { appId: 1, projectSource: { files: [] } })).reply, "ab");
 });
+test("FA-97: #foundry-lexlean-* overlay is removed and ?r4=studio + Featured Card #1 natively select r4:lexlean-r4", () => {
+  const css = fs.readFileSync(new URL("appearance.css", shell), "utf8"), picker = fs.readFileSync(new URL("../vendor/prism/hologram.ModelPicker.tsx", import.meta.url), "utf8"), feat = fs.readFileSync(new URL("../vendor/prism/hologram.screens/FeaturedAppShowcase.tsx", import.meta.url), "utf8");
+  for (const dead of ["foundry-lexlean-workspace", "foundry-lexlean-bar", "foundry-lexlean-frame", "foundry-lexlean-launch", "mountR4StudioWorkspace"]) assert.ok(!host.includes(dead) && !css.includes(dead), dead);
+  assert.ok(host.includes('get("r4") === "studio"') && host.includes("INPRISM_MODEL") && picker.includes("foundry:r4-studio") && picker.includes("r4:lexlean-r4") && feat.includes("foundry:r4-studio"));
+});
+const prismDir = new URL("../vendor/prism/", import.meta.url);
+async function readPatchedScreen(rel) {
+  const raw = fs.readFileSync(new URL(rel, prismDir), "utf8");
+  if (fs.existsSync(new URL("node_modules/typescript", prismDir))) { const { screenSource } = await import("../vendor/prism/hologram.screens.mjs"); return screenSource(new URL(rel, prismDir).pathname, raw); }
+  const { NO_REMOTE_MODEL_PATCHES } = await import("../vendor/prism/hologram.no-remote-model.mjs");
+  const { LEAN } = await import("../vendor/prism/hologram.lean.mjs");
+  const rawScreens = fs.readFileSync(new URL("hologram.screens.mjs", prismDir), "utf8");
+  const src = rawScreens.slice(rawScreens.indexOf("const here")).replace(/^export (const|function) /gm, "$1 ").replace(/import\.meta\.url/g, '""');
+  const exp = vm.runInNewContext(`${src}; ({ SCREENS, PATCHES })`, { fs, path: await import("node:path"), fileURLToPath: () => new URL("hologram.screens.mjs", prismDir).pathname, ts: {}, privacySource: (_f, c) => c, LEAN, PREVIEW_AUTO_START_PATCHES: [], CHAT_MODE_PATCHES: [], INITIAL_THEME_PATCHES: [], PLAIN_CHAT_PATCHES: [], PENDING_MESSAGE_PATCHES: [], NO_REMOTE_MODEL_PATCHES });
+  if (exp.SCREENS[rel]) return fs.readFileSync(new URL(exp.SCREENS[rel], prismDir), "utf8");
+  let out = raw.replace(/\r\n/g, "\n");
+  for (const p of exp.PATCHES) if (p.file === rel && p.from) { assert.ok(out.includes(p.from), p.file); out = out.replace(p.from, p.to); }
+  return out;
+}
+test("FA-97: PreviewToolbar & PreviewPanel expose Observatory tab with uor-observatory/1 ready/theme/telemetry handshake", async () => {
+  const atoms = await readPatchedScreen("src/atoms/appAtoms.ts"), tb = await readPatchedScreen("src/components/preview_panel/PreviewToolbar.tsx"), panel = await readPatchedScreen("src/components/preview_panel/PreviewPanel.tsx");
+  assert.ok(atoms.includes('"observatory"') && tb.includes('"observatory"') && tb.includes("observatory-mode-button") && tb.includes('"Observatory"') && tb.includes("@/components/ui/button") && /min-h-(?:11|\[44px\])/.test(tb));
+  for (const tok of ['previewMode === "observatory"', "<iframe", "holo/", "?surface=observatory", 'sandbox="allow-scripts"', "ev.source ===", "uor-observatory/1", 'op === "ready"', 'op: "theme"', "--background", "--card", "--foreground", "--border", "--font-sans", "--font-mono", 'op: "telemetry"', "onTelemetry", "getTelemetrySnapshot"]) assert.ok(panel.includes(tok), tok);
+});
+test("FA-97: TerminalPanel Network Mode pill, Settings SpiralCore Relay URL, and GitHub personal token gitAction publishing with zero API key copy", async () => {
+  const term = await readPatchedScreen("src/components/chat/TerminalPanel.tsx"), settings = await readPatchedScreen("src/pages/settings.tsx"), idx = await readPatchedScreen("src/lib/settingsSearchIndex.ts"), ghConn = await readPatchedScreen("src/components/GitHubConnector.tsx"), ghInt = fs.readFileSync(new URL("../vendor/prism/hologram.GitHubIntegration.tsx", import.meta.url), "utf8");
+  for (const tok of ["prism-network-mode-pill", "getNetworkMode", "setNetworkMode", "Sandboxed", "Full SpiralCore Internet"]) assert.ok(term.includes(tok), tok);
+  for (const tok of ["SpiralCore Relay URL", "DEFAULT_SPIRALCORE_RELAY_WS_URL", "setRelayUrl"]) assert.ok(settings.includes(tok) || ghInt.includes(tok), tok);
+  assert.ok(idx.includes("SpiralCore Relay URL") && ghInt.includes("GitHub personal token") && ghConn.includes("GitHub personal token"));
+  for (const op of ["clone", "branch", "commit", "push", "pr"]) assert.ok(ghConn.includes(`"${op}"`) || ghInt.includes(`"${op}"`), op);
+  assert.ok(ghConn.includes("gitAction") && !/API key/i.test(settings + idx + ghConn + ghInt) && !host.includes("github:list-repos") && !host.includes("github:list-remote-branches"));
+  const seenOps = [], { rt, stores } = loadHostR4Runtime({ onWorkerMessage(msg, w) { seenOps.push(msg); return ack(w, msg, { ok: true, url: "https://github.com/o/r/pull/1" }); } });
+  stores.files.set("1:src/App.tsx", "export default 1;"); stores.files.set("1:data.db", "SQLite"); stores.files.set("1:.git/HEAD", "ref");
+  assert.equal(rt.hasGithubToken(), false);
+  await rt.gitAction("set_secret", { key: "GITHUB_TOKEN", value: "tok" }); assert.equal(rt.hasGithubToken(), true);
+  assert.equal((await rt.gitAction("pr", { appId: 1, repo: "o/r" })).url, "https://github.com/o/r/pull/1");
+  assert.equal(seenOps.find((m) => m.op === "host_bridge_exec")?.payload?.subcommand, "create_pr");
+  await rt.gitAction("commit", { appId: 1, repo: "o/r", message: "m" });
+  const commitMsg = seenOps.find((m) => m.op === "host_bridge_exec" && m.payload?.subcommand === "commit");
+  assert.deepEqual(structuredClone(commitMsg?.payload?.files), [{ path: "src/App.tsx", content: "export default 1;" }]);
+  const { rt: rtReload } = loadHostR4Runtime({ stores }); assert.equal(rtReload.hasGithubToken(), false);
+  await rt.gitAction("set_secret", { key: "GITHUB_TOKEN", value: "" }); assert.equal(rt.hasGithubToken(), false);
+});
+test("FA-97 round-1 behavioral: async pin ObservatoryView handshake, commit/PAT rigor, Theater invalidation, browser & vendoring docs", async () => {
+  const { stripTypeScriptTypes } = await import("node:module");
+  const panel = await readPatchedScreen("src/components/preview_panel/PreviewPanel.tsx"), gh = fs.readFileSync(new URL("../vendor/prism/hologram.GitHubIntegration.tsx", import.meta.url), "utf8"), feat = fs.readFileSync(new URL("../vendor/prism/hologram.screens/FeaturedAppShowcase.tsx", import.meta.url), "utf8"), vend = fs.readFileSync(new URL("../vendor/prism/VENDORED.md", import.meta.url), "utf8"), noRem = fs.readFileSync(new URL("no_remote_provider_browser.mjs", import.meta.url), "utf8");
+  assert.ok(host.includes('replace(/<\\/script/gi, "<\\\\/script")') || host.includes("replace(/<\\/script/gi"), "ensureR4Studio escapes </script");
+  assert.ok(!panel.includes("184f752237080e746be63d57521620c578009aa24154d981f20c3f222acce33e") && panel.includes("encodeURIComponent"), "ObservatoryView must resolve archiveKappa dynamically without hardcoded fallback");
+  const obsCode = stripTypeScriptTypes(panel.slice(panel.indexOf("function ObservatoryView()"), panel.indexOf("// Console header component")).replace(/return src \?[^\n]+;/, "return src;"));
+  let stateSrc = null, effects = [], listeners = [], teleCb = null; const posted = [], obsWin = { postMessage: (m) => posted.push(m) }, fakeFrame = { contentWindow: obsWin };
+  const reactEnv = { useState: (init) => [stateSrc, (v) => { stateSrc = typeof v === "function" ? v(stateSrc) : v; }], useRef: (init) => ({ current: init === null ? fakeFrame : init }), useEffect: (fn) => effects.push(fn) };
+  const mockR4 = { pin: async () => ({ archiveKappa: "blake3:deadbeef" }), ensure: async () => {}, getTelemetrySnapshot: () => ({ tokens_emitted: 7 }), onTelemetry: (cb) => { teleCb = cb; return () => { teleCb = null; }; } };
+  const fn = vm.runInNewContext(`${obsCode.replace(/import\.meta\.env\.BASE_URL/g, '"/foundry/"')};ObservatoryView`, { ...reactEnv, window: { __host: { r4Studio: mockR4 }, addEventListener: (_t, cb) => listeners.push(cb), removeEventListener: (_t, cb) => { listeners = listeners.filter((x) => x !== cb); } }, document: { documentElement: {} }, getComputedStyle: () => ({ getPropertyValue: (k) => "v:" + k }), MutationObserver: class { observe() {} disconnect() {} } });
+  assert.equal(fn(), null); const cleanup = effects[0](); await new Promise((r) => setTimeout(r, 0));
+  assert.equal(stateSrc, "/foundry/holo/blake3%3Adeadbeef/?surface=observatory");
+  listeners[0]({ source: {}, data: { protocol: "uor-observatory/1", op: "ready" } }); assert.equal(posted.length, 0);
+  listeners[0]({ source: obsWin, data: { protocol: "uor-observatory/1", op: "ready" } });
+  assert.deepEqual(posted.map((m) => m.op), ["theme", "telemetry"]); assert.equal(posted[0].vars["--background"], "v:--background"); assert.equal(posted[1].snapshot.tokens_emitted, 7);
+  teleCb({ tokens_emitted: 11 }); assert.equal(posted[2].snapshot.tokens_emitted, 11);
+  cleanup(); assert.equal(teleCb, null); effects[0](); teleCb({ tokens_emitted: 99 }); assert.equal(posted.length, 3);
+  assert.ok(!/catch\s*\{\s*\}|catch\s*\(\)\s*=>\s*null/.test(gh.slice(gh.indexOf("api.github.com/user") - 20, gh.indexOf("set_secret") + 20)) && gh.includes("!res.ok"), "saveToken must validate api.github.com/user");
+  for (const tok of ["res?.message", "html_url", "pr_url", "feat/foundry-app"]) assert.ok(gh.includes(tok), tok);
+  assert.ok(!gh.includes('useState(app?.githubBranch || "main")') && !gh.includes("githubAccessToken: undefined"));
+  assert.ok(/invalidateQueries[\s\S]*navigate\(\{\s*to:\s*"\/"\s*\}\)/.test(feat) && vend.includes("GitHubConnector.tsx") && vend.includes("ObservatoryView") && noRem.includes("SpiralCore Relay URL") && noRem.includes("GitHub personal token"));
+});

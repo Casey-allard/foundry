@@ -180,7 +180,7 @@ async function serveHolo(request, path) {
   }
   const slash = rest.indexOf("/");
   if (slash < 0) return Response.redirect(request.url + "/", 302);
-  const id = rest.slice(0, slash);
+  let id; try { id = decodeURIComponent(rest.slice(0, slash)); } catch { return new Response("invalid application id", { status: 400 }); }
   let file = rest.slice(slash + 1) || "index.html";
   if (file.endsWith("/")) file += "index.html";
   const cache = await caches.open("holo");

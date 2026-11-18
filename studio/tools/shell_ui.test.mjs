@@ -190,3 +190,12 @@ test("R4 weights download and SpiralCore internet access share the native dialog
   assert.ok(/deny\.autofocus\s*=\s*true/.test(preview) && /dialog\.append\(deny,\s*allow\)/.test(preview));
 });
 
+test("FA-97: unified studio removes #foundry-lexlean-* rules and keeps zero raw hex colors or API key copy", () => {
+  for (const dead of ["#foundry-lexlean-launch", "#foundry-lexlean-workspace", "#foundry-lexlean-bar", "#foundry-lexlean-frame"]) assert.equal(css.includes(dead), false, dead);
+  for (const rel of ["../vendor/prism/hologram.GitHubIntegration.tsx", "../vendor/prism/hologram.ModelPicker.tsx", "../vendor/prism/hologram.screens.mjs"]) {
+    const src = read(rel);
+    assert.equal(/#[0-9a-fA-F]{3,8}\b/.test(src), false, rel + " introduces raw hex color");
+    assert.equal(/API key/i.test(src.replace(/api key/g, (m, off) => src.slice(Math.max(0, off - 40), off + 20).includes("hologram.no-remote-model") || rel.endsWith("screens.mjs") ? "" : m)), false, rel + " introduces API key copy");
+  }
+});
+

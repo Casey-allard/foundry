@@ -93,7 +93,7 @@ const unusedImports = new Set([
   "@/hooks/useAppThumbnails", "@/lib/sortApps",
   "../../hologram.featured-apps.mjs",
   // Theater's: the row plays and edits apps, which Card and Keep never reach.
-  ...["jotai", "@/atoms/chatAtoms", "@/hooks/useRunApp", "@/hooks/useAppRun", "@/components/ui/button", "@/lib/utils"],
+  ...["jotai", "@tanstack/react-query", "@/atoms/chatAtoms", "@/hooks/useRunApp", "@/hooks/useAppRun", "@/hooks/useSettings", "@/lib/queryKeys", "@/components/ui/button", "@/lib/utils"],
 ]);
 vm.runInNewContext(
   compiled.outputText,
