@@ -410,6 +410,7 @@ model does not sanction.
 | ID | Level | Statement |
 | --- | --- | --- |
 | `FA-87` | `build` | A chat turn is answered only by Foundry's own model in Prism, and Prism R4 refuses every route to another model before the request leaves the tab |
+| `FA-95` | `build` | LexLean-R4 bundles a content-addressed archive verified locally under dual weights pins, lazy shell caching, and queued consent dialogs persisted to refs and audit |
 
 ## private-workspace
 

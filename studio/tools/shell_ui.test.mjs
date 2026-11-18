@@ -175,3 +175,18 @@ test("each approval explains why, then how, then what, in plain words, and still
   for (const source of [preview]) for (const word of ["UTF-8", "module prefixes", "Credential:", "bounded retries", "aborts", "executes generated code"]) assert.equal(source.includes(word), false, word);
 });
 
+test("R4 weights download and SpiralCore internet access share the native dialog contract (FA-95)", () => {
+  const preview = read("../shell/preview-permissions.mjs");
+  assert.equal((preview.match(/element\(document,\s*["']dialog["']/g) || []).length, 1, "dialogs must share one parameterized native <dialog> helper");
+  for (const [label, allow, detail] of [
+    ["Review R4 model weights download", "Allow download", "~410 MiB"],
+    ["Review SpiralCore internet access", "Allow Full SpiralCore Internet", "Full SpiralCore Internet"],
+  ]) {
+    assert.ok(preview.includes(label), label);
+    assert.ok(preview.includes(detail), detail);
+    const deny = preview.search(/Don't allow/), ok = preview.lastIndexOf(allow);
+    assert.ok(deny > 0 && ok > deny, label + ": Don't allow precedes allow button");
+  }
+  assert.ok(/deny\.autofocus\s*=\s*true/.test(preview) && /dialog\.append\(deny,\s*allow\)/.test(preview));
+});
+

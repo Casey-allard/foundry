@@ -21,3 +21,14 @@ Planted defects, each refused, then restored:
 - Returning `weights: "match"` when `weightsState` is missing in `r4InprismFacts` (`studio/shell/r4.mjs`): test 6 fails (`REQ-005` refusal bypassed).
 
 The suites that read the host's text and were touched pass: `browser_telemetry_isolation`, `generation_patch`, `live_main_integration`, `notation_host_integration`, `read_only_chat_execution`.
+
+# FA-95 — Bundled `.holo`, dual weights pins & disclosure consent
+
+- Bundled artifact: `studio/shell/r4/0794a3dd255aaedd2e1e1be626326b45e36510fa2d1170265a19c52c76c4ceea.holo` (`12,762,112` bytes `<= 32 MiB`), pinned in `studio/shell/r4/lexlean-r4.json` alongside `qwen3WeightsKappa` (`sha256:1d0255929995725be144cb1787416880ffb073e0d153adf1a663abb636a0550a`) and `offlineQ31WeightsKappa` (`sha256:2d13022e5a2aec26f7e023bf7524277eb7f2bfa9b3eaad37fc35655cb1790176`).
+- Lazy caching: `studio/shell/sw.template.js` (`self.__shellLazy = (p) => /^r4\/.*\.holo$/.test(p)`) and `studio/shell/shell-cache.js` (`ShellClosure.verifyFile`) keep `r4/*.holo` out of first-paint install while retaining complete SHA-256 verification and the `<= 32 MiB`/file, `<= 128 MiB` closure bounds (`studio/shell/manifest.json` projects 191 files, `28,519,555` bytes).
+- Consent gates: `studio/shell/preview-permissions.mjs` shares one parameterized `makeDialog` + `askReviewDialog` native `<dialog>` helper across `"Review preview permissions"`, `"Review R4 model weights download"`, and `"Review SpiralCore internet access"`, persisting outcomes to IndexedDB `refs` + `audit`.
+
+Planted defects, each refused, then restored:
+
+- Returning `weights: "match"` unconditionally for non-missing weights in `r4InprismFacts` (`studio/shell/r4.mjs`): `node --test studio/tools/prism_r4_route.test.mjs` fails test 6 (`AssertionError [ERR_ASSERTION]: unpinned`, `'answer' !== 'refuse'`) and `cargo test --locked -p repo-conformance --test prism_r4_route` fails both `prism_r4_route_fa_87` and `prism_r4_route_fa_95`.
+- Appending `allow` before `deny` in `askReviewDialog` (`studio/shell/preview-permissions.mjs`): `node --test studio/tools/shell_ui.test.mjs` fails test 9 (`R4 weights download and SpiralCore internet access share the native dialog contract (FA-95)`).

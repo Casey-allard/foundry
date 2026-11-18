@@ -885,3 +885,9 @@ id = "FA-94"
 level = "build"
 suite = "private-workspace"
 statement = "Foundry's Prism kernel decides each record another device of the visitor's Prism ID sends: the newer copy wins, a tie goes the same way on both devices so they converge, and nothing unauthentic, misplaced, device-local or over quota enters"
+
+[[id]]
+id = "FA-95"
+level = "build"
+suite = "prism-r4-route"
+statement = "LexLean-R4 bundles a content-addressed archive verified locally under dual weights pins, lazy shell caching, and queued consent dialogs persisted to refs and audit"

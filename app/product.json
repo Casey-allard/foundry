@@ -617,7 +617,8 @@
       "text": "Prism R4 decides every answer: only the model in Prism, from weights read back by their address, answers, and no route leaves the tab.",
       "ids": [
         "FA-81",
-        "FA-87"
+        "FA-87",
+        "FA-95"
       ],
       "calls": [
         "PrismR4::r4Judge",

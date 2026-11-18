@@ -29,7 +29,7 @@ import { renameStoredProject, restoreStoredProject, deleteStoredProject, deleteS
 import * as inference from "./inference.js"; import { r4Decide, r4InprismFacts, r4Refusal, r4Request, r4Spec, r4StudioPin } from "./r4.mjs"; import { viewReady } from "./inference.js";
 import { inspect, install, installed, stored, encodeView, b64, unb64, sha256 } from "./holo.js"; import { admitPublication } from "./publication-identity.mjs"; import * as prism from "./prism.js"; import * as live from "./live/project.mjs"; import * as lexlean from "./live/lexlean.mjs";
 import { canonicalEditPath, planCanonicalEdit } from "./canonical-edits.mjs"; import {applicationShape, activeApplicationModule, retiredApplicationPaths, boundApplicationState, shapeFailure} from './application-shape.mjs';
-import { executeInteraction } from "./interaction-codec.mjs"; import { copyEventCommand, readEventJournal, updateEventJournal } from "./event-delivery.mjs"; import { authorizePreview, commitPreviewPermission, previewPermissionFailure, mountPreviewPermissions } from "./preview-permissions.mjs";
+import { executeInteraction } from "./interaction-codec.mjs"; import { copyEventCommand, readEventJournal, updateEventJournal } from "./event-delivery.mjs"; import { authorizePreview, commitPreviewPermission, previewPermissionFailure, mountPreviewPermissions, authorizeR4WeightsDownload, authorizeSpiralCoreInternet, commitR4Consent } from "./preview-permissions.mjs";
 import { copyGenerationInput, assertCanonicalGeneration } from "./canonical-generation.mjs"; import * as appShape from "./live/app.mjs"; import { frameHtml, FONTS } from "./live/frame-html.mjs"; import { applyOps, createEditor, PatchError } from "./live/edit.mjs";
 import * as covers from "./covers.mjs"; import { createProbe, K } from "./telemetry/probe.mjs"; import {publishGallery, readGallery, galleryFailure} from "./gallery-store.mjs";
 
@@ -152,29 +152,32 @@ handlers.set("get-language-model-providers", () => [LOCAL]);
 handlers.set("get-language-models", ({ providerId }) => (providerId === "local" ? LOCAL_MODELS : []));
 handlers.set("get-language-models-by-providers", () => ({ local: LOCAL_MODELS }));
 let r4Worker = null, r4WasmSha = null, r4Boot = null, r4HoloModel = "";
+async function fetchLocalHolo(pin, signal) {
+  for (const src of [pin.holoFile && new URL("./r4/" + pin.holoFile, BASE), pin.holoFingerprintUrl].filter(Boolean)) { try { const r = await fetch(src, { signal }); if (r.ok) return new Uint8Array(await r.arrayBuffer()); } catch (e) { if (signal?.aborted) throw e; } }
+  throw new Error("Failed to fetch LexLean-R4 .holo");
+}
 async function ensureR4Studio(signal) {
   if (r4Worker) return;
   return (r4Boot ??= (async () => {
     const pin = await r4StudioPin(); let bytes = (await installed()).some((r) => r.kappa === pin.archiveKappa && r.fingerprint === pin.fingerprint) ? await stored(pin.archiveKappa) : null;
-    if (!bytes) { const r = await fetch(pin.holoUrl, { signal }); if (!r.ok) throw new Error("Failed to fetch LexLean-R4 .holo: " + r.status); const done = await install(bytes = new Uint8Array(await r.arrayBuffer()), { application: pin.application, version: pin.version }); if (done.kappa !== pin.archiveKappa || done.fingerprint !== pin.fingerprint) throw new Error("LexLean-R4 .holo archive pin mismatch"); }
+    if (!bytes) { const done = await install(bytes = await fetchLocalHolo(pin, signal), { application: pin.application, version: pin.version }); if (done.kappa !== pin.archiveKappa || done.fingerprint !== pin.fingerprint) throw new Error("LexLean-R4 .holo archive pin mismatch"); }
     const info = await inspect(bytes), wf = info.view.files.find((f) => f.path === "lexlean_r4_bg.wasm"), jf = info.view.files.find((f) => f.path === "lexlean_r4.js"); if (!wf || !jf) throw new Error("LexLean-R4 .holo missing Wasm runtime");
-    const wasmSha = await sha256(wf.bytes); if (wasmSha !== pin.wasmSha256) throw new Error("LexLean-R4 Wasm pin mismatch"); await put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: wasmSha, archiveKappa: pin.archiveKappa });
+    const wasmSha = await sha256(wf.bytes); if (wasmSha !== pin.wasmSha256) throw new Error("LexLean-R4 Wasm pin mismatch");
+    const prevW = await get("refs", "r4:weights:" + pin.archiveKappa); await put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: wasmSha, archiveKappa: pin.archiveKappa, weightsKappa: prevW?.weightsKappa || pin.offlineQ31WeightsKappa, family: prevW?.family || "offlineQ31" });
     const wasmUrl = URL.createObjectURL(new Blob([wf.bytes], { type: "application/wasm" })), jsSrc = dec.decode(jf.bytes).replaceAll("import.meta" + ".url", JSON.stringify(pin.liveUrl)).replace("await __wbg_init();", "await __wbg_init({ module_or_path: " + JSON.stringify(wasmUrl) + " });");
     r4WasmSha = wasmSha; r4Worker = new Worker(URL.createObjectURL(new Blob([jsSrc], { type: "text/javascript" })), { type: "module", name: "uor-r4-engine-worker" }); r4Worker.addEventListener("message", (e) => { if (e.data?.event === "holo_ready" && e.data.payload?.recommendedModel) r4HoloModel = e.data.payload.recommendedModel; });
   })().catch((e) => { r4Boot = null; throw e; }));
 }
 async function r4StudioFacts(receipt) {
   const pin = await r4StudioPin(), ref = (await installed()).find((r) => r.kappa === pin.archiveKappa) || (await installed()).find((r) => r.application === pin.application), weightsRef = await get("refs", "r4:weights:" + pin.archiveKappa);
-  return r4InprismFacts(pin, receipt ? (receipt.wasmSha256 === pin.wasmSha256 ? ref : { kappa: "mismatch" }) : ref, receipt ? (weightsRef?.wasmSha256 === pin.wasmSha256 && /^sha256:[0-9a-f]{64}$/.test(receipt.weightsKappa || "") ? "match" : "mismatch") : (weightsRef?.wasmSha256 === pin.wasmSha256 ? "match" : weightsRef ? "mismatch" : "missing"));
+  const w = receipt ? (weightsRef?.wasmSha256 === pin.wasmSha256 ? receipt.weightsKappa : "mismatch") : (weightsRef?.wasmSha256 === pin.wasmSha256 ? (weightsRef.weightsKappa || "missing") : weightsRef ? "mismatch" : "missing");
+  return r4InprismFacts(pin, receipt ? (receipt.wasmSha256 === pin.wasmSha256 ? ref : { kappa: "mismatch" }) : ref, w, weightsRef?.family);
 }
 async function askR4Studio(asks, signal) {
   await ensureR4Studio(signal); const pin = await r4StudioPin(), id = crypto.randomUUID(), prompt = asks[asks.length - 1] || "";
   return new Promise((ok, no) => {
     const done = (fn, v) => { r4Worker?.removeEventListener("message", onMsg); r4Worker?.removeEventListener("error", onErr); clearTimeout(t); signal?.removeEventListener("abort", onAbort); fn(v); }, onAbort = () => done(no, signal.reason), onErr = (ev) => { r4Worker?.terminate(); r4Worker = null; r4Boot = null; done(no, new Error(ev?.message || "LexLean-R4 worker error")); }, t = setTimeout(() => done(no, new Error("LexLean-R4 inference timed out")), 90000);
-    const onMsg = (e) => {
-      if (e.data?.id !== id) return; const res = e.data.result || {}; if (!e.data.ok || !res.ok) return done(no, new Error(e.data.error || res.error || "LexLean-R4 refused"));
-      done(ok, { lines: [...String(res.reply || "").trim().split(/\r?\n/).filter((l) => l.trim()).map((l) => "= " + l), `= Studio: [Open LexLean-R4 Studio & IDE](?r4=studio) · Full Tab: [lexlean-r4](${pin.liveUrl}) · Archive: [holo.html](holo.html) (\`${res.model_id || "uor-r4.native-q31-d85"}\`)`], wasmSha256: r4WasmSha, weightsKappa: res.weights_kappa });
-    };
+    const onMsg = (e) => { if (e.data?.id !== id) return; const res = e.data.result || {}; if (!e.data.ok || !res.ok) return done(no, new Error(e.data.error || res.error || "LexLean-R4 refused")); done(ok, { lines: [...String(res.reply || "").trim().split(/\r?\n/).filter((l) => l.trim()).map((l) => "= " + l), `= Studio: [Open LexLean-R4 Studio & IDE](?r4=studio) · Full Tab: [lexlean-r4](${pin.liveUrl}) · Archive: [holo.html](holo.html) (\`${res.model_id || "uor-r4.native-q31-d85"}\`)`], wasmSha256: r4WasmSha, weightsKappa: res.weights_kappa }); };
     r4Worker.addEventListener("message", onMsg); r4Worker.addEventListener("error", onErr); signal?.addEventListener("abort", onAbort, { once: true }); r4Worker.postMessage({ id, op: "inprism_r4_turn", payload: { prompt, preferredModel: r4HoloModel || "uor-r4.native-q31-d85" } });
   });
 }
@@ -578,85 +581,42 @@ const BRAND_FONTS = [["Geist", "Geist-Regular", 400], ["Geist", "Geist-Medium", 
 let brandHeadReady = null;
 function brandHead() {
   return (brandHeadReady ??= (async () => {
-    const r = await fetch(new URL("scaffold-brand.css", BASE));
-    if (!r.ok) throw new Error("scaffold-brand.css answered " + r.status);
+    const r = await fetch(new URL("scaffold-brand.css", BASE)); if (!r.ok) throw new Error("scaffold-brand.css answered " + r.status);
     let faces = "";
-    for (const [family, file, weight] of BRAND_FONTS) {
-      const f = await fetch(new URL("fonts/" + file + ".woff2", BASE));
-      if (f.ok) faces += `@font-face { font-family: "${family}"; src: url("data:font/woff2;base64,${b64(new Uint8Array(await f.arrayBuffer()))}") format("woff2"); font-weight: ${weight}; font-display: swap; }\n`;
-    }
+    for (const [family, file, weight] of BRAND_FONTS) { const f = await fetch(new URL("fonts/" + file + ".woff2", BASE)); if (f.ok) faces += `@font-face { font-family: "${family}"; src: url("data:font/woff2;base64,${b64(new Uint8Array(await f.arrayBuffer()))}") format("woff2"); font-weight: ${weight}; font-display: swap; }\n`; }
     return `<style>${faces}${(await r.text()).replace(/<\/style/gi, "<\\/style")}</style>`;
   })().catch((error) => { brandHeadReady = null; throw error; }));
 }
-
-async function verifiedBuildSource(appId) {
-  return captureBuildSource(await dbReady, appId, {
-    readObject: key => get("objects", key), derive: kappa,
-    admit: async (derived, expected) => core.run({ op: "restore", derived, expected }).decision === "Accept",
-  });
-}
+async function verifiedBuildSource(appId) { return captureBuildSource(await dbReady, appId, { readObject: key => get("objects", key), derive: kappa, admit: async (derived, expected) => core.run({ op: "restore", derived, expected }).decision === "Accept" }); }
 async function buildPreview(appId) {
-  await coreReady;
-  const source = await verifiedBuildSource(appId);
-  if (applicationShape(source) === 'stateful') throw shapeFailure('statefulBuildUnsupported');
-  const { path } = core.run({ op: "preview", kappa: source.reference });
-  const appUrl = new URL(path.slice(1), BASE);
-  const owner = await get("apps", appId);
-  const endpoints = Array.isArray(owner && owner.grants) ? owner.grants : PREVIEW_ENDPOINTS;
-  tmNameApp("p:" + previewId(appUrl.pathname), appId, owner && owner.name);
+  await coreReady; const source = await verifiedBuildSource(appId); if (applicationShape(source) === 'stateful') throw shapeFailure('statefulBuildUnsupported');
+  const { path } = core.run({ op: "preview", kappa: source.reference }), appUrl = new URL(path.slice(1), BASE), owner = await get("apps", appId);
+  const endpoints = Array.isArray(owner && owner.grants) ? owner.grants : PREVIEW_ENDPOINTS; tmNameApp("p:" + previewId(appUrl.pathname), appId, owner && owner.name);
   const previousPermission = await get("refs", "capabilities:" + previewId(appUrl.pathname));
   const permission = endpoints.length ? await authorizePreview({ id: previewId(appUrl.pathname), source: source.reference, endpoints }) : null;
-  const approvedEndpoints = permission ? permission.disclosure.endpoints : [];
-  const files = new Map(source.files);
-  const pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
+  const approvedEndpoints = permission ? permission.disclosure.endpoints : [], files = new Map(source.files), pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
   const pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")]));
-  // Packages the model added with <prism-add-dependency>: name or name@version, resolved by esm.sh.
   for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
-  const react = pkgs.react, dom = pkgs["react-dom"];
-  const imports = { react: `https://esm.sh/react@${react}`, "react/": `https://esm.sh/react@${react}/`, "react-dom": `https://esm.sh/react-dom@${dom}?external=react`, "react-dom/": `https://esm.sh/react-dom@${dom}&external=react/` };
+  const react = pkgs.react, dom = pkgs["react-dom"], imports = { react: `https://esm.sh/react@${react}`, "react/": `https://esm.sh/react@${react}/`, "react-dom": `https://esm.sh/react-dom@${dom}?external=react`, "react-dom/": `https://esm.sh/react-dom@${dom}&external=react/` };
   for (const [n, v] of Object.entries(pkgs)) { if (n === "react" || n === "react-dom") continue; const at = v ? "@" + v : ""; imports[n] = `https://esm.sh/${n}${at}?external=react,react-dom`; imports[n + "/"] = `https://esm.sh/${n}${at}&external=react,react-dom/`; }
-  const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text();
-  const m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/);
-  const tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}";
-  const exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"];
-  const resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
+  const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text(), m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/), tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}";
+  const exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"], resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
   const plugin = { name: "project", setup(b) {
     b.onResolve({ filter: /.*/ }, (args) => {
       if (args.kind === "entry-point") { const r = resolveFile(args.path); if (r) return { path: r, namespace: "project" }; }
       if (args.path.startsWith("@/")) { const r = resolveFile("src/" + args.path.slice(2)); if (r) return { path: r, namespace: "project" }; }
-      if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) {
-        const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src";
-        const norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1);
-        const r = resolveFile(norm); if (r) return { path: r, namespace: "project" };
-        return { errors: [{ text: "not in project: " + norm }] };
-      }
+      if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) { const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src", norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1), r = resolveFile(norm); return r ? { path: r, namespace: "project" } : { errors: [{ text: "not in project: " + norm }] }; }
       return { path: args.path, external: true };
     });
-    b.onLoad({ filter: /.*/, namespace: "project" }, (args) => {
-      const src = files.get(args.path);
-      if (args.path.endsWith(".css")) return { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" };
-      return { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" };
-    });
+    b.onLoad({ filter: /.*/, namespace: "project" }, (args) => { const src = files.get(args.path); return args.path.endsWith(".css") ? { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" } : { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" }; });
   } };
-  const es = await esbuild();
-  const r = await es.build({ entryPoints: ["src/main.tsx"], bundle: true, write: false, format: "esm", target: "es2022", jsx: "automatic", plugins: [plugin], outdir: "out", logLevel: "silent",
-    define: { "import.meta.env.DEV": "true", "import.meta.env.MODE": '"development"', "import.meta.env.BASE_URL": JSON.stringify(appUrl.pathname), "process.env.NODE_ENV": '"development"' } });
-  const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text;
-  const css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text;
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<script type="importmap">${JSON.stringify({ imports })}<\/script>
-<script>tailwind = { config: ${tailwindConfig} };<\/script>
-<script src="https://cdn.tailwindcss.com"><\/script>
-<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>
-<script type="module">${js}<\/script></body></html>`;
-  const shown = await withCoverResponder(html);
-  await assertBuildSourceCurrent(await dbReady, appId, source);
-  const cache = await caches.open("previews");
-  await cache.put(appUrl.pathname + "index.html", new Response(shown, { headers: { "content-type": "text/html; charset=utf-8" } }));
-  try { await grantPreview(previewId(appUrl.pathname), approvedEndpoints, permission, previousPermission); }
-  catch (error) { await cache.delete(appUrl.pathname + "index.html"); throw error; }
-  coverSources.set(appId, {appUrl:appUrl.href,source:structuredClone(source)});
-  return { appUrl: appUrl.href, bytes: js.length };
+  const es = await esbuild(), r = await es.build({ entryPoints: ["src/main.tsx"], bundle: true, write: false, format: "esm", target: "es2022", jsx: "automatic", plugins: [plugin], outdir: "out", logLevel: "silent", define: { "import.meta.env.DEV": "true", "import.meta.env.MODE": '"development"', "import.meta.env.BASE_URL": JSON.stringify(appUrl.pathname), "process.env.NODE_ENV": '"development"' } });
+  const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text, css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n<script type="importmap">${JSON.stringify({ imports })}<\/script>\n<script>tailwind = { config: ${tailwindConfig} };<\/script>\n<script src="https://cdn.tailwindcss.com"><\/script>\n<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>\n<script type="module">${js}<\/script></body></html>`;
+  const shown = await withCoverResponder(html); await assertBuildSourceCurrent(await dbReady, appId, source);
+  const cache = await caches.open("previews"); await cache.put(appUrl.pathname + "index.html", new Response(shown, { headers: { "content-type": "text/html; charset=utf-8" } }));
+  try { await grantPreview(previewId(appUrl.pathname), approvedEndpoints, permission, previousPermission); } catch (error) { await cache.delete(appUrl.pathname + "index.html"); throw error; }
+  coverSources.set(appId, {appUrl:appUrl.href,source:structuredClone(source)}); return { appUrl: appUrl.href, bytes: js.length };
 }
 // ---- the live preview. An app with rules is not built: it is projected. One fixed frame on shadcn/ui
 // (shell/live/, compiled once by tools/live_components.mjs), addressed by the kappa of its own bytes and served once under the preview route with
@@ -1864,87 +1824,35 @@ function dispatch(channel, args) {
 // the shell closure of this page must be the closure the lane recorded beside the core, and the
 // lane's attestation must be present; otherwise the View's refusal word and an audit row.
 async function buildPortable(appId, captured) {
-  await coreReady;
-  const source = captured || await verifiedBuildSource(appId);
-  if (applicationShape(source) === 'stateful') throw shapeFailure('statefulBuildUnsupported');
-  const environment=(await (await fetch(new URL("manifest.json",BASE),{cache:"no-store"})).json()).closure;
-  return runBuildWork({appId,source:source.reference,environment},()=>withPortableBuildPermission({id:"portable-"+crypto.randomUUID(),source:source.reference}, async lease => {
-  const t0 = performance.now();
-  const files = new Map(source.files);
-  const pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
-  const pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")]));
-  for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
-  // Every package resolves to one esm.sh URL and is fetched once; react and react-dom are external
-  // to every other package so one React is bundled; the output is one script with no imports left.
-  const urlOf = (name) => {
-    const bare = name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0];
-    const sub = name.slice(bare.length), v = pkgs[bare] ? "@" + pkgs[bare] : "";
-    if (bare === "react") return `https://esm.sh/react${v}${sub}?target=es2022`;
-    if (bare === "react-dom") return `https://esm.sh/react-dom${v}${sub}?target=es2022&external=react`;
-    return `https://esm.sh/${bare}${v}${sub}?target=es2022&external=react,react-dom`;
-  };
-  return withBuildModules(async remote => {
-  const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text();
-  const m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/);
-  const tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}";
-  const exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"];
-  const resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
-  const plugin = { name: "portable", setup(b) {
-    b.onResolve({ filter: /.*/ }, (args) => {
-      if (args.namespace === "http") {
-        if (/^https?:\/\//.test(args.path) || args.path.startsWith("/") || /^\.\.?\//.test(args.path)) return { path: new URL(args.path, args.importer).href, namespace: "http" };
-        return { path: urlOf(args.path), namespace: "http" };
-      }
-      if (args.kind === "entry-point") { const r = resolveFile(args.path); if (r) return { path: r, namespace: "project" }; }
-      if (args.path.startsWith("@/")) { const r = resolveFile("src/" + args.path.slice(2)); if (r) return { path: r, namespace: "project" }; }
-      if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) {
-        const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src";
-        const norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1);
-        const r = resolveFile(norm); if (r) return { path: r, namespace: "project" };
-        return { errors: [{ text: "not in project: " + norm }] };
-      }
-      if (/^https?:\/\//.test(args.path)) return { path: args.path, namespace: "http" };
-      return { path: urlOf(args.path), namespace: "http" };
-    });
-    b.onLoad({ filter: /.*/, namespace: "http" }, async (args) => {
-      const text = await remote.fetchText(args.path);
-      return { contents: text, loader: /\.css(\?|$)/.test(args.path) ? "css" : "js" };
-    });
-    b.onLoad({ filter: /.*/, namespace: "project" }, (args) => {
-      const src = files.get(args.path);
-      if (args.path.endsWith(".css")) return { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" };
-      return { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" };
-    });
-  } };
-  const es = await esbuild();
-  const r = await es.build({ entryPoints: ["src/main.tsx"], bundle: true, write: false, format: "esm", target: "es2022", jsx: "automatic", plugins: [plugin], outdir: "out", logLevel: "silent", minify: true,
-    define: { "import.meta.env.DEV": "false", "import.meta.env.MODE": '"production"', "import.meta.env.BASE_URL": "__HOLO_BASE__", "process.env.NODE_ENV": '"production"' } });
-  const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text;
-  const css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text;
-  // Tailwind, compiled once at publish: the play build cannot be fetched (its CDN sends no CORS
-  // header), so the page is loaded once, hidden, under a preview address with the play build as a
-  // script tag; the build scans the page (the bundle is inline, so every class it names is seen) and
-  // the stylesheet it writes is taken as static CSS. The published page then needs no network and no
-  // compiler to style itself.
-  const inline = (s) => s.replace(/<\/script/g, "<\\/script");
-  const body = `<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>\n<script type="module">${inline(js)}<\/script></body></html>`;
-  const head = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n<script>var __HOLO_BASE__ = location.pathname.replace(/index\\.html$/, "");`;
-  // Every class like token of the bundle, the project's CSS and its HTML, listed once in a hidden
-  // element, so the compiler's first scan already sees every candidate whether or not the page has
-  // rendered it yet; the compile is then judged by the rendered page: no class in use without a rule.
-  const candidates = [...new Set((js + " " + css).match(/[A-Za-z][A-Za-z0-9_\-:\/\.\[\]#%!]*/g) || [])].filter((t) => t.length < 120).join(" ");
-  const compilePage = head + ` tailwind = { config: ${tailwindConfig} };<\/script>\n<script src="https://cdn.tailwindcss.com"><\/script>\n<div hidden id="tw-candidates" class="${candidates.replace(/"/g, "")}"></div>\n` + body;
-  const tailwindCss = await compileTailwind(compilePage, lease);
-  const html = head + `<\/script>\n<style>${tailwindCss}</style>\n` + body;
-  await assertBuildSourceCurrent(await dbReady, appId, source);
-  return { html, sourceReference: source.reference, modules: remote.count, jsBytes: js.length, cssBytes: css.length, tailwindBytes: tailwindCss.length, ms: Math.round(performance.now() - t0) };
-  }, {signal:lease.signal,fetch:async(url,init)=>{await lease.check();return fetch(url,init);}});
-  }, {
-    assertSource:async()=>assertBuildSourceCurrent(await dbReady, appId, source),
-    grant:async(id,permission)=>grantPreview(id,permission.disclosure.endpoints,permission,undefined),
-    readGrant:id=>get("refs","capabilities:"+id),
-    revoke:id=>del("refs","capabilities:"+id),
-  }), {guest:await kernelReady,derive:kappa,...buildWorkStore(await dbReady,appId,source)});
+  await coreReady; const source = captured || await verifiedBuildSource(appId); if (applicationShape(source) === 'stateful') throw shapeFailure('statefulBuildUnsupported');
+  const environment = (await (await fetch(new URL("manifest.json", BASE), { cache: "no-store" })).json()).closure;
+  return runBuildWork({appId,source:source.reference,environment}, () => withPortableBuildPermission({id:"portable-"+crypto.randomUUID(),source:source.reference}, async lease => {
+    const t0 = performance.now(), files = new Map(source.files), pkg = await (await fetch(new URL("scaffold/package.json", BASE))).json();
+    const pkgs = Object.fromEntries(Object.entries(pkg.dependencies).map(([n, v]) => [n, v.replace(/^[\^~]/, "")]));
+    for (const d of source.dependencies) { const at = d.lastIndexOf("@"); if (at > 0) pkgs[d.slice(0, at)] = d.slice(at + 1); else pkgs[d] = ""; }
+    const urlOf = (name) => { const bare = name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0], sub = name.slice(bare.length), v = pkgs[bare] ? "@" + pkgs[bare] : ""; return bare === "react" ? `https://esm.sh/react${v}${sub}?target=es2022` : bare === "react-dom" ? `https://esm.sh/react-dom${v}${sub}?target=es2022&external=react` : `https://esm.sh/${bare}${v}${sub}?target=es2022&external=react,react-dom`; };
+    return withBuildModules(async remote => {
+      const tw = await (await fetch(new URL("scaffold/tailwind.config.ts", BASE))).text(), m = tw.match(/theme:\s*(\{[\s\S]*\n  \}),\n  plugins/), tailwindConfig = m ? "{darkMode:['class'],theme:" + m[1] + "}" : "{}";
+      const exts = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"], resolveFile = (p) => { for (const e of exts) if (files.has(p + e)) return p + e; return null; };
+      const plugin = { name: "portable", setup(b) {
+        b.onResolve({ filter: /.*/ }, (args) => {
+          if (args.namespace === "http") return (/^https?:\/\//.test(args.path) || args.path.startsWith("/") || /^\.\.?\//.test(args.path)) ? { path: new URL(args.path, args.importer).href, namespace: "http" } : { path: urlOf(args.path), namespace: "http" };
+          if (args.kind === "entry-point") { const r = resolveFile(args.path); if (r) return { path: r, namespace: "project" }; }
+          if (args.path.startsWith("@/")) { const r = resolveFile("src/" + args.path.slice(2)); if (r) return { path: r, namespace: "project" }; }
+          if (/^\.\.?\//.test(args.path) || args.path.startsWith("/")) { const base = args.importer ? args.importer.split("/").slice(0, -1).join("/") : "src", norm = new URL(args.path, "file:///" + base + "/").pathname.slice(1), r = resolveFile(norm); return r ? { path: r, namespace: "project" } : { errors: [{ text: "not in project: " + norm }] }; }
+          return /^https?:\/\//.test(args.path) ? { path: args.path, namespace: "http" } : { path: urlOf(args.path), namespace: "http" };
+        });
+        b.onLoad({ filter: /.*/, namespace: "http" }, async (args) => ({ contents: await remote.fetchText(args.path), loader: /\.css(\?|$)/.test(args.path) ? "css" : "js" }));
+        b.onLoad({ filter: /.*/, namespace: "project" }, (args) => { const src = files.get(args.path); return args.path.endsWith(".css") ? { contents: src.replace(/@tailwind[^;]*;/g, ""), loader: "css" } : { contents: src, loader: args.path.endsWith(".tsx") ? "tsx" : args.path.endsWith(".ts") ? "ts" : "jsx" }; });
+      } };
+      const es = await esbuild(), r = await es.build({ entryPoints: ["src/main.tsx"], bundle: true, write: false, format: "esm", target: "es2022", jsx: "automatic", plugins: [plugin], outdir: "out", logLevel: "silent", minify: true, define: { "import.meta.env.DEV": "false", "import.meta.env.MODE": '"production"', "import.meta.env.BASE_URL": "__HOLO_BASE__", "process.env.NODE_ENV": '"production"' } });
+      const js = r.outputFiles.find((f) => f.path.endsWith(".js")).text, css = (r.outputFiles.find((f) => f.path.endsWith(".css")) || { text: "" }).text, inline = (s) => s.replace(/<\/script/g, "<\\/script"), body = `<style>${css}</style>${await brandHead()}</head><body><div id="root"></div>\n<script type="module">${inline(js)}<\/script></body></html>`, head = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n<script>var __HOLO_BASE__ = location.pathname.replace(/index\\.html$/, "");`;
+      const candidates = [...new Set((js + " " + css).match(/[A-Za-z][A-Za-z0-9_\-:\/\.\[\]#%!]*/g) || [])].filter((t) => t.length < 120).join(" "), compilePage = head + ` tailwind = { config: ${tailwindConfig} };<\/script>\n<script src="https://cdn.tailwindcss.com"><\/script>\n<div hidden id="tw-candidates" class="${candidates.replace(/"/g, "")}"></div>\n` + body;
+      const tailwindCss = await compileTailwind(compilePage, lease), html = head + `<\/script>\n<style>${tailwindCss}</style>\n` + body;
+      await assertBuildSourceCurrent(await dbReady, appId, source);
+      return { html, sourceReference: source.reference, modules: remote.count, jsBytes: js.length, cssBytes: css.length, tailwindBytes: tailwindCss.length, ms: Math.round(performance.now() - t0) };
+    }, {signal:lease.signal,fetch:async(url,init)=>{await lease.check();return fetch(url,init);}});
+  }, {assertSource:async()=>assertBuildSourceCurrent(await dbReady,appId,source),grant:async(id,permission)=>grantPreview(id,permission.disclosure.endpoints,permission,undefined),readGrant:id=>get("refs","capabilities:"+id),revoke:id=>del("refs","capabilities:"+id)}), {guest:await kernelReady,derive:kappa,...buildWorkStore(await dbReady,appId,source)});
 }
 // Runs inside the compile frame. The frame is a preview address, so the worker serves it in a CSP
 // sandbox with an opaque origin and the host cannot read its document: the frame reports instead,
@@ -1953,55 +1861,28 @@ async function buildPortable(appId, captured) {
 function tailwindReporter() {
   const escapeClass = (c) => c.replace(/[^a-zA-Z0-9_-]/g, (m) => "\\" + m);
   setInterval(() => {
-    const sheets = [...document.querySelectorAll("style")].map((s) => s.textContent);
-    const root = document.getElementById("root");
-    const all = sheets.join("\n");
+    const sheets = [...document.querySelectorAll("style")].map((s) => s.textContent), root = document.getElementById("root"), all = sheets.join("\n");
     const used = new Set([...document.querySelectorAll("[class]")].filter((e) => e.id !== "tw-candidates").flatMap((e) => String(e.className.baseVal ?? e.className).split(/\s+/).filter(Boolean)));
     parent.postMessage({ tailwindReport: true, sheet: sheets.find((t) => t.includes("--tw-")) || "", rendered: !!(root && (root.childElementCount || root.textContent.trim())), missing: [...used].filter((c) => !all.includes("." + escapeClass(c))) }, "*");
   }, 250);
 }
 
 async function compileTailwind(page, lease) {
-  await lease.check();
-  const id = lease.id;
-  const path = new URL("p/" + id + "/index.html", BASE).pathname;
-  const at = page.lastIndexOf("</body>");
+  await lease.check(); const id = lease.id, path = new URL("p/" + id + "/index.html", BASE).pathname, at = page.lastIndexOf("</body>");
   const reporting = page.slice(0, at) + `<script>(${tailwindReporter})();<\/script>` + page.slice(at);
-  await lease.check();
-  const cache = await caches.open("previews");
-  await cache.put(path, new Response(reporting, { headers: { "content-type": "text/html; charset=utf-8" } }));
-  const frame = document.createElement("iframe");
-  frame.style.cssText = "position:fixed;width:1280px;height:800px;left:-2000px;top:0;visibility:hidden";
-  let report = null;
-  const listen = (e) => { if (e.source === frame.contentWindow && e.data && e.data.tailwindReport) report = e.data; };
-  window.addEventListener("message", listen);
-  frame.src = path;
-  const removeFrame = () => frame.remove();
-  lease.signal.addEventListener("abort", removeFrame, {once:true});
+  await lease.check(); const cache = await caches.open("previews"); await cache.put(path, new Response(reporting, { headers: { "content-type": "text/html; charset=utf-8" } }));
+  const frame = document.createElement("iframe"); frame.style.cssText = "position:fixed;width:1280px;height:800px;left:-2000px;top:0;visibility:hidden";
+  let report = null; const listen = (e) => { if (e.source === frame.contentWindow && e.data && e.data.tailwindReport) report = e.data; };
+  window.addEventListener("message", listen); frame.src = path; const removeFrame = () => frame.remove(); lease.signal.addEventListener("abort", removeFrame, { once: true });
   try {
-    await lease.check();
-    document.body.append(frame);
-    const t0 = performance.now();
-    let last = "", stable = 0;
+    await lease.check(); document.body.append(frame); const t0 = performance.now(); let last = "", stable = 0;
     while (performance.now() - t0 < 30000) {
-      await new Promise((r) => setTimeout(r, 250));
-      await lease.check();
-      if (!report || !report.sheet || !report.rendered) continue;
-      // Converged when the rendered page uses no class the compiled sheet (or the project's own CSS) lacks.
-      // The sheet is inlined into a <style> element of the published page, so it may not close that element.
-      const sheet = String(report.sheet).replace(/<\/style/gi, "<\\/style");
-      const missing = Array.isArray(report.missing) ? report.missing.map(String) : [];
-      const key = sheet.length + ":" + missing.join(",");
+      await new Promise((r) => setTimeout(r, 250)); await lease.check(); if (!report || !report.sheet || !report.rendered) continue;
+      const sheet = String(report.sheet).replace(/<\/style/gi, "<\\/style"), missing = Array.isArray(report.missing) ? report.missing.map(String) : [], key = sheet.length + ":" + missing.join(",");
       if (key === last) { stable += 1; if (stable >= 3 && missing.length === 0) return sheet; if (stable >= 12) throw portablePermissionFailure("portableBuildStyleIncomplete"); } else { last = key; stable = 0; }
     }
-    if (last) throw new Error("tailwind did not converge on the page");
-    throw new Error("tailwind did not compile the page");
-  } finally {
-    window.removeEventListener("message", listen);
-    lease.signal.removeEventListener("abort", removeFrame);
-    frame.remove();
-    await cache.delete(path);
-  }
+    throw new Error(last ? "tailwind did not converge on the page" : "tailwind did not compile the page");
+  } finally { window.removeEventListener("message", listen); lease.signal.removeEventListener("abort", removeFrame); frame.remove(); await cache.delete(path); }
 }
 window.__portable = buildPortable;
 const PROVENANCE_FIELDS = ["source_id", "semantic_id", "compiler_semantics_id", "snapshot_id", "stdlib_semantics_id", "prism_stdlib_crate_sha256", "lexlean_commit", "lexlean_package_sha256", "lean4_prod_commit", "hologram_live_commit", "uor_hologram_commit", "target_profile_id", "lean_manifest_sha256", "lcnf_manifest_sha256", "generated_core_sha256", "cargo_name", "cargo_version", "cargo_crate_sha256", "view_model_id", "browser_projection_sha256"];
@@ -2078,7 +1959,7 @@ window.electron = {
   dispatchEvent(new PopStateEvent("popstate"));
 })();
 window.__gallery = Object.freeze({read: appId => readGallery(dbReady, appId)});
-window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts } };
+window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
 if ("serviceWorker" in navigator) {
   // A page an older worker drew reloads once when a newer worker takes control, so no visitor keeps running
   // a build Foundry has replaced (a removed screen stays removed). The worker's script is always fetched
@@ -2151,14 +2032,11 @@ mountApplicationDiscovery({discover:input=>handlers.get("forge:discover")(input)
 (function mountR4StudioWorkspace() {
   const mk = (t, a = {}, txt = "") => { const n = document.createElement(t); for (const [k, v] of Object.entries(a)) n.setAttribute(k, v); if (txt) n.textContent = txt; return n; };
   const okPath = (p) => typeof p === "string" && p.length > 0 && !/[\\\u0000-\u001f:]/.test(p) && p.split("/").every((s) => s && s !== "." && s !== "..");
-  const panel = mk("section", { id: "foundry-lexlean-workspace", "aria-label": "LexLean-R4 Studio and IDE", hidden: "" }), bar = mk("div", { id: "foundry-lexlean-bar" }), status = mk("span", { id: "foundry-lexlean-status" }, "Idle");
-  const appSel = mk("select", { id: "foundry-lexlean-apps", "aria-label": "Foundry app" }), modeSel = mk("select", { id: "foundry-lexlean-mode", "aria-label": "Runtime surface" });
+  const panel = mk("section", { id: "foundry-lexlean-workspace", "aria-label": "LexLean-R4 Studio and IDE", hidden: "" }), bar = mk("div", { id: "foundry-lexlean-bar" }), status = mk("span", { id: "foundry-lexlean-status" }, "Idle"), appSel = mk("select", { id: "foundry-lexlean-apps", "aria-label": "Foundry app" }), modeSel = mk("select", { id: "foundry-lexlean-mode", "aria-label": "Runtime surface" });
   modeSel.append(mk("option", { value: "live" }, "Studio + IDE (Live)"), mk("option", { value: "holo" }, "Verified .holo Sandbox"));
-  const syncBtn = mk("button", { id: "foundry-lexlean-sync", type: "button" }, "Sync App → IDE"), applyBtn = mk("button", { id: "foundry-lexlean-apply", type: "button" }, "Apply IDE → App"), closeBtn = mk("button", { id: "foundry-lexlean-close", type: "button" }, "Back to Foundry");
-  const frame = mk("iframe", { id: "foundry-lexlean-frame", title: "LexLean-R4 Studio and IDE", allow: "cross-origin-isolated" });
+  const syncBtn = mk("button", { id: "foundry-lexlean-sync", type: "button" }, "Sync App → IDE"), applyBtn = mk("button", { id: "foundry-lexlean-apply", type: "button" }, "Apply IDE → App"), closeBtn = mk("button", { id: "foundry-lexlean-close", type: "button" }, "Back to Foundry"), frame = mk("iframe", { id: "foundry-lexlean-frame", title: "LexLean-R4 Studio and IDE", allow: "cross-origin-isolated" });
   bar.append(mk("strong", {}, "LexLean-R4 Studio & IDE"), status, appSel, modeSel, syncBtn, applyBtn, closeBtn); panel.append(bar, frame); document.body.append(panel);
-  const launch = mk("button", { id: "foundry-lexlean-launch", type: "button", title: "Open LexLean-R4 Studio & IDE" }, "Studio & IDE");
-  document.body.append(launch);
+  const launch = mk("button", { id: "foundry-lexlean-launch", type: "button", title: "Open LexLean-R4 Studio & IDE" }, "Studio & IDE"); document.body.append(launch);
   let loadedMode = "", syncedLoad = false; const waiters = new Map();
   const refreshApps = async () => { const prev = appSel.value, apps = (await all("apps").catch(() => [])).sort((a, b) => Number(b.id) - Number(a.id)), q = new URLSearchParams(location.search), uid = q.get("id") || q.get("appId"); appSel.innerHTML = ""; appSel.append(mk("option", { value: "" }, "+ New Foundry app from IDE")); for (const a of apps) appSel.append(mk("option", { value: String(a.id) }, `${a.name} (#${a.id})`)); appSel.value = prev && [...appSel.options].some((o) => o.value === prev) ? prev : (uid && [...appSel.options].some((o) => o.value === uid) ? uid : (apps[0] ? String(apps[0].id) : "")); };
   const syncAppToIde = async () => { if (!appSel.value || !frame.contentWindow) { status.textContent = appSel.value ? "Frame not ready" : "Select an app or edit starter workspace"; return; } const appId = Number(appSel.value), app = await get("apps", appId), list = await filesOf(appId), files = {}; for (const p of list) files[p] = String((await get("files", appId + ":" + p)) ?? ""); frame.contentWindow.postMessage({ protocol: "uor-workspace-bridge/1", action: "sync-foundry-files", projectName: app?.name || `app-${appId}`, layout: "studio", replace: true, files }, "*"); status.textContent = `Synced ${list.length} files from ${app?.name || appId} → IDE`; };
@@ -2171,10 +2049,8 @@ mountApplicationDiscovery({discover:input=>handlers.get("forge:discover")(input)
   };
   const loadSurface = async () => { const pin = await r4StudioPin(), mode = modeSel.value; loadedMode = mode; syncedLoad = false; status.textContent = mode === "holo" ? "Verifying local .holo sandbox…" : "Connecting to LexLean-R4 Studio & IDE…"; if (mode === "holo") { await coreReady; await ensureR4Studio(); frame.src = new URL(core.run({ op: "holo-path", kappa: pin.archiveKappa }).path.replace(/^\//, "") + "#studio", BASE).href; } else frame.src = `${pin.liveUrl}?embed=foundry&mode=studio#studio`; };
   const openR4 = async () => { panel.hidden = false; await refreshApps(); if (!loadedMode || loadedMode !== modeSel.value) await loadSurface(); else status.textContent = "Connected to LexLean-R4 Studio & IDE"; }, closeR4 = () => { panel.hidden = true; frame.src = "about:blank"; loadedMode = ""; }, onErr = (e) => { status.textContent = String(e?.message || e); };
-  launch.addEventListener("click", () => void openR4().catch(onErr)); closeBtn.addEventListener("click", closeR4);
-  modeSel.addEventListener("change", () => void loadSurface().catch(onErr)); syncBtn.addEventListener("click", () => void syncAppToIde().catch(onErr)); applyBtn.addEventListener("click", () => void applyIdeToApp().catch(onErr));
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closeR4(); }); window.addEventListener("foundry:r4-studio", () => void openR4().catch(onErr));
-  document.addEventListener("click", (e) => { const a = e.target?.closest?.("a[href]"); if (a && String(a.getAttribute("href")).includes("?r4=studio")) { e.preventDefault(); void openR4(); } }, true);
+  launch.addEventListener("click", () => void openR4().catch(onErr)); closeBtn.addEventListener("click", closeR4); modeSel.addEventListener("change", () => void loadSurface().catch(onErr)); syncBtn.addEventListener("click", () => void syncAppToIde().catch(onErr)); applyBtn.addEventListener("click", () => void applyIdeToApp().catch(onErr));
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closeR4(); }); window.addEventListener("foundry:r4-studio", () => void openR4().catch(onErr)); document.addEventListener("click", (e) => { const a = e.target?.closest?.("a[href]"); if (a && String(a.getAttribute("href")).includes("?r4=studio")) { e.preventDefault(); void openR4(); } }, true);
   window.addEventListener("message", (e) => { const d = e.data; if (!d || d.protocol !== "uor-workspace-bridge/1") return; if (d.type === "uor-workspace-bridge/1:ready" || d.type === "uor-workspace-bridge/1:status") { status.textContent = `Connected · ${d.model || d.selectedModel || "Qwen3"} (${d.workspaceFileCount ?? 0} files)`; if (!syncedLoad && appSel.value && d.type === "uor-workspace-bridge/1:ready") { syncedLoad = true; void syncAppToIde().catch(() => {}); } } else if (d.type === "uor-workspace-bridge/1:files-synced") status.textContent = `Synced ${d.fileCount || 0} files → IDE`; else if (d.type === "uor-workspace-bridge/1:files-exported" && d.requestId && waiters.has(d.requestId)) { const w = waiters.get(d.requestId); waiters.delete(d.requestId); w(d); } });
   window.__host.r4Studio.open = openR4; if (window.self === window.top && new URLSearchParams(location.search).get("r4") === "studio") void openR4();
 })();
