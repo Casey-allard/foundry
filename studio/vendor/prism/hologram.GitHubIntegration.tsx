@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Check, Github, GitBranch, GitCommit, GitPullRequest, Globe, Loader2, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Github, GitBranch, GitCommit, GitPullRequest, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { useLoadApp } from "@/hooks/useLoadApp";
 import { showError, showSuccess } from "@/lib/toast";
 
 export const DEFAULT_SPIRALCORE_RELAY_WS_URL = "wss://lexlean-r4-spiralcore-relay.swarm-relay-cloud-8d31a122.workers.dev/spvs";
-type R4Res = Record<string, unknown> & { ok?: boolean; error?: string; message?: string; html_url?: string; pr_url?: string; url?: string; branch?: string };
+type R4Res = Record<string, unknown> & { ok?: boolean; error?: string; message?: string; html_url?: string; pr_url?: string; url?: string; branch?: string; truncated?: boolean; lazy_paths?: unknown[]; data?: { lazy_paths?: unknown[] } };
 type R4Api = { DEFAULT_SPIRALCORE_RELAY_WS_URL?: string; hasGithubToken?: () => Promise<boolean>; getRelayUrl?: () => string; setRelayUrl?: (u: string) => Promise<string>; gitAction?: (op: string, a?: Record<string, unknown>) => Promise<R4Res>; onTelemetry?: (cb: (s: Record<string, unknown>) => void) => () => void };
 const r4 = (): R4Api | undefined => (window as unknown as { __host?: { r4Studio?: R4Api } }).__host?.r4Studio;
 const msgOf = (e: unknown) => (e instanceof Error ? e.message : String(e || "Operation failed"));
@@ -70,18 +70,19 @@ export function GitHubIntegration() {
 }
 
 export interface UnconnectedGitHubConnectorProps { appId: number | null; folderName: string; settings?: unknown; refreshSettings?: () => void; expanded?: boolean; linkedRepo?: { org: string; repo: string } }
-const GIT_OPS = [["clone", "Clone", Github], ["branch", "Branch", GitBranch], ["commit", "Commit", GitCommit], ["push", "Push", Upload], ["pr", "Open PR", GitPullRequest]] as const;
+const GIT_OPS = [["clone", "Clone", Github], ["branch", "Branch", GitBranch], ["commit", "Commit & Push", GitCommit], ["pr", "Open PR", GitPullRequest]] as const;
 
 export function UnconnectedGitHubConnector({ appId, folderName, refreshSettings, linkedRepo }: UnconnectedGitHubConnectorProps) {
   const { app } = useLoadApp(appId), { connected, saveToken, clearToken } = useGithubConnected();
   const [repo, setRepo] = useState(linkedRepo ? `${linkedRepo.org}/${linkedRepo.repo}` : app?.githubOrg && app?.githubRepo ? `${app.githubOrg}/${app.githubRepo}` : "");
   const [branch, setBranch] = useState(app?.githubBranch || ""), [message, setMessage] = useState(`Update ${folderName || "app"}`), [prTitle, setPrTitle] = useState(`Publish ${folderName || "app"}`), [token, setToken] = useState(""), [busyOp, setBusyOp] = useState<string | null>(null), [status, setStatus] = useState(""), [link, setLink] = useState("");
-  useEffect(() => { if (!repo && app?.githubOrg && app?.githubRepo) setRepo(`${app.githubOrg}/${app.githubRepo}`); if (!branch && app?.githubBranch) setBranch(app.githubBranch); }, [app?.githubOrg, app?.githubRepo, app?.githubBranch, repo, branch]);
+  const appRef = useRef<number | null>(app?.id ?? null);
+  useEffect(() => { const switched = appRef.current !== (app?.id ?? null); appRef.current = app?.id ?? null; const nextRepo = linkedRepo ? `${linkedRepo.org}/${linkedRepo.repo}` : app?.githubOrg && app?.githubRepo ? `${app.githubOrg}/${app.githubRepo}` : "", nextBranch = app?.githubBranch || ""; setRepo((prev) => (switched ? nextRepo : prev || nextRepo)); setBranch((prev) => (switched ? nextBranch : prev || nextBranch)); }, [app?.id, app?.githubOrg, app?.githubRepo, app?.githubBranch]);
   const runGit = async (op: "clone" | "branch" | "commit" | "push" | "pr") => {
     const clean = repo.trim(), [org = "", name = ""] = clean.split("/"); if (!clean || !org || !name) return showError("Specify repository as owner/repo");
     const cleanBranch = branch.trim(); if (op === "branch" && !cleanBranch) return showError("Specify branch name");
     setBusyOp(op);
-    try { const res = await r4()?.gitAction?.(op, { appId, repo: clean, org, name, ...(cleanBranch ? { branch: cleanBranch } : {}), message: message.trim() || `Update ${folderName || "app"}`, title: prTitle.trim() || message.trim() || `Publish ${folderName || "app"}` }); if (!res || res.ok === false) throw new Error(res?.error || res?.message || `git ${op} failed`); const href = [res.html_url, res.pr_url, res.url].find((u): u is string => typeof u === "string" && u.length > 0) || ""; const note = href ? `${op}: ${href}` : `git ${op} completed`; setStatus(note); setLink(/^https?:\/\//.test(href) ? href : ""); showSuccess(note); }
+    try { const res = await r4()?.gitAction?.(op, { appId, repo: clean, org, name, ...(cleanBranch ? { branch: cleanBranch } : {}), message: message.trim() || `Update ${folderName || "app"}`, title: prTitle.trim() || message.trim() || `Publish ${folderName || "app"}` }); if (!res || res.ok === false) throw new Error(res?.error || res?.message || `git ${op} failed`); const href = [res.html_url, res.pr_url, res.url].find((u): u is string => typeof u === "string" && u.length > 0) || "", lazyN = Array.isArray(res.lazy_paths) ? res.lazy_paths.length : Array.isArray(res.data?.lazy_paths) ? res.data.lazy_paths.length : 0, trunc = op === "clone" && (res.truncated || lazyN > 0) ? ` (truncated${lazyN > 0 ? `: ${lazyN} lazy path(s) omitted` : ""})` : "", note = (href ? `${op}: ${href}` : `git ${op} completed`) + trunc; setStatus(note); setLink(/^https?:\/\//.test(href) ? href : ""); showSuccess(note); }
     catch (e) { showError(msgOf(e)); } finally { setBusyOp(null); }
   };
   return (
@@ -89,7 +90,7 @@ export function UnconnectedGitHubConnector({ appId, folderName, refreshSettings,
       {!connected ? (
         <div className="space-y-2 rounded-md border border-border p-3"><Label htmlFor="publish-github-token">GitHub personal token</Label><div className="flex items-center gap-2"><Input id="publish-github-token" type="password" aria-label="GitHub personal token" placeholder="GitHub personal token" value={token} onChange={(e) => setToken(e.target.value)} /><Button type="button" size="sm" disabled={busyOp !== null} onClick={() => void saveToken(token, refreshSettings).then(() => { setToken(""); showSuccess("GitHub personal token saved"); }).catch((e) => showError(msgOf(e)))}>Connect</Button></div></div>
       ) : (
-        <div className="flex items-center justify-between text-xs text-muted-foreground"><span className="inline-flex items-center gap-1.5 text-foreground"><Check className="size-3.5" /> GitHub personal token configured</span><Button type="button" variant="ghost" size="sm" onClick={() => void clearToken(refreshSettings)}>Disconnect</Button></div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground"><span className="inline-flex items-center gap-1.5 text-foreground"><Check className="size-3.5" /> GitHub personal token configured</span><Button type="button" variant="ghost" size="sm" onClick={() => void clearToken(refreshSettings).then(() => showSuccess("GitHub disconnected")).catch((e) => showError(msgOf(e)))}>Disconnect</Button></div>
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="space-y-1"><Label htmlFor="github-repo-slug">Repository</Label><Input id="github-repo-slug" placeholder="owner/repo" value={repo} onChange={(e) => setRepo(e.target.value)} /></div>

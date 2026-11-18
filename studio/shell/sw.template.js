@@ -147,7 +147,7 @@ async function policyFor(kind, id, decisions = []) {
 }
 function untrusted(response, policy) {
   const headers = new Headers(response.headers);
-  headers.set("content-security-policy", policy);
+  headers.set("content-security-policy", policy); headers.set("cross-origin-embedder-policy", "credentialless"); headers.set("cross-origin-resource-policy", "cross-origin");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 // `opening` is true for the page an app opens with, so an app's own files are not each counted as an opening.

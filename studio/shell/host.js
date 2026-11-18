@@ -87,20 +87,28 @@ async function r4StudioFacts(receipt) {
 }
 async function askR4Studio(asks, signal, opts) { return r4Runtime.ask(asks, signal, opts); }
 function createR4Runtime(deps) {
-  const pinFn = deps.pinFn || (async () => deps.pin), w = () => deps.r4Worker(), listeners = new Set(), sessions = new Map(), attached = new WeakSet();
+  const pinFn = deps.pinFn || (async () => deps.pin), w = () => deps.r4Worker(), listeners = new Set(), sessions = new Map(), attached = new WeakSet(), syncedByApp = new Map();
   const utf8Fatal = new TextDecoder("utf-8", { fatal: true });
-  let netMode = "sandboxed", relayUrl = "", modelTier = "uor-r4.qwen3-0.6b-holo", tele = { tokens_emitted: 0, tok_per_sec: 0, geometric_metrics: {}, holo_v13: null, selectedModel: modelTier, networkMode: "sandboxed" }, touchedMode = false, touchedRelay = false, githubTokenSet = false, activeWk = null;
-  void Promise.all([deps.get?.("refs", "r4:network-mode"), deps.get?.("refs", "r4:relay-url")]).then(([sm, sr]) => { if (!touchedMode && sm === "full_spiralcore") { netMode = "full_spiralcore"; tele = { ...tele, networkMode: netMode }; } if (!touchedRelay && typeof sr === "string") relayUrl = sr; }).catch(() => {});
+  let netMode = "sandboxed", relayUrl = "", modelTier = "uor-r4.qwen3-0.6b-holo", tele = { tokens_emitted: 0, tok_per_sec: 0, prefix_reused_tokens: 0, geometric_metrics: {}, holo_v13: null, frame: null, frames: [], selectedModel: modelTier, networkMode: "sandboxed" }, touchedMode = false, touchedRelay = false, githubTokenSet = false, activeWk = null, turnFrameKeys = null;
+  void Promise.all([deps.get?.("refs", "r4:network-mode"), deps.get?.("refs", "r4:relay-url"), deps.get?.("refs", "capabilities:r4:spiralcore-internet")]).then(([sm, sr, c]) => { if (!touchedMode && sm === "full_spiralcore" && c?.outcome === "granted") { netMode = "full_spiralcore"; tele = { ...tele, networkMode: netMode }; } if (!touchedRelay && typeof sr === "string") relayUrl = sr; }).catch(() => {});
   const errOf = (code, msg) => Object.assign(new Error(msg), { code }), pushTele = (patch) => { tele = { ...tele, ...patch, ts: Date.now() }; for (const cb of listeners) try { cb(tele); } catch {} };
   const isTextPath = (p) => typeof p === "string" && p.length > 0 && !p.startsWith("/") && !p.split("/").some((seg) => !seg || seg === "." || seg === "..") && !/(?:^|\/)(?:\.git|node_modules|\.venv|__pycache__)(?:\/|$)/.test(p) && !/\.(?:db|sqlite|sqlite3|wasm)$/i.test(p);
-  const isText = (s) => typeof s === "string" && !s.includes("\u0000"), b64E = (s) => { const u = new TextEncoder().encode(s); let b = ""; for (let i = 0; i < u.length; i++) b += String.fromCharCode(u[i]); return btoa(b); };
+  const isProtected = (p) => /^prism\/.*\.lex\.tex$/.test(p) || p === "app/state", isText = (s) => typeof s === "string" && !s.includes("\u0000"), textFilesOf = (src) => (src?.files || []).filter(([p, c]) => isTextPath(p) && isText(c));
+  const b64E = (s) => { const u = new TextEncoder().encode(s); let b = ""; for (let i = 0; i < u.length; i++) b += String.fromCharCode(u[i]); return btoa(b); };
   const b64D = (b) => { try { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return utf8Fatal.decode(u); } catch { return null; } };
   const wkOf = (h) => h?.weights_kappa || h?.holo?.weights_kappa || ((h?.kappaStore?.container_sha256 || h?.holo?.container_sha256) ? "sha256:" + (h?.kappaStore?.container_sha256 || h?.holo?.container_sha256) : "");
   const hydrateLabel = (d, def) => { if (d.label) return d.label; const l = Number(d.loadedBytes ?? d.loaded_bytes ?? d.bytes), t = Number(d.totalBytes ?? d.total_bytes); return Number.isFinite(l) && Number.isFinite(t) && t > 0 ? `Hydrating ${d.modelId || modelTier} (${(l / 1048576).toFixed(1)}/${(t / 1048576).toFixed(1)} MiB)` : def; };
+  const frameKey = (f) => { try { return JSON.stringify(f); } catch { return null; } };
+  const telePatchOf = (d, dedupKeys) => {
+    const raw = (Array.isArray(d.frames) ? d.frames : Array.isArray(d.holo_observatory_frames) ? d.holo_observatory_frames : []).filter((f) => f && typeof f === "object"); if (d.frame && typeof d.frame === "object" && !raw.includes(d.frame)) raw.push(d.frame);
+    const add = []; for (const f of raw) { const k = dedupKeys ? frameKey(f) : null; if (dedupKeys && k) { if (dedupKeys.has(k)) continue; dedupKeys.add(k); } add.push(f); }
+    const pr = d.prefix_reused_tokens ?? d.holo_prefix_reused_tokens ?? d.prefixReused, nextFrames = add.length ? [...(tele.frames || []), ...add].slice(-64) : null, nextFrame = d.frame && typeof d.frame === "object" ? d.frame : add.length ? add.at(-1) : null;
+    return { ...(d.tokens_emitted != null ? { tokens_emitted: d.tokens_emitted } : {}), ...(d.tok_per_sec != null ? { tok_per_sec: d.tok_per_sec } : {}), ...(pr != null && Number.isFinite(Number(pr)) ? { prefix_reused_tokens: Number(pr) } : {}), ...(d.geometric_metrics ? { geometric_metrics: d.geometric_metrics } : {}), ...(d.holo_v13 ? { holo_v13: d.holo_v13 } : {}), ...(nextFrame ? { frame: nextFrame } : {}), ...(nextFrames ? { frames: nextFrames } : {}), ...(d.recommendedModel ? { selectedModel: d.recommendedModel } : {}) };
+  };
   const handleWorkerEvent = (d) => {
     if (!d?.event) return;
     if (d.event === "audit_event") void deps.put("audit", `${Date.now()}:${d.operation || "r4"}:${crypto.randomUUID().slice(0, 8)}`, { timestamp_millis: d.timestamp_millis || Date.now(), principal: "r4:lexlean-r4", operation: d.operation || "r4", target: d.target || "", mode: d.mode || netMode, transport: d.transport || "holo", status: d.status || "ok", bytes: Number(d.bytes || 0), resource: d.target || d.operation || "r4", outcome: d.status || "ok" }).catch(() => {});
-    if (["chat_chunk", "holo_observatory_batch", "holo_trace_frame", "brain_pulse", "stitch_health", "bridge_activity", "telos_tick", "ready", "holo_ready"].includes(d.event)) pushTele({ event: d.event, ...(d.tokens_emitted != null ? { tokens_emitted: d.tokens_emitted } : {}), ...(d.tok_per_sec != null ? { tok_per_sec: d.tok_per_sec } : {}), ...(d.geometric_metrics ? { geometric_metrics: d.geometric_metrics } : {}), ...(d.holo_v13 ? { holo_v13: d.holo_v13 } : {}), ...(d.recommendedModel ? { selectedModel: d.recommendedModel } : {}) });
+    if (["chat_chunk", "holo_observatory_batch", "holo_trace_frame", "brain_pulse", "stitch_health", "bridge_activity", "telos_tick", "ready", "holo_ready"].includes(d.event)) pushTele({ event: d.event, ...telePatchOf(d, turnFrameKeys) });
   };
   const attachWorker = (wk) => { if (!wk || attached.has(wk)) return; attached.add(wk); if (activeWk && activeWk !== wk) { githubTokenSet = false; pushTele({ githubConnected: false }); } activeWk = wk; wk.addEventListener("message", (e) => handleWorkerEvent(e.data)); };
   const rpc = (op, payload, onEvt, signal, ms = deps.rpcTimeoutMs || 90000) => new Promise((ok, no) => {
@@ -110,19 +118,19 @@ function createR4Runtime(deps) {
     const onErr = (ev) => done(no, new Error(ev?.message || "LexLean-R4 worker error")), onMsg = (e) => { const d = e.data; if (!d) return; if (d.event) { arm(); return void onEvt?.(d); } if (d.id !== id) return; if (!d.ok) return done(no, errOf(d.error_code || "r4WorkerRefused", d.error || "LexLean-R4 refused")); done(ok, d.result || {}); };
     arm(); wk.addEventListener("message", onMsg); wk.addEventListener("error", onErr); signal?.addEventListener("abort", onAbort, { once: true }); wk.postMessage({ id, op, payload });
   });
-  const configureWorker = async () => { const sm = await deps.get("refs", "r4:network-mode"), sr = await deps.get("refs", "r4:relay-url"), c = await deps.get("refs", "capabilities:r4:spiralcore-internet"); netMode = sm === "full_spiralcore" ? "full_spiralcore" : "sandboxed"; relayUrl = typeof sr === "string" ? sr : ""; return rpc("set_host_config", { esbuildModuleUrl: new URL("compiler/esm/browser.min.js", deps.BASE).href, esbuildWasmUrl: new URL("compiler/esbuild.wasm", deps.BASE).href, mode: netMode, relayWsUrl: relayUrl, consentGranted: c?.outcome === "granted" }); };
-  const syncWorkspaceIn = async (appId, source) => rpc("mvm_sync_workspace_in", { epoch: Date.now(), files: ((source || await deps.captureProjectSource(await deps.dbReady(), appId))?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content_base64: b64E(content) })) });
+  const configureWorker = async () => { const sm = await deps.get("refs", "r4:network-mode"), sr = await deps.get("refs", "r4:relay-url"), c = await deps.get("refs", "capabilities:r4:spiralcore-internet"), granted = c?.outcome === "granted"; netMode = sm === "full_spiralcore" && granted ? "full_spiralcore" : "sandboxed"; relayUrl = typeof sr === "string" ? sr : ""; pushTele({ networkMode: netMode }); return rpc("set_host_config", { esbuildModuleUrl: new URL("compiler/esm/browser.min.js", deps.BASE).href, esbuildWasmUrl: new URL("compiler/esbuild.wasm", deps.BASE).href, mode: netMode, relayWsUrl: relayUrl, consentGranted: granted }); };
+  const syncWorkspaceIn = async (appId, source, extraDeleted = []) => { const src = source || await deps.captureProjectSource(await deps.dbReady(), appId), entries = textFilesOf(src), next = new Set(entries.map(([p]) => p)), prev = appId != null ? syncedByApp.get(appId) : null, delSet = new Set(extraDeleted.filter((p) => p && !next.has(p) && isTextPath(p) && !isProtected(p))); if (prev) for (const p of prev) if (!next.has(p) && !isProtected(p)) delSet.add(p); const res = await rpc("mvm_sync_workspace_in", { epoch: Date.now(), files: entries.map(([path, content]) => ({ path, content_base64: b64E(content) })).concat(delSet.size ? [...delSet].map((path) => ({ path, content_base64: "", deleted: true })) : []) }); if (appId != null) syncedByApp.set(appId, next); return res; };
   const mergeDiffsToTags = (diffs, skip = new Set()) => {
     const state = new Map();
     for (const diff of Array.isArray(diffs) ? diffs : [diffs]) {
       if (!diff) continue;
-      for (const e of [...(diff.writes || []), ...(diff.added || []), ...(diff.modified || [])]) { const p = e?.path, c = typeof e?.content === "string" ? e.content : typeof e?.content_base64 === "string" ? b64D(e.content_base64) : null; if (p && !skip.has(p) && isTextPath(p) && !/^prism\/.*\.lex\.tex$/.test(p) && typeof c === "string" && isText(c)) state.set(p, { kind: "write", path: p, content: c }); }
-      for (const dp of [...(diff.deletes || []), ...(diff.removed || [])]) { const p = typeof dp === "string" ? dp : dp?.path; if (p && !skip.has(p) && isTextPath(p) && !/^prism\/.*\.lex\.tex$/.test(p)) state.set(p, { kind: "delete", path: p }); }
+      for (const e of [...(diff.writes || []), ...(diff.added || []), ...(diff.modified || [])]) { const p = e?.path, c = typeof e?.content === "string" ? e.content : typeof e?.content_base64 === "string" ? b64D(e.content_base64) : null; if (p && !skip.has(p) && isTextPath(p) && !isProtected(p) && typeof c === "string" && isText(c)) state.set(p, { kind: "write", path: p, content: c }); }
+      for (const dp of [...(diff.deletes || []), ...(diff.removed || [])]) { const p = typeof dp === "string" ? dp : dp?.path; if (p && !skip.has(p) && isTextPath(p) && !isProtected(p)) state.set(p, { kind: "delete", path: p }); }
     }
     const writes = [], deletes = []; for (const v of state.values()) v.kind === "write" ? writes.push({ path: v.path, content: v.content }) : deletes.push({ path: v.path });
     return { writes, deletes, renames: [], deps: [] };
   };
-  const applyDiffTags = async (appId, diffs, source, skipPaths, opts = {}) => { const tags = mergeDiffsToTags(diffs, skipPaths); return (!tags.writes.length && !tags.deletes.length) ? { changed: 0, source } : deps.applyPrismTags(appId, tags, { source: source || await deps.captureProjectSource(await deps.dbReady(), appId), signal: opts.signal, onCommit: opts.onCommit }); };
+  const applyDiffTags = async (appId, diffs, source, skipPaths, opts = {}) => { const tags = mergeDiffsToTags(diffs, skipPaths); if (!tags.writes.length && !tags.deletes.length) return { changed: 0, source }; const res = await deps.applyPrismTags(appId, tags, { source: source || await deps.captureProjectSource(await deps.dbReady(), appId), signal: opts.signal, onCommit: opts.onCommit }); if (appId != null) { const tracked = syncedByApp.get(appId) || new Set(); for (const w of tags.writes) tracked.add(w.path); for (const d of tags.deletes) tracked.delete(d.path); syncedByApp.set(appId, tracked); } return res; };
   const syncWorkspaceOut = async (appId, source, skipPaths = [], opts = {}) => applyDiffTags(appId, await rpc("mvm_export_workspace_diff", {}), source, new Set(skipPaths), opts);
   const saveWeightsRef = async (pin, weightsKappa, family) => { if (weightsKappa) await deps.put("refs", "r4:weights:" + pin.archiveKappa, { wasmSha256: deps.getWasmSha(), archiveKappa: pin.archiveKappa, weightsKappa, family }); };
   const grantWeightsConsent = async (pin) => { await deps.authorizeR4WeightsDownload({ source: pin.archiveKappa, endpoints: ["https://huggingface.co"] }, { db: await deps.dbReady() }); void configureWorker().catch(() => {}); };
@@ -134,14 +142,26 @@ function createR4Runtime(deps) {
     try { const h = await runHydrate(allow), wk = wkOf(h); if (wk === pin.qwen3WeightsKappa) await saveWeightsRef(pin, wk, "qwen3"); } catch (e) { if (e?.code !== "ConsentRequiredForWeightDownload") return; try { await grantWeightsConsent(pin); } catch { return; } const h = await runHydrate(true), wk = wkOf(h); if (wk === pin.qwen3WeightsKappa) await saveWeightsRef(pin, wk, "qwen3"); }
   };
   const ask = async (asks, signal, opts = {}) => {
-    const pin = await pinFn(), prompt = asks[asks.length - 1] || "", diffs = [], wsFiles = (opts.projectSource?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content }));
-    if (opts.appId != null && opts.projectSource) await syncWorkspaceIn(opts.appId, opts.projectSource).catch(() => {});
-    const allowOff = (await deps.get("refs", "capabilities:r4:weights-download"))?.outcome === "granted"; let streamed = "", res;
-    const runTurn = (allow) => rpc("inprism_r4_turn", { prompt, selected_model: modelTier, preferredModel: modelTier, workspace_files: wsFiles, active_file: opts.activeFile || null, allowOffOriginHydration: allow }, (d) => { if (["chat_hydration", "hydration_progress", "boot_progress"].includes(d.event)) void opts.onText?.(`_${hydrateLabel(d, "Hydrating Qwen3-0.6B Holo v13 shards")}…_\n\n`); if (d.event === "chat_chunk") { const seg = d.delta ?? d.text ?? d.chunk ?? ""; if (seg) { streamed += seg; void opts.onText?.(streamed); } } if (d.event === "workspace_sync" && d.diff) diffs.push(d.diff); if (d.event === "tool_result" && d.workspace_diff) diffs.push(d.workspace_diff); }, signal);
-    try { res = await runTurn(allowOff); } catch (e) { if (e?.code !== "ConsentRequiredForWeightDownload") throw e; try { await grantWeightsConsent(pin); } catch { throw errOf("r4Refused", deps.r4Refusal({ outcome: "refuse", rule: "REQ-005" }, { mode: "inprism" })); } res = await runTurn(true); }
+    const pin = await pinFn(), prompt = asks[asks.length - 1] || "", readOnly = Boolean(opts.readOnly), diffs = [], mutated = [], cleanSrc = opts.projectSource || (opts.appId != null ? await deps.captureProjectSource(await deps.dbReady(), opts.appId) : null), wsPairs = textFilesOf(cleanSrc), wsFiles = wsPairs.map(([path, content]) => ({ path, content })), cleanPaths = new Set(wsPairs.map(([p]) => p));
+    if (opts.appId != null && cleanSrc) await syncWorkspaceIn(opts.appId, cleanSrc).catch(() => {});
+    const allowOff = (await deps.get("refs", "capabilities:r4:weights-download"))?.outcome === "granted", turnPrompt = readOnly && opts.systemPrompt ? `${opts.systemPrompt}\n\n${prompt}` : prompt; let streamed = "", res = null;
+    const runTurn = (allow) => rpc("inprism_r4_turn", { prompt: turnPrompt, selected_model: modelTier, preferredModel: modelTier, workspace_files: wsFiles, active_file: opts.activeFile || null, allowOffOriginHydration: allow, ...(readOnly ? { readOnly: true, chatMode: opts.chatMode || "ask", ...(opts.systemPrompt ? { system_prompt: opts.systemPrompt } : {}) } : {}) }, (d) => { if (["chat_hydration", "hydration_progress", "boot_progress"].includes(d.event)) void opts.onText?.(`_${hydrateLabel(d, "Hydrating Qwen3-0.6B Holo v13 shards")}…_\n\n`); if (d.event === "chat_chunk") { const seg = d.delta ?? d.text ?? d.chunk ?? ""; if (seg) { streamed += seg; void opts.onText?.(streamed); } } if (d.event === "workspace_sync" && d.diff) (readOnly ? mutated : diffs).push(d.diff); if (d.event === "tool_result" && d.workspace_diff) (readOnly ? mutated : diffs).push(d.workspace_diff); }, signal);
+    turnFrameKeys = new Set();
+    try {
+      try { res = await runTurn(allowOff); } catch (e) { if (e?.code !== "ConsentRequiredForWeightDownload") throw e; try { await grantWeightsConsent(pin); } catch { throw errOf("r4Refused", deps.r4Refusal({ outcome: "refuse", rule: "REQ-005" }, { mode: "inprism" })); } res = await runTurn(true); }
+      if (res && (res.tokens_emitted != null || res.tok_per_sec != null || res.prefix_reused_tokens != null || res.holo_prefix_reused_tokens != null || res.geometric_metrics || res.holo_v13 || res.frame || res.frames?.length || res.holo_observatory_frames?.length)) pushTele({ event: "inprism_result", ...telePatchOf(res, turnFrameKeys) });
+    } finally {
+      turnFrameKeys = null;
+      if (readOnly) {
+        const exp = await rpc("mvm_export_workspace_diff", {}).catch(() => null), allD = [...mutated, ...(exp ? [exp] : [])], extra = [];
+        for (const d of allD) for (const e of [...(d?.writes || []), ...(d?.added || []), ...(d?.modified || [])]) if (e?.path && !cleanPaths.has(e.path)) extra.push(e.path);
+        if (Array.isArray(res?.workspace?.files)) for (const f of res.workspace.files) if (f?.path && !cleanPaths.has(f.path)) extra.push(f.path);
+        if (extra.length || allD.some((d) => d && ((d.writes?.length || 0) + (d.added?.length || 0) + (d.modified?.length || 0) + (d.deletes?.length || 0) + (d.removed?.length || 0)) > 0)) { await syncWorkspaceIn(opts.appId, cleanSrc || { files: [] }, extra).catch(() => {}); await rpc("mvm_export_workspace_diff", {}).catch(() => null); }
+      }
+    }
     const fam = res.model_id === "uor-r4.native-q31-d85" ? "offlineQ31" : "qwen3", expK = fam === "offlineQ31" ? pin.offlineQ31WeightsKappa : pin.qwen3WeightsKappa;
     if (res.weights_kappa === expK) await saveWeightsRef(pin, res.weights_kappa, fam);
-    return { reply: res.reply || streamed, lines: [], wasmSha256: deps.getWasmSha(), weightsKappa: res.weights_kappa || "", family: fam, modelId: res.model_id || modelTier, pendingDiffs: diffs };
+    return { reply: res.reply || streamed, lines: [], wasmSha256: deps.getWasmSha(), weightsKappa: res.weights_kappa || "", family: fam, modelId: res.model_id || modelTier, pendingDiffs: readOnly ? [] : diffs };
   };
   const applyTurnWorkspaceDiff = async (appId, source, r4Turn, skip = [], opts = {}) => { let exp = null; try { exp = await rpc("mvm_export_workspace_diff", {}); } catch {} return applyDiffTags(appId, [...(r4Turn?.pendingDiffs || []), ...(exp ? [exp] : [])], source, new Set(skip), opts); };
   const termGet = (id, allowExited) => { const s = sessions.get(id); if (!s) throw errOf("r4TerminalMissing", "Terminal session not found"); if (!allowExited && s.exited) throw errOf("r4TerminalExited", "Terminal session has exited"); return s; }, appendTerm = (s, chunk) => { if (!chunk) return; const startOffset = s.scrollback.length; s.scrollback += chunk; deps.emit("terminal:data:" + s.sessionId, { sessionId: s.sessionId, chunk, startOffset, endOffset: s.scrollback.length }); };
@@ -175,13 +195,13 @@ function createR4Runtime(deps) {
   const terminalClose = async ({ sessionId }) => { if (sessions.delete(sessionId)) await rpc("terminal:close", { sessionId }).catch(() => {}); return { ok: true }; };
   const setNetworkMode = async (mode) => {
     const next = mode === "full_spiralcore" ? "full_spiralcore" : "sandboxed";
-    if (next === "full_spiralcore") await deps.authorizeSpiralCoreInternet({ source: "r4:spiralcore-internet", endpoints: relayUrl ? [relayUrl] : ["https://registry.npmjs.org"] }, { db: await deps.dbReady() });
+    if (next === "full_spiralcore") { const pin = await pinFn().catch(() => null), ep = (() => { try { const u = new URL(String(relayUrl || "")); return (u.protocol === "wss:" || u.protocol === "https:") && /^[a-z0-9-]+(\.[a-z0-9-]+)+(:[0-9]{1,5})?$/.test(u.host) ? "https://" + u.host : "https://registry.npmjs.org"; } catch { return "https://registry.npmjs.org"; } })(); await deps.authorizeSpiralCoreInternet({ source: pin?.archiveKappa, endpoints: ep === "https://registry.npmjs.org" ? [ep] : [ep, "https://registry.npmjs.org"] }, { db: await deps.dbReady() }); }
     await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: next, relayWsUrl: relayUrl, consentGranted: next === "full_spiralcore" });
     if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused");
     touchedMode = true; netMode = next; await deps.put("refs", "r4:network-mode", netMode); pushTele({ networkMode: netMode }); return netMode;
   };
   const setRelayUrl = async (url) => { const next = String(url || "").trim(); await deps.ensureR4Studio?.(); const res = await rpc("set_bridge_policy", { mode: netMode, relayWsUrl: next, consentGranted: netMode === "full_spiralcore" }); if (res && res.ok === false) throw errOf(res.error_code || "r4WorkerRefused", res.error || "Bridge policy refused"); touchedRelay = true; relayUrl = next; await deps.put("refs", "r4:relay-url", relayUrl); return relayUrl; };
-  const gitAction = async (op, args = {}) => { await deps.ensureR4Studio?.(); if (op === "set_secret") { const res = await rpc("mvm_set_secret", args); if (res?.ok !== false && args?.key === "GITHUB_TOKEN") { githubTokenSet = Boolean(String(args.value || "").trim()); pushTele({ githubConnected: githubTokenSet }); } return res; } const sub = op === "pr" ? "create_pr" : op; let files = args.files; if (args.appId != null && ["push", "commit_push", "commit"].includes(sub)) { const src = await deps.captureProjectSource(await deps.dbReady(), args.appId); await syncWorkspaceIn(args.appId, src).catch(() => {}); if (!Array.isArray(files)) files = (src?.files || []).filter(([p, c]) => isTextPath(p) && isText(c)).map(([path, content]) => ({ path, content })); } const res = await rpc("host_bridge_exec", { op: "git", subcommand: sub, action: op, ...args, ...(Array.isArray(files) ? { files } : {}) }); if (res?.ok === false && res?.error_code === "GitAuthRequired") { githubTokenSet = false; pushTele({ githubConnected: false }); } if (args.appId != null && res?.ok && ["clone", "pull", "fetch"].includes(sub)) await applyDiffTags(args.appId, [{ writes: res.files || [] }], null, new Set(), { onCommit: (oid) => deps.emit("version-created", { appId: args.appId, oid }) }).catch(() => {}); return res; };
+  const gitAction = async (op, args = {}) => { await deps.ensureR4Studio?.(); if (op === "set_secret") { const res = await rpc("mvm_set_secret", args); if (res?.ok !== false && args?.key === "GITHUB_TOKEN") { githubTokenSet = Boolean(String(args.value || "").trim()); pushTele({ githubConnected: githubTokenSet }); } return res; } const sub = op === "pr" ? "create_pr" : op; let files = args.files; if (args.appId != null && ["push", "commit_push", "commit"].includes(sub)) { const src = await deps.captureProjectSource(await deps.dbReady(), args.appId); await syncWorkspaceIn(args.appId, src).catch(() => {}); if (!Array.isArray(files)) files = textFilesOf(src).map(([path, content]) => ({ path, content })); } const res = await rpc("host_bridge_exec", { op: "git", subcommand: sub, action: op, ...args, ...(Array.isArray(files) ? { files } : {}) }); if (res?.ok === false && res?.error_code === "GitAuthRequired") { githubTokenSet = false; pushTele({ githubConnected: false }); } if (args.appId != null && res?.ok && ["clone", "pull", "fetch"].includes(sub)) await applyDiffTags(args.appId, [{ writes: res.files || [] }], null, new Set(), { onCommit: (oid) => deps.emit("version-created", { appId: args.appId, oid }) }).catch(() => {}); return res; };
   return { attachWorker, configureWorker, handleWorkerEvent, prepareInprism, ask, syncWorkspaceIn, syncWorkspaceOut, applyTurnWorkspaceDiff, terminalOpen, terminalWrite, terminalResize, terminalSerialize, terminalKill, terminalClose, hasGithubToken: () => githubTokenSet, getTelemetrySnapshot: () => tele, onTelemetry: (cb) => { listeners.add(cb); return () => listeners.delete(cb); }, getNetworkMode: () => netMode, setNetworkMode, getRelayUrl: () => relayUrl, setRelayUrl, gitAction, getModelTier: () => modelTier, setModelTier: (m) => { modelTier = String(m || "uor-r4.qwen3-0.6b-holo"); pushTele({ selectedModel: modelTier }); return modelTier; } };
 }
 // R4_RUNTIME_END
@@ -192,27 +212,14 @@ const r4Runtime = createR4Runtime({ pinFn: r4StudioPin, BASE, ensureR4Studio, r4
 const nextId = async (store) => { const ks = await keys(store), high = await get("refs", `allocation:${store}`); const maximum = Math.max(0, high || 0, ...ks.map(Number)); if (!Number.isSafeInteger(maximum) || maximum < 0 || maximum >= Number.MAX_SAFE_INTEGER) throw new Error("Identifier allocation failed"); return maximum + 1; };
 const nulls = { githubOrg: null, githubRepo: null, githubBranch: null, supabaseProjectId: null, supabaseParentProjectId: null, supabaseOrganizationSlug: null, neonProjectId: null, neonDevelopmentBranchId: null, neonPreviewBranchId: null, neonActiveBranchId: null, selectedDatabaseBranchType: null, vercelProjectId: null, vercelProjectName: null, vercelDeploymentUrl: null, vercelTeamId: null, installCommand: null, startCommand: null, chatContext: null, isFavorite: false, testingEnabled: false, collectionId: null };
 const withDates = (a) => ({ ...a, createdAt: new Date(a.createdAt), updatedAt: new Date(a.updatedAt), resolvedPath: a.path });
-async function filesOf(appId) {
-  const ks = (await tx("files", "readonly", (s) => s.getAllKeys(appRange(appId)))).map((k) => k.slice(String(appId).length + 1)).sort();
-  return ks;
-}
+async function filesOf(appId) { return (await tx("files", "readonly", (s) => s.getAllKeys(appRange(appId)))).map((k) => k.slice(String(appId).length + 1)).sort(); }
 let scaffold = null;
-async function loadScaffold() {
-  if (!scaffold) scaffold = await loadProjectScaffold(new URL("scaffold/", BASE));
-  return scaffold;
-}
+async function loadScaffold() { return (scaffold ??= await loadProjectScaffold(new URL("scaffold/", BASE))); }
 handlers.set("list-apps", async () => ({ apps: (await all("apps")).map(withDates) }));
 handlers.set("get-app", async (id) => { const a = await get("apps", id); if (!a) throw new Error("no app " + id); return { ...withDates(a), files: await filesOf(id), frameworkType: "vite", supabaseProjectName: null, vercelTeamSlug: null }; });
 handlers.set("check-app-name", async ({ appName }) => ({ exists: (await all("apps")).some((a) => a.name === appName) }));
 handlers.set("preview-app-folder-name", async ({ appName }) => ({ folderName: appName }));
-handlers.set("create-app", async ({ name, initialChatMode }) => {
-  await coreReady;
-  const capturedMode = browserChatMode(initialChatMode,await get("settings","user"));
-  const prepared = await prepareNewProject({ name, initialChatMode: capturedMode, files: await loadScaffold() }, { core, derive: kappa });
-  const created = await createStoredProject(await dbReady, prepared, nulls, themesData);
-  emit("version-created", { appId: created.app.id, oid: created.oid });
-  return { app: withDates(created.app), chatId: created.chatId };
-});
+handlers.set("create-app", async ({ name, initialChatMode }) => { await coreReady; const capturedMode = browserChatMode(initialChatMode,await get("settings","user")), prepared = await prepareNewProject({ name, initialChatMode: capturedMode, files: await loadScaffold() }, { core, derive: kappa }), created = await createStoredProject(await dbReady, prepared, nulls, themesData); emit("version-created", { appId: created.app.id, oid: created.oid }); return { app: withDates(created.app), chatId: created.chatId }; });
 handlers.set("read-app-file", async ({ appId, filePath }) => { const c = await get("files", appId + ":" + filePath); if (c === undefined) throw new Error("no file " + filePath); return c; });
 handlers.set("edit-app-file", async (input) => {
   input = structuredClone(input);
@@ -252,26 +259,8 @@ handlers.set("delete-app", async ({ appId }) => { const deletedChats=(await all(
 handlers.set("rename-app", async (input) => { await coreReady; await renameStoredProject(await dbReady, input, { core, derive: kappa, onCommit: oid => emit("version-created", { appId: input.appId, oid }) }); return { app: withDates(await get("apps", input.appId)) }; });
 // A search matches a project by name, by the title of one of its chats, or by a line in one of their
 // messages, and says which: the renderer shows the matched title and message under the project's name.
-handlers.set("search-app", async (q) => {
-  const needle = String(q || "").toLowerCase(), chats = await all("chats"), out = [];
-  for (const a of await all("apps")) {
-    const mine = chats.filter((c) => c.appId === a.id), chat = mine.find((c) => String(c.title || "").toLowerCase().includes(needle));
-    let message = null; for (const c of mine) { const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle)); if (hit) { message = String(hit.content); break; } }
-    if (!needle || a.name.toLowerCase().includes(needle) || chat || message) out.push({ ...withDates(a), matchedChatTitle: chat ? String(chat.title || "") : null, matchedChatMessage: message });
-  }
-  return out;
-});
-// A file matches by its path or by a line of its text, and the renderer shows the matching line with
-// what surrounds it, so the snippets are cut here rather than left out.
-handlers.set("search-app-files", async ({ appId, query }) => {
-  const needle = String(query || "").toLowerCase(), out = [];
-  for (const p of await filesOf(appId)) {
-    const snippets = [];
-    if (needle) { const lines = String((await get("files", appId + ":" + p)) || "").split(/\r?\n/); for (let i = 0; i < lines.length && snippets.length < 8; i += 1) { const at = lines[i].toLowerCase().indexOf(needle); if (at >= 0) snippets.push({ before: lines[i].slice(Math.max(0, at - 40), at), match: lines[i].slice(at, at + needle.length), after: lines[i].slice(at + needle.length, at + needle.length + 40), line: i + 1 }); } }
-    if (!needle || p.toLowerCase().includes(needle) || snippets.length) out.push({ path: p, matchesContent: snippets.length > 0, snippets });
-  }
-  return out;
-});
+handlers.set("search-app", async (q) => { const needle = String(q || "").toLowerCase(), chats = await all("chats"), out = []; for (const a of await all("apps")) { const mine = chats.filter((c) => c.appId === a.id), chat = mine.find((c) => String(c.title || "").toLowerCase().includes(needle)); let message = null; for (const c of mine) { const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle)); if (hit) { message = String(hit.content); break; } } if (!needle || a.name.toLowerCase().includes(needle) || chat || message) out.push({ ...withDates(a), matchedChatTitle: chat ? String(chat.title || "") : null, matchedChatMessage: message }); } return out; });
+handlers.set("search-app-files", async ({ appId, query }) => { const needle = String(query || "").toLowerCase(), out = []; for (const p of await filesOf(appId)) { const snippets = []; if (needle) { const lines = String((await get("files", appId + ":" + p)) || "").split(/\r?\n/); for (let i = 0; i < lines.length && snippets.length < 8; i += 1) { const at = lines[i].toLowerCase().indexOf(needle); if (at >= 0) snippets.push({ before: lines[i].slice(Math.max(0, at - 40), at), match: lines[i].slice(at, at + needle.length), after: lines[i].slice(at + needle.length, at + needle.length + 40), line: i + 1 }); } } if (!needle || p.toLowerCase().includes(needle) || snippets.length) out.push({ path: p, matchesContent: snippets.length > 0, snippets }); } return out; });
 handlers.set("app:get-current-commit-hash", async ({ appId }) => (await get("refs", appId + ":main")) || null);
 
 // ---- moving in. A browser keeps this store per origin, so apps made on the site Forge was served from
@@ -345,17 +334,7 @@ handlers.set("update-chat", input => updateChatPreferences(dbReady,input));
 handlers.set("delete-chat", async (id) => { await deleteStoredChat(await dbReady, id); queueChannel?.postMessage({chatId:id}); await chatQueue.refresh(id).catch(()=>{}); });
 // The sidebar's search: a chat matches by title or by the text of one of its messages, and the line
 // that matched is what the renderer shows under it.
-handlers.set("search-chats", async (q) => {
-  const needle = String(q || "").toLowerCase();
-  const out = [];
-  for (const c of await all("chats")) {
-    const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle));
-    if (!needle || String(c.title || "").toLowerCase().includes(needle) || hit) {
-      out.push({ id: c.id, appId: c.appId, title: c.title, createdAt: new Date(c.createdAt || Date.now()), matchedMessageContent: hit ? String(hit.content) : null });
-    }
-  }
-  return out;
-});
+handlers.set("search-chats", async (q) => { const needle = String(q || "").toLowerCase(), out = []; for (const c of await all("chats")) { const hit = (c.messages || []).find((m) => String(m.content || "").toLowerCase().includes(needle)); if (!needle || String(c.title || "").toLowerCase().includes(needle) || hit) out.push({ id: c.id, appId: c.appId, title: c.title, createdAt: new Date(c.createdAt || Date.now()), matchedMessageContent: hit ? String(hit.content) : null }); } return out; });
 // Counted where it matters: the codebase and the prompt are what a build turn actually sends, and the
 // window is the chosen model's own, so the renderer's context meter tells the truth.
 handlers.set("chat:count-tokens", async ({ chatId, input }) => {
@@ -588,70 +567,33 @@ function pushLive(appId, raw, trust, edit = false) {
   if (!livePending.has(appId)) { livePending.add(appId); requestAnimationFrame(() => { livePending.delete(appId); sendLive(appId); }); }
 }
 window.addEventListener("message", (e) => {
-  const m = e.data;
-  if (!m || typeof m.type !== "string" || !m.type.startsWith("live/") || !isLiveFrame(e.source)) return;
-  // The frame reads its app from the address (a string); the host keys apps as the store does (a number).
-  if (m.type === "live/hello") {
-    // The hidden warm-up frame has no app. Only a real project identity may read source.
-    const app = typeof m.app === "number" ? m.app : typeof m.app === "string" && /^[1-9][0-9]*$/.test(m.app) ? Number(m.app) : 0;
-    if (!Number.isSafeInteger(app) || app < 1) return;
-    liveWindows.set(e.source, app);
-    Promise.resolve().then(async () => {
-      if (appApps.has(app)) { const frames = await appFramesReady(); return frames.has(app) ? frames.resend(app) : refreshPreview(app); }
-      if (liveLatest.has(app)) return sendLive(app);
-      return refreshPreview(app);
-    }).catch(() => refuse(app, null, "The app preview could not be refreshed. Reopen it to try again."));
-    return;
-  }
+  const m = e.data; if (!m || typeof m.type !== "string" || !m.type.startsWith("live/") || !isLiveFrame(e.source)) return;
+  if (m.type === "live/hello") { const app = typeof m.app === "number" ? m.app : typeof m.app === "string" && /^[1-9][0-9]*$/.test(m.app) ? Number(m.app) : 0; if (!Number.isSafeInteger(app) || app < 1) return; liveWindows.set(e.source, app); Promise.resolve().then(async () => { if (appApps.has(app)) { const frames = await appFramesReady(); return frames.has(app) ? frames.resend(app) : refreshPreview(app); } return liveLatest.has(app) ? sendLive(app) : refreshPreview(app); }).catch(() => refuse(app, null, "The app preview could not be refreshed. Reopen it to try again.")); return; }
   if (m.type === "live/painted") { if (m.changed) { liveTimes.push(m.ms); if (liveTimes.length > 200) liveTimes.shift(); } return; }
-  // Everything else acts on an app: the one this frame was shown, never the one the message names.
-  const appId = liveWindows.get(e.source);
-  if (!appId) return;
+  const appId = liveWindows.get(e.source); if (!appId) return;
   if (m.type === "live/intent") { if (appApps.has(appId)) appFramesReady().then((frames) => frames.intent(appId, m)).catch(() => {}); return; }
-  if (m.type === "live/patch" && Array.isArray(m.ops)) patchSpec(appId, m.ops, { author: "user", key: m.key || null }).catch(() => {});
-  else if (m.type === "live/undo" || m.type === "live/redo") stepSpec(appId, m.type === "live/undo" ? "undo" : "redo").catch(() => {});
-  else if (m.type === "live/point") { if (livePointed.get(appId)?.key === m.key) livePointed.delete(appId); else livePointed.set(appId, { key: m.key, kind: m.kind, edit: m.edit || {}, text: String(m.text || "").slice(0, 200) }); }
+  if (m.type === "live/patch" && Array.isArray(m.ops)) patchSpec(appId, m.ops, { author: "user", key: m.key || null }).catch(() => {}); else if (m.type === "live/undo" || m.type === "live/redo") stepSpec(appId, m.type === "live/undo" ? "undo" : "redo").catch(() => {}); else if (m.type === "live/point") { if (livePointed.get(appId)?.key === m.key) livePointed.delete(appId); else livePointed.set(appId, { key: m.key, kind: m.kind, edit: m.edit || {}, text: String(m.text || "").slice(0, 200) }); }
 });
 new MutationObserver(() => { for (const appId of liveLatest.keys()) pushLive(appId, liveLatest.get(appId).raw, liveLatest.get(appId).trust); }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 // Build telemetry watches the same frame messages through its own listener, so the live handler above stays
 // exactly the production one its tests lift out; it applies the same trust checks and only marks moments.
 window.addEventListener("message", (e) => {
-  const m = e.data;
-  if (!m || typeof m.type !== "string" || !m.type.startsWith("live/") || !isLiveFrame(e.source)) return;
+  const m = e.data; if (!m || typeof m.type !== "string" || !m.type.startsWith("live/") || !isLiveFrame(e.source)) return;
   if (m.type === "live/hello") { if (tm.turn) tmOnce("frame"); return; }
-  if (m.type === "live/painted") {
-    if (!m.changed) return;
-    if (tm.turn) { tmMark("update", Math.round((m.work || 0) * 1000)); tmMark("pixel"); }
-    if (tm.editOpen) { tm.editOpen = false; tmMark("editScreen"); if (!tm.turn) tmFlush(); }
-    return;
-  }
+  if (m.type === "live/painted") { if (!m.changed) return; if (tm.turn) { tmMark("update", Math.round((m.work || 0) * 1000)); tmMark("pixel"); } if (tm.editOpen) { tm.editOpen = false; tmMark("editScreen"); if (!tm.turn) tmFlush(); } return; }
   if (m.type === "live/patch" && Array.isArray(m.ops) && liveWindows.get(e.source)) { tm.editOpen = true; tmMark("edit"); }
 });
 // The rules as they stand: the checked spec at its kernel phase, else what the model wrote, as a draft.
 // A stateful app is its module: it is run again from the stored source. Resolves whether this app is one.
-async function refreshApp(appId, options = {}) {
-  const app = await appStateOf(appId);
-  if (!app) return false;
-  pushApp(appId, app.source, app.state?.phase || 'draft', options);
-  return true;
-}
+async function refreshApp(appId, options = {}) { const app = await appStateOf(appId); if (!app) return false; pushApp(appId, app.source, app.state?.phase || 'draft', options); return true; }
 // What the preview shows for an app as it stands: a running module, or a decision's projection.
 async function refreshPreview(appId, options = {}) { if (!(await refreshApp(appId, options))) await refreshLive(appId); }
 async function refreshLive(appId) {
-  const current = await captureProjectSource(await dbReady, appId);
-  if (applicationShape(current) === 'stateful') return;
-  const json = await get("files", appId + ":prism/spec.json");
-  if (!json) return;
-  const state = await rulesOf(appId);
-  // The spec as written is drawn, not the checker's normalised copy: every edit path on the screen is a
-  // path in this spec, so a click patches exactly what the model or the user wrote.
+  const current = await captureProjectSource(await dbReady, appId); if (applicationShape(current) === 'stateful') return;
+  const json = await get("files", appId + ":prism/spec.json"); if (!json) return; const state = await rulesOf(appId);
   try {
-    const bound = state?.spec && state.specKappa === await kappa(enc.encode(json));
-    const trust = bound ? state.phase === "published" && state.publicationCurrent === false ? "proved" : state.phase : "draft";
-    const spec = JSON.parse(json);
+    const bound = state?.spec && state.specKappa === await kappa(enc.encode(json)), trust = bound ? state.phase === "published" && state.publicationCurrent === false ? "proved" : state.phase : "draft", spec = JSON.parse(json);
     pushLive(appId, spec, trust);
-    // The edit history is ready before the first click, so even the first edit is drawn optimistically,
-    // before any storage read, instead of waiting for the history to be built.
     if (liveEditors.has(appId)) liveEditors.get(appId).sync(spec); else liveEditors.set(appId, createEditor(spec, checkForEdit));
     if (liveShown.has(appId) && liveFrameUrl) scheduleCover(appId, liveFrameUrl + "#" + encodeURIComponent(appId));
   } catch (e) {}
@@ -1405,7 +1347,7 @@ async function chatTurn(chatId, intent) {
     const asks = messages.filter((x) => x.role === "user" && x.content && !prism.isApproval(x.content)).map((x) => x.content);
     await enqueueText("");
     // A stop ends the turn at once, as it did a model's stream: the reading is then left unread.
-    const r4Turn = inprism ? await askR4Studio(asks, abort.signal, { appId, activeFile: projectSource.files[0]?.[0] || null, projectSource, onText: enqueueText }) : null;
+    const r4Turn = inprism ? await askR4Studio(asks, abort.signal, { appId, activeFile: projectSource.files[0]?.[0] || null, projectSource, onText: enqueueText, readOnly: !execution.sourceEffects, chatMode: execution.mode, systemPrompt: !execution.sourceEffects ? chatExecutionPrompt(execution, "") : "" }) : null;
     const lines = r4Turn ? [] : (await Promise.race([(await kernelReady).ask("read " + [...new Set(asks)].join(", ")), new Promise((_, no) => abort.signal.addEventListener("abort", () => no(abort.signal.reason), { once: true }))])).split("\n");
     assertGenerationActive(abort.signal);
     const made = r4Request({ provider, model, ...(inprism ? await r4StudioFacts(r4Turn) : {}) });
@@ -1605,7 +1547,7 @@ window.electron = { ipcRenderer: { invokeEnvelope: (channel, ...args) => dispatc
   history.replaceState(null, "", new URL(document.baseURI).pathname + "chat?id=" + created.chatId + "&appId=" + created.app.id); dispatchEvent(new PopStateEvent("popstate"));
 })();
 window.__gallery = Object.freeze({read: appId => readGallery(dbReady, appId)});
-window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, DEFAULT_SPIRALCORE_RELAY_WS_URL, hasGithubToken: async () => r4Runtime.hasGithubToken(), getTelemetrySnapshot: () => r4Runtime.getTelemetrySnapshot(), onTelemetry: (cb) => r4Runtime.onTelemetry(cb), getNetworkMode: () => r4Runtime.getNetworkMode(), setNetworkMode: (m) => r4Runtime.setNetworkMode(m), getRelayUrl: () => r4Runtime.getRelayUrl(), setRelayUrl: (u) => r4Runtime.setRelayUrl(u), gitAction: (op, a) => r4Runtime.gitAction(op, a), getModelTier: () => r4Runtime.getModelTier(), setModelTier: (m) => r4Runtime.setModelTier(m), authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload(i, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet(i, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
+window.__host = { handlers, emit, seen, get, put, all, kappa, core: () => core, coreReady, view: () => coreReady.then((c) => c.run({ op: "view" })), publish: () => lastPublish, r4Studio: { pin: r4StudioPin, ensure: ensureR4Studio, facts: r4StudioFacts, DEFAULT_SPIRALCORE_RELAY_WS_URL, hasGithubToken: async () => r4Runtime.hasGithubToken(), getTelemetrySnapshot: () => r4Runtime.getTelemetrySnapshot(), onTelemetry: (cb) => r4Runtime.onTelemetry(cb), getNetworkMode: () => r4Runtime.getNetworkMode(), setNetworkMode: (m) => r4Runtime.setNetworkMode(m), getRelayUrl: () => r4Runtime.getRelayUrl(), setRelayUrl: (u) => r4Runtime.setRelayUrl(u), gitAction: (op, a) => r4Runtime.gitAction(op, a), getModelTier: () => r4Runtime.getModelTier(), setModelTier: (m) => r4Runtime.setModelTier(m), authorizeWeights: async (i = {}, o = {}) => authorizeR4WeightsDownload({ ...i, source: i?.source || (await r4StudioPin().catch(() => null))?.archiveKappa }, { db: await dbReady, ...o }), authorizeInternet: async (i = {}, o = {}) => authorizeSpiralCoreInternet({ ...i, source: i?.source || (await r4StudioPin().catch(() => null))?.archiveKappa }, { db: await dbReady, ...o }), commitConsent: async (id, p, out) => commitR4Consent(await dbReady, id, p, out) } };
 if ("serviceWorker" in navigator) {
   const drawnByWorker = !!navigator.serviceWorker.controller; let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (drawnByWorker && !reloading) { reloading = true; location.reload(); } });
